@@ -21,3 +21,4 @@ Prompt: "pato feo simple", ImgBB ID: YB3r7TrV/pato-feo-simple.jpg
 Prompt: "genera+un+logo+per+un+azienda+che+vende+vernici+per+carrozzerie,+si+chiama+Nicola+Bianchi", ImgBB ID: CK1FG8Y8/genera-un-logo-per-un-azienda-che-vende-vernici-per-carrozzerie-si-chiama-Nicola-Bianchi.jpg
 Prompt: ",+studio-grade+contrast", ImgBB ID: Q7WhSVLB/studio-grade-contrast.jpg
 Prompt: "Fountain+pen+nib+close,+choose,+Paris+Agreement,+Melt,+soaked+vines,+grainy+comic+book+ink,+natural+materials", ImgBB ID: 8D26KBNx/Fountain-pen-nib-close-choose-Paris-Agreement-Melt-soaked-vines-grainy-comic-book-ink-natural-materi.jpg
+Prompt: "sunlit tiny apartment, curtain breeze, coffee on table, high realism", ImgBB ID: fdpY09KY/sunlit-tiny-apartment-curtain-breeze-coffee-on-table-high-realism.jpg
