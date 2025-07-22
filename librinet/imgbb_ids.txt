@@ -3,5 +3,4 @@ Prompt: "pato icono", ImgBB ID: C5j81pMq/pato-icono.jpg
 Prompt: "pato icono de dibujos animados", ImgBB ID: qG11mqw/pato-icono-de-dibujos-animados.jpg
 Prompt: "pato icono de dibujos animados", ImgBB ID: svQ3ZmCQ/pato-icono-de-dibujos-animados.jpg
 Prompt: "GTA style drawing of Pakistani man, standing in Quetta, Pakistan", ImgBB ID: MyNLCFXw/GTA-style-drawing-of-Pakistani-man-standing-in-Quetta-Pakistan.jpg
-Prompt: ""Silhouette of a man walking with umbrella during imaginary rain, stark white background for dramatic contrast" ", ImgBB ID: jZ3x7cXr/Silhouette-of-a-man-walking-with-umbrella-during-imaginary-rain-stark-white-background-for-dramatic.jpg
-Prompt: "Potato+harvest+digging,+mortality,+Whitecap+Morning,+Truth,+reflected+fireflies,+monochrome+steampunk+finish,+pure+clarity", ImgBB ID: 0RZ7X1mQ/Potato-harvest-digging-mortality-Whitecap-Morning-Truth-reflected-fireflies-monochrome-steampunk-fin.jpg
+Prompt: "Mujer con serpientes en sus manos rodeada huesos y flores", ImgBB ID: 23c1B05c/Mujer-con-serpientes-en-sus-manos-rodeada-huesos-y-flores.jpg
