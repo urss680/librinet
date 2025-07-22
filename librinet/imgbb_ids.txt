@@ -17,3 +17,4 @@ Prompt: "Schattenklang aus toten Gitarrensaiten mit schreiender Stille", ImgBB I
 Prompt: "pato simple", ImgBB ID: WWn4P4sk/pato-simple.jpg
 Prompt: "pato feo simple", ImgBB ID: 9HMs1wxQ/pato-feo-simple.jpg
 Prompt: "On a white background of camphor plant", ImgBB ID: V0TNLxPp/On-a-white-background-of-camphor-plant.jpg
+Prompt: "pato feo simple", ImgBB ID: YB3r7TrV/pato-feo-simple.jpg
