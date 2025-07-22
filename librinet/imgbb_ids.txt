@@ -14,3 +14,4 @@ Prompt: "Nordlichter in der Polarnacht ", ImgBB ID: zVS0pzrK/Nordlichter-in-der-
 Prompt: "A+Picture+of+Darth+Vader", ImgBB ID: 6cfjN868/A-Picture-of-Darth-Vader.jpg
 Prompt: "pato simple", ImgBB ID: tpP3NXB4/pato-simple.jpg
 Prompt: "Schattenklang aus toten Gitarrensaiten mit schreiender Stille", ImgBB ID: tM9KxPcc/Schattenklang-aus-toten-Gitarrensaiten-mit-schreiender-Stille.jpg
+Prompt: "pato simple", ImgBB ID: WWn4P4sk/pato-simple.jpg
