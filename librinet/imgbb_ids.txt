@@ -20,4 +20,4 @@ Prompt: "On a white background of camphor plant", ImgBB ID: V0TNLxPp/On-a-white-
 Prompt: "pato feo simple", ImgBB ID: YB3r7TrV/pato-feo-simple.jpg
 Prompt: "genera+un+logo+per+un+azienda+che+vende+vernici+per+carrozzerie,+si+chiama+Nicola+Bianchi", ImgBB ID: CK1FG8Y8/genera-un-logo-per-un-azienda-che-vende-vernici-per-carrozzerie-si-chiama-Nicola-Bianchi.jpg
 Prompt: ",+studio-grade+contrast", ImgBB ID: Q7WhSVLB/studio-grade-contrast.jpg
-Prompt: "Style+poster+movie+time+traveling+scooter+rider+lost+in+bureaucratic+loop+title+TRAVELING+SCOOTER+subtitle+the+lost+rider+Arabs+Close-up+Eye-level+shot+style:+flux-cablyai+gothic+style ++high+resolution+", ImgBB ID: gZYrk1Jt/Style-poster-movie-time-traveling-scooter-rider-lost-in-bureaucratic-loop-title-TRAVELING-SCOOTER-su.jpg
+Prompt: "Fountain+pen+nib+close,+choose,+Paris+Agreement,+Melt,+soaked+vines,+grainy+comic+book+ink,+natural+materials", ImgBB ID: 8D26KBNx/Fountain-pen-nib-close-choose-Paris-Agreement-Melt-soaked-vines-grainy-comic-book-ink-natural-materi.jpg
