@@ -18,4 +18,5 @@ Prompt: "pato simple", ImgBB ID: WWn4P4sk/pato-simple.jpg
 Prompt: "pato feo simple", ImgBB ID: 9HMs1wxQ/pato-feo-simple.jpg
 Prompt: "On a white background of camphor plant", ImgBB ID: V0TNLxPp/On-a-white-background-of-camphor-plant.jpg
 Prompt: "pato feo simple", ImgBB ID: YB3r7TrV/pato-feo-simple.jpg
-Prompt: "harmony in universe", ImgBB ID: tPsvR0vF/harmony-in-universe.jpg
+Prompt: "genera+un+logo+per+un+azienda+che+vende+vernici+per+carrozzerie,+si+chiama+Nicola+Bianchi", ImgBB ID: CK1FG8Y8/genera-un-logo-per-un-azienda-che-vende-vernici-per-carrozzerie-si-chiama-Nicola-Bianchi.jpg
+Prompt: ",+studio-grade+contrast", ImgBB ID: Q7WhSVLB/studio-grade-contrast.jpg
