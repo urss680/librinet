@@ -2,4 +2,5 @@ Prompt: "BOB ESPONJA", ImgBB ID: k2mXmmNM/BOB-ESPONJA.jpg
 Prompt: "pato icono", ImgBB ID: C5j81pMq/pato-icono.jpg
 Prompt: "pato icono de dibujos animados", ImgBB ID: qG11mqw/pato-icono-de-dibujos-animados.jpg
 Prompt: "pato icono de dibujos animados", ImgBB ID: svQ3ZmCQ/pato-icono-de-dibujos-animados.jpg
-Prompt: "photorealistic,+high-quality+photo+of+a+car+Peugeot+308+1.2+PureTech+110+HP+in+Red+color,+clean+background,+professional+shot,+no+watermarks,+side+view,+studio+lighting,+sharp+focus.", ImgBB ID: M5VpHY1v/photorealistic-high-quality-photo-of-a-car-Peugeot-308-1-2-Pure-Tech-110-HP-in-Red-color-clean-backg.jpg
+Prompt: "GTA style drawing of Pakistani man, standing in Quetta, Pakistan", ImgBB ID: MyNLCFXw/GTA-style-drawing-of-Pakistani-man-standing-in-Quetta-Pakistan.jpg
+Prompt: ""Silhouette of a man walking with umbrella during imaginary rain, stark white background for dramatic contrast" ", ImgBB ID: jZ3x7cXr/Silhouette-of-a-man-walking-with-umbrella-during-imaginary-rain-stark-white-background-for-dramatic.jpg
