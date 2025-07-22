@@ -4,3 +4,4 @@ Prompt: "pato icono de dibujos animados", ImgBB ID: qG11mqw/pato-icono-de-dibujo
 Prompt: "pato icono de dibujos animados", ImgBB ID: svQ3ZmCQ/pato-icono-de-dibujos-animados.jpg
 Prompt: "GTA style drawing of Pakistani man, standing in Quetta, Pakistan", ImgBB ID: MyNLCFXw/GTA-style-drawing-of-Pakistani-man-standing-in-Quetta-Pakistan.jpg
 Prompt: "Mujer con serpientes en sus manos rodeada huesos y flores", ImgBB ID: 23c1B05c/Mujer-con-serpientes-en-sus-manos-rodeada-huesos-y-flores.jpg
+Prompt: "egg", ImgBB ID: TxSYCmMs/egg.jpg
