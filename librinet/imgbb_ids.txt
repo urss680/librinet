@@ -5,5 +5,5 @@ Prompt: "pato icono de dibujos animados", ImgBB ID: svQ3ZmCQ/pato-icono-de-dibuj
 Prompt: "GTA style drawing of Pakistani man, standing in Quetta, Pakistan", ImgBB ID: MyNLCFXw/GTA-style-drawing-of-Pakistani-man-standing-in-Quetta-Pakistan.jpg
 Prompt: "Mujer con serpientes en sus manos rodeada huesos y flores", ImgBB ID: 23c1B05c/Mujer-con-serpientes-en-sus-manos-rodeada-huesos-y-flores.jpg
 Prompt: "GTA style drawing of Pakistani man, standing in Quetta, Pakistan", ImgBB ID: KcDk5cwj/GTA-style-drawing-of-Pakistani-man-standing-in-Quetta-Pakistan.jpg
-Prompt: "Krak+des+Chevaliers,+powder,+Fugitive+Emissions,+Graphic,+fractured+pools,+hyper-saturated+dreamcore+atmosphere,+studio-grade+contrast", ImgBB ID: N6zcY1vD/Krak-des-Chevaliers-powder-Fugitive-Emissions-Graphic-fractured-pools-hyper-saturated-dreamcore-atmo.jpg
-Prompt: "forex-chart-with-multiple-lines-and-trends-showing-currency-clear-image-focal-point", ImgBB ID: Xxjb8Xfp/forex-chart-with-multiple-lines-and-trends-showing-currency-clear-image-focal-point.jpg
+Prompt: "Fair+weather+clouds+drift.,+photometric+lighting", ImgBB ID: S86hv0M/Fair-weather-clouds-drift-photometric-lighting.jpg
+Prompt: "Crepuscular+rays,+galaxy,+Rights,+Enhance,+vivid+light+beams,+inverted+impressionist+blur,+balanced+saturation", ImgBB ID: 8gvDCLB1/Crepuscular-rays-galaxy-Rights-Enhance-vivid-light-beams-inverted-impressionist-blur-balanced-satura.jpg
