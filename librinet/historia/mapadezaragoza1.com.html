@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Zaragoza</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha200-rZPrTFG9P8n8P9c1XjNnF2zW2qL7tHqj5L5W5Q5R5R5Q5Q5S5T5U5V5W5X5Y5Z5a5b5c5d5e5f5g5h5i5j5k5l5m5n5o5p5q5r5s5t5u5v5w5x5y5z5A5B5C5D5E5F5G5H5I5J5K5L5M5N5O5P5Q5R5S5T5U5V5W5X5Y5Z5"
+          crossorigin=""/>
+    <style>
+        #map {
+            height: 800px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+  <p>Creado con Librillaia infiniti 6 y enlace generado con LIBRIURL</p>
+    
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha200-QxIUZTzU7rZ9FvV6A6N4F2E2W2x2Y2Z2a2b2c2d2e2f2g2h2i2j2k2l2m2n2o2p2q2r2s2t2u2v2w2x2y2z2A2B2C2D2E2F2G2H2I5J5K5L5M5N5O5P5Q5R5S5T5U5V5W5X5Y5Z5"
+            crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-geometryutil@0.9.1/src/leaflet.geometryutil.js"></script>
+    <script>
+        var map = L.map('map').setView([41.65638889, -0.880000], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        var blueIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        var redIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        var greenIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        var orangeIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        var aptosLatLng = L.latLng(41.666100, -0.884500);
+
+        L.marker(aptosLatLng, {icon: blueIcon}).addTo(map)
+            .bindPopup('<b>Apartamentos El Pilar Suites 3000</b> (C. de Adolfo Aznar, 5, 17, 50018 Zaragoza).');
+
+        // Puntos de interés turístico, cultural, histórico (Verde)
+        var pointsOfInterest = [
+            {lat: 41.656882, lng: -0.878327, name: 'Basílica de Nuestra Señora del Pilar'},
+            {lat: 41.65649, lng: -0.89708, name: 'Palacio de la Aljafería'},
+            {lat: 41.65638889, lng: -0.87861111, name: 'Plaza del Pilar'},
+            {lat: 41.656065, lng: -0.882892, name: 'Mercado Central'},
+            {lat: 41.65722222, lng: -0.87527778, name: 'Puente de Piedra'},
+            {lat: 41.65456, lng: -0.87585, name: 'La Seo del Salvador (Catedral del Salvador)'},
+            {lat: 41.6482, lng: -0.8786, name: 'Museo de Zaragoza'},
+            {lat: 41.651824, lng: -0.879397, name: 'Teatro Principal'},
+            {lat: 41.65572766676821, lng: -0.8768094923316553, name: 'Lonja de Zaragoza'},
+            {lat: 41.646674, lng: -0.8837857, name: 'Patio de la Infanta'},
+            {lat: 41.654877, lng: -0.878893, name: 'Museo Goya'},
+            {lat: 41.651380555556, lng: -0.88991944444444, name: 'IAACC Pablo Serrano'},
+            {lat: 41.6558, lng: -0.8774, name: 'Museo Pablo Gargallo'},
+            {lat: 41.6702, lng: -0.8931, name: 'Acuario de Zaragoza'},
+            {lat: 41.658661, lng: -0.9112, name: 'Estación Zaragoza-Delicias'},
+            {lat: 41.6534, lng: -0.8787, name: 'Teatro Romano de Caesaraugusta'},
+            {lat: 41.6586, lng: -0.8841, name: 'Puente de Santiago'},
+            {lat: 41.653606, lng: -0.878341, name: 'Museo del Foro de Caesaraugusta'},
+            {lat: 41.653457, lng: -0.879153, name: 'Museo de las Termas Públicas de Caesaraugusta'},
+            {lat: 41.654760, lng: -0.877140, name: 'Museo del Puerto Fluvial de Caesaraugusta'},
+            {lat: 41.6567, lng: -0.8808, name: 'Torreón de la Zuda'},
+            {lat: 41.6554, lng: -0.8801, name: 'Murallas Romanas de Zaragoza'},
+            {lat: 41.670008, lng: -0.875204, name: 'Casa Solans'},
+            {lat: 41.6539, lng: -0.8755, name: 'Parroquieta de San Miguel de los Navarros'},
+            {lat: 41.6573, lng: -0.8791, name: 'Real Maestranza de Caballería de Zaragoza'},
+            {lat: 41.656123, lng: -0.891396, name: 'CaixaForum Zaragoza'},
+            {lat: 41.6669, lng: -0.8943, name: 'Etopia Centro de Arte y Tecnología'}
+        ];
+
+        pointsOfInterest.forEach(function(point) {
+            var pointLatLng = L.latLng(point.lat, point.lng);
+            L.marker(pointLatLng, {icon: greenIcon}).addTo(map)
+                .bindPopup('<b>' + point.name + '</b>.');
+        });
+
+        // Paradas de Tranvía (Rojo) con distancias
+        var tramStops = [
+            {lat: 41.6852, lng: -0.8830, name: 'Avenida de la Academia'},
+            {lat: 41.6835, lng: -0.8842, name: 'Parque Goya'},
+            {lat: 41.6811, lng: -0.8857, name: 'Juslibol'},
+            {lat: 41.6778, lng: -0.8872, name: 'Campus Río Ebro'},
+            {lat: 41.6749, lng: -0.8878, name: 'Margarita Xirgu'},
+            {lat: 41.6725, lng: -0.8863, name: 'García Abril'},
+            {lat: 41.6700, lng: -0.8851, name: 'Legaz Lacambra'},
+            {lat: 41.6660, lng: -0.8850, name: 'Adolfo Aznar'},
+            {lat: 41.6635, lng: -0.8845, name: 'Pablo Neruda'},
+            {lat: 41.6610, lng: -0.8839, name: 'León Felipe'},
+            {lat: 41.6590, lng: -0.8834, name: 'Clara Campoamor'},
+            {lat: 41.6575, lng: -0.8829, name: 'Rosalía de Castro'},
+            {lat: 41.6540, lng: -0.8820, name: 'Martínez Soria'},
+            {lat: 41.6520, lng: -0.8815, name: 'María Montessori'},
+            {lat: 41.6495, lng: -0.8808, name: 'La Chimenea'},
+            {lat: 41.6550, lng: -0.8788, name: 'Plaza del Pilar-Murallas'},
+            {lat: 41.6515, lng: -0.8790, name: 'César Augusto'},
+            {lat: 41.6495, lng: -0.8800, name: 'Plaza de España'},
+            {lat: 41.6480, lng: -0.8805, name: 'Plaza Aragón'},
+            {lat: 41.6455, lng: -0.8815, name: 'Gran Vía'},
+            {lat: 41.6430, lng: -0.8825, name: 'Fernando El Católico'},
+            {lat: 41.6405, lng: -0.8835, name: 'Plaza de San Francisco'},
+            {lat: 41.637303, lng: -0.899019, name: 'Emperador Carlos V'},
+            {lat: 41.6340, lng: -0.8995, name: 'Romareda'},
+            {lat: 41.6295, lng: -0.9000, name: 'Casablanca'},
+            {lat: 41.6250, lng: -0.9005, name: 'Argualas'},
+            {lat: 41.6200, lng: -0.9010, name: 'Los Olvidados'},
+            {lat: 41.6160, lng: -0.9015, name: 'Los Pájaros'},
+            {lat: 41.6135, lng: -0.9018, name: 'La Ventana Indiscreta'},
+            {lat: 41.6110, lng: -0.9020, name: 'Cantando bajo la Lluvia'},
+            {lat: 41.6085, lng: -0.9022, name: 'Un Americano en París'},
+            {lat: 41.6060, lng: -0.9025, name: 'Mago de Oz'},
+            {lat: 41.6030, lng: -0.9028, name: 'Recinto Ferial (Valdespartera)'}
+        ];
+
+        tramStops.forEach(function(stop) {
+            var stopLatLng = L.latLng(stop.lat, stop.lng);
+            L.marker(stopLatLng, {icon: redIcon}).addTo(map)
+                .bindPopup('<b>Tranvía - ' + stop.name + '</b>.');
+        });
+
+        // Tiendas, Bares, Restaurantes, Parkings (Naranja)
+        var shopsFoodParking = [
+            {lat: 41.6542, lng: -0.8788, name: 'Zona de Tapas El Tubo', type: 'Bar'},
+            {lat: 41.6541, lng: -0.8778, name: 'Bar Típico - Casa Montal', type: 'Bar'},
+            {lat: 41.6547, lng: -0.8779, name: 'Bar Típico y Barato - Taberna Doña Casta', type: 'Bar'},
+            {lat: 41.6537, lng: -0.8771, name: 'Restaurante - Burger King (El Coso)', type: 'Restaurante'},
+            {lat: 41.6545, lng: -0.8795, name: 'Restaurante - La Miguela', type: 'Restaurante'},
+            {lat: 41.6552, lng: -0.8800, name: 'Zona de Compras - Calle Alfonso I', type: 'Tienda'},
+            {lat: 41.636667, lng: -0.893333, name: 'Restaurante - Vips (Paseo Sagasta)', type: 'Restaurante'},
+            {lat: 41.6517, lng: -0.8785, name: 'Bar - 100 Montaditos (C/ Don Jaime I)', type: 'Bar (Barato)'},
+            {lat: 41.6539, lng: -0.8790, name: 'Bar Típico - Bar Félix', type: 'Bar'},
+            {lat: 41.6563, lng: -0.8833, name: 'Parking Indigo Mercado Central', type: 'Parking'},
+            {lat: 41.6565, lng: -0.8797, name: 'Parking Plaza del Pilar', type: 'Parking'},
+            {lat: 41.6575, lng: -0.8765, name: 'Parking Indigo Contratación', type: 'Parking'},
+            {lat: 41.6369, lng: -0.9009, name: 'Centro Comercial Puerto Venecia', type: 'Centro Comercial'},
+            {lat: 41.6700, lng: -0.8890, name: 'Centro Comercial Grancasa', type: 'Centro Comercial'},
+            {lat: 41.6420, lng: -0.9000, name: 'Centro Comercial Aragonia', type: 'Centro Comercial'},
+            {lat: 41.6572, lng: -0.8770, name: 'El Corte Inglés (Paseo de la Independencia)', type: 'Tienda'}
+        ];
+
+        shopsFoodParking.forEach(function(place) {
+            var placeLatLng = L.latLng(place.lat, place.lng);
+            L.marker(placeLatLng, {icon: orangeIcon}).addTo(map)
+                .bindPopup('<b>' + place.type + ' - ' + place.name + '</b>.');
+        });
+
+        // Parques (Verde)
+        var parks = [
+            {lat: 41.63369, lng: -0.89521, name: 'Parque Grande José Antonio Labordeta'},
+            {lat: 41.66618, lng: -0.911707, name: 'Parque del Agua Luis Buñuel'},
+            {lat: 41.6433, lng: -0.8856, name: 'Parque Pignatelli'},
+            {lat: 41.6640, lng: -0.8750, name: 'Parque de Macanaz'},
+            {lat: 41.6530, lng: -0.8730, name: 'Parque Bruil'},
+            {lat: 41.6508, lng: -0.8804, name: 'Plaza de Los Sitios'}
+        ];
+
+        parks.forEach(function(park) {
+            var parkLatLng = L.latLng(park.lat, park.lng);
+            L.marker(parkLatLng, {icon: greenIcon}).addTo(map)
+                .bindPopup('<b>Parque - ' + park.name + '</b>.');
+        });
+
+    </script>
+</body>
+</html>
