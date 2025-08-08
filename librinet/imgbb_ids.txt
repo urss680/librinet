@@ -26,3 +26,6 @@ Prompt: "A minimalist, clean vector line art logo of a monkey, squatting or sitt
 Prompt: "Lovers watching cherry blossoms fall", ImgBB ID: HfsWBbnc/Lovers-watching-cherry-blossoms-fall.jpg
 Prompt: "PONLAS LETRAS ARTE PERO CADA LETRA DE UNA FORMA DIFERENTE", ImgBB ID: ZDGHdDb/PONLAS-LETRAS-ARTE-PERO-CADA-LETRA-DE-UNA-FORMA-DIFERENTE.jpg
 Prompt: "PONLAS LETRAS ARTE PERO CADA LETRA DE UNA FORMA DIFERENTE", ImgBB ID: svFzWrWr/PONLAS-LETRAS-ARTE-PERO-CADA-LETRA-DE-UNA-FORMA-DIFERENTE.jpg
+Prompt: "A lone figure hurriedly navigating an ominous woodland under the glow of flickering torches, chased by a group of armed soldiers emerging from the shadows; far off in the background, a large barn engulfed in raging flames illuminates the night sky. Rendered in a hyper-realistic cinematic style with stark, contrasted lighting that heightens the tense and foreboding mood of the scene.
+
+Visual: Booth running through a dark forest with torches and soldiers behind him; in the distance, a burning barn.Style: Cinematic realism, dramatic lighting and intense atmosphere.", ImgBB ID: C54GdrNG/A-lone-figure-hurriedly-navigating-an-ominous-woodland-under-the-glow-of-flickering-torches-chased-b.jpg
