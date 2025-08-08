@@ -42,3 +42,4 @@ Abyssal+plain,+worth,+Snow+Stopping+Dusk,+Separate,+cracked+outlines,+Cellular+P
 Prompt: "A haunting scene featuring a figure shrouded in black frost, typing intently amidst an ethereal jellyfish bloom that floats gracefully in the mist. The environment is veiled in a shroud of glowing, glitching fog that distorts reality, with colors shifting between shimmering blues and icy silvers. The composition is captured in an inverted vintage photographic style, evoking a nostalgic yet surreal atmosphere, enhanced by the appearance of real-time rendering effects that give the scene a dynamic, otherworldly glow.
 
 Black+frost,+typing,+Jellyfish+Bloom,+Shroud,+glitching+mist,+inverted+vintage+photography,+real-time+rendering", ImgBB ID: WW0QPj6P/A-haunting-scene-featuring-a-figure-shrouded-in-black-frost-typing-intently-amidst-an-ethereal-jelly.jpg
+Prompt: "random_prompt", ImgBB ID: 99qWZ5cJ/random-prompt.jpg
