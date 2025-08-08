@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mapa con geolocalización, búsqueda, rutas y velocidad</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Carga los estilos de Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <!-- Carga los estilos para el geocodificador de Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
+    <!-- Carga los estilos para Leaflet Routing Machine -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <!-- Carga los estilos para el minimapa -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-globeminimap@0.1.1/dist/leaflet.globeminimap.min.css"/>
+    <!-- Carga de Tailwind CSS para un diseño moderno y responsive -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos generales del cuerpo y el mapa */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+
+        /* Estilos personalizados para el cuadro de mensaje, sustituye a 'alert' */
+        #messageBox {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            background-color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            z-index: 2000;
+            display: none;
+            text-align: center;
+            max-width: 90%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="map"></div>
+
+    <!-- Contenedor principal de la interfaz de usuario -->
+    <div class="absolute top-4 left-4 z-[1000] p-4 bg-white rounded-xl shadow-xl flex flex-col gap-4 max-w-sm w-11/12 md:w-auto">
+        <h4 class="text-xl font-bold text-gray-800">Mapa Interactivo</h4>
+
+        <!-- Botón de geolocalización -->
+        <button id="locateMeBtn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-md shadow-lg hover:bg-green-700 transition duration-300 ease-in-out w-full flex items-center justify-center gap-2">
+            📍 Mi ubicación
+        </button>
+
+        <hr class="border-gray-200">
+
+        <!-- Formulario de rutas -->
+        <h5 class="text-lg font-bold text-gray-700">Calcula tu ruta</h5>
+        <div class="flex flex-col gap-2">
+            <label for="fromInput" class="text-sm font-medium text-gray-700">Origen</label>
+            <div class="relative flex items-center">
+                <input id="fromInput" type="text" placeholder="Tu origen" class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full pr-10">
+                <button id="useMyLocBtn" class="absolute right-1 p-1 bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition duration-150 ease-in-out" title="Usar mi ubicación actual">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <label for="toInput" class="text-sm font-medium text-gray-700">Destino</label>
+            <input id="toInput" type="text" placeholder="Tu destino" class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div class="flex flex-row flex-wrap gap-4 items-center justify-center">
+            <label class="flex items-center text-sm font-medium text-gray-700">
+                <input type="radio" name="profile" value="car" class="mr-2 accent-blue-500" checked> Coche
+            </label>
+            <label class="flex items-center text-sm font-medium text-gray-700">
+                <input type="radio" name="profile" value="bike" class="mr-2 accent-blue-500"> Bici
+            </label>
+            <label class="flex items-center text-sm font-medium text-gray-700">
+                <input type="radio" name="profile" value="foot" class="mr-2 accent-blue-500"> Pie
+            </label>
+        </div>
+
+        <div class="flex justify-between gap-2">
+            <button id="createRouteBtn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-md shadow-lg hover:bg-blue-700 transition duration-300 ease-in-out w-full">
+                Crear Ruta
+            </button>
+            <button id="clearRouteBtn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-md shadow-lg hover:bg-red-700 transition duration-300 ease-in-out w-full">
+                Borrar Ruta
+            </button>
+        </div>
+    </div>
+
+    <!-- Mensaje de aviso personalizado -->
+    <div id="messageBox" class="flex flex-col gap-4">
+        <p id="messageText" class="text-gray-800 text-base"></p>
+        <button id="messageBoxClose" class="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">Cerrar</button>
+    </div>
+
+    <!-- Carga los scripts de Leaflet y plugins -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-globeminimap@0.1.1/dist/leaflet.globeminimap.min.js"></script>
+
+    <script>
+        // Función para mostrar un mensaje personalizado en lugar de 'alert'
+        function showMessage(message) {
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+            messageText.textContent = message;
+            messageBox.style.display = 'block';
+        }
+
+        // Listener para cerrar el cuadro de mensaje
+        document.getElementById('messageBoxClose').addEventListener('click', () => {
+            document.getElementById('messageBox').style.display = 'none';
+        });
+
+        let map = null;
+        let controlRouting = null;
+        let userMarker = null; // Marcador para la ubicación del usuario
+        let accuracyCircle = null; // Círculo para la precisión de la ubicación
+
+        /**
+         * Inicializa el mapa y sus controles.
+         * Se carga solo si el DOM está completamente cargado.
+         */
+        function initMap() {
+            // Inicializa el mapa centrado en unas coordenadas por defecto
+            map = L.map('map').setView([40.416775, -3.703790], 13);
+
+            // Añade el Tile Layer de OpenStreetMap
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+
+            // Añade un control de geocodificación (búsqueda de lugares)
+            L.Control.geocoder().addTo(map);
+
+            // Añade el minimapa
+            L.control.globeminimap({
+                width: 150,
+                height: 150,
+                collapsed: false,
+                position: 'bottomleft',
+                tileLayer: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+            }).addTo(map);
+
+            // Evento para cuando se encuentra la ubicación del usuario
+            map.on('locationfound', onLocationFound);
+
+            // Evento para cuando hay un error al encontrar la ubicación
+            map.on('locationerror', onLocationError);
+        }
+
+        /**
+         * Maneja el evento de ubicación encontrada.
+         * Se actualiza para mostrar también la velocidad y dirección.
+         * @param {Object} e El objeto de evento de Leaflet.
+         */
+        function onLocationFound(e) {
+            const radius = e.accuracy;
+
+            // Elimina marcadores y círculos antiguos si existen
+            if (userMarker) {
+                map.removeLayer(userMarker);
+                map.removeLayer(accuracyCircle);
+            }
+
+            // Crea el contenido del popup con la nueva información
+            let popupContent = `
+                <b>Estás aquí con una precisión de ${Math.round(radius)} metros.</b>
+                <br>
+            `;
+            if (e.speed !== null && e.speed >= 0) {
+                // Convierte la velocidad de m/s a km/h
+                const speedKmh = (e.speed * 3.6).toFixed(1);
+                popupContent += `<b>Velocidad:</b> ${speedKmh} km/h<br>`;
+            }
+            if (e.heading !== null && e.heading >= 0) {
+                popupContent += `<b>Dirección:</b> ${e.heading.toFixed(1)}°<br>`;
+            }
+
+            // Añade el marcador de la ubicación actual con el contenido actualizado
+            userMarker = L.marker(e.latlng).addTo(map)
+                .bindPopup(popupContent).openPopup();
+
+            // Añade el círculo de precisión
+            accuracyCircle = L.circle(e.latlng, radius).addTo(map);
+
+            // Centra el mapa en la ubicación encontrada
+            map.setView(e.latlng, map.getZoom() > 16 ? map.getZoom() : 16);
+
+            // Guarda las coordenadas en los botones de "usar mi ubicación"
+            document.getElementById('useMyLocBtn').dataset.lat = e.latlng.lat;
+            document.getElementById('useMyLocBtn').dataset.lon = e.latlng.lng;
+        }
+
+        /**
+         * Maneja el evento de error de ubicación.
+         * @param {Object} e El objeto de evento de Leaflet.
+         */
+        function onLocationError(e) {
+            showMessage(e.message);
+        }
+
+        /**
+         * Realiza una solicitud de geocodificación para una dirección.
+         * @param {string} query La dirección a geocodificar.
+         * @param {Function} callback La función a llamar con las coordenadas.
+         */
+        function geocodeQuery(query, callback) {
+            fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const { lat, lon } = data[0];
+                        callback([lat, lon]);
+                    } else {
+                        showMessage(`No se encontraron coordenadas para "${query}".`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error en la geocodificación:', error);
+                    showMessage('Error al buscar la ubicación. Inténtalo de nuevo.');
+                });
+        }
+
+        // Se asegura de que todos los scripts estén completamente cargados antes de inicializar el mapa
+        window.onload = initMap;
+
+        // Listener para el botón de geolocalización
+        document.getElementById('locateMeBtn').addEventListener('click', () => {
+            // Se usa `watch: true` para actualizaciones de posición continuas
+            map.locate({ setView: true, maxZoom: 16, watch: true, enableHighAccuracy: true });
+        });
+        
+        // Listener para el botón de usar mi ubicación actual para el campo "origen"
+        document.getElementById('useMyLocBtn').addEventListener('click', (event) => {
+            const lat = event.target.closest('button').dataset.lat;
+            const lon = event.target.closest('button').dataset.lon;
+
+            if (lat && lon) {
+                document.getElementById('fromInput').value = `${lat}, ${lon}`;
+            } else {
+                showMessage("Primero debes permitir el acceso a tu ubicación.");
+                map.locate({ setView: false, maxZoom: 16, watch: false, enableHighAccuracy: true }); // Intenta obtener la ubicación una vez
+            }
+        });
+
+        // Manejador para el botón de crear ruta
+        document.getElementById('createRouteBtn').addEventListener('click', () => {
+            const from = document.getElementById('fromInput').value.trim();
+            const to   = document.getElementById('toInput').value.trim();
+
+            if (!from || !to) {
+                showMessage("Indica origen y destino.");
+                return;
+            }
+
+            const profile = document.querySelector('input[name="profile"]:checked').value;
+
+            // Geocodifica el origen y el destino
+            geocodeQuery(from, fromCoords => {
+                geocodeQuery(to, toCoords => {
+                    // Si ya hay una ruta, la elimina antes de crear una nueva
+                    if (controlRouting) map.removeControl(controlRouting);
+
+                    const router = profile === 'car'   ? 'https://router.project-osrm.org/route/v1' :
+                                   profile === 'bike'  ? 'https://routing.openstreetmap.de/routed-bike/route/v1' :
+                                                         'https://routing.openstreetmap.de/routed-foot/route/v1';
+
+                    // Crea el control de enrutamiento
+                    controlRouting = L.Routing.control({
+                        waypoints: [L.latLng(fromCoords), L.latLng(toCoords)],
+                        router: L.Routing.osrmv1({serviceUrl: router}),
+                        routeWhileDragging: true,
+                        geocoder: null, // Evita que se muestre el geocodificador por defecto
+                        showAlternatives: true,
+                        collapsible: false,
+                        language: 'es' // Esta línea asegura que las instrucciones se muestren en español
+                    }).addTo(map);
+                });
+            });
+        });
+
+        // Manejador para el botón de borrar ruta
+        document.getElementById('clearRouteBtn').addEventListener('click', () => {
+            if (controlRouting) {
+                map.removeControl(controlRouting);
+                controlRouting = null;
+            }
+        });
+    </script>
+</body>
+</html>
