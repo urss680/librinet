@@ -43,6 +43,6 @@ Prompt: "A haunting scene featuring a figure shrouded in black frost, typing int
 
 Black+frost,+typing,+Jellyfish+Bloom,+Shroud,+glitching+mist,+inverted+vintage+photography,+real-time+rendering", ImgBB ID: WW0QPj6P/A-haunting-scene-featuring-a-figure-shrouded-in-black-frost-typing-intently-amidst-an-ethereal-jelly.jpg
 Prompt: "random_prompt", ImgBB ID: 99qWZ5cJ/random-prompt.jpg
-Prompt: "A delicate white lily circle illuminated against a shimmering backdrop of sparkling glitter, with soft, ambient lighting highlighting the pristine petals and creating a sense of elegance and serenity.
+Prompt: "A highly detailed scene illuminated with soft, photometric lighting that accentuates textures and depth, creating realistic shadows and highlights across the subject, emphasizing the contrast and subtle gradations of light to produce a lifelike, visually compelling image.
 
-Cercle de lys blanche sur fond de paillettes", ImgBB ID: sdSCZxnR/A-delicate-white-lily-circle-illuminated-against-a-shimmering-backdrop-of-sparkling-glitter-with-sof.jpg
+,+photometric+lighting", ImgBB ID: DjHtP0d/A-highly-detailed-scene-illuminated-with-soft-photometric-lighting-that-accentuates-textures-and-dep.jpg
