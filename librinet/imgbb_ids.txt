@@ -46,3 +46,4 @@ Prompt: "random_prompt", ImgBB ID: 99qWZ5cJ/random-prompt.jpg
 Prompt: "A highly detailed scene illuminated with soft, photometric lighting that accentuates textures and depth, creating realistic shadows and highlights across the subject, emphasizing the contrast and subtle gradations of light to produce a lifelike, visually compelling image.
 
 ,+photometric+lighting", ImgBB ID: DjHtP0d/A-highly-detailed-scene-illuminated-with-soft-photometric-lighting-that-accentuates-textures-and-dep.jpg
+Prompt: "BOB ESPONJA", ImgBB ID: WWrVgsL8/BOB-ESPONJA.jpg
