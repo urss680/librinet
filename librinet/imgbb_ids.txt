@@ -47,3 +47,6 @@ Prompt: "A highly detailed scene illuminated with soft, photometric lighting tha
 
 ,+photometric+lighting", ImgBB ID: DjHtP0d/A-highly-detailed-scene-illuminated-with-soft-photometric-lighting-that-accentuates-textures-and-dep.jpg
 Prompt: "BOB ESPONJA", ImgBB ID: WWrVgsL8/BOB-ESPONJA.jpg
+Prompt: "J.png", ImgBB ID: HfkB82jL/70afa41c9254.png
+Prompt: "PEDRO.jpg", ImgBB ID: Mkj84HwJ/0cfc44aa9228.jpg
+Prompt: "PRAENA.jpg", ImgBB ID: 8V4c2Fm/18d30254aef1.jpg
