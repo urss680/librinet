@@ -1,0 +1,241 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mamá Te Quiero</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background: linear-gradient(to bottom, #ff9a9e, #fad0c4);
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #heartContainer {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin-bottom: 30px;
+        }
+
+        #mainHeart {
+            width: 100%;
+            height: 100%;
+            background: #ff1744;
+            position: relative;
+            transform: rotate(-45deg);
+            animation: heartbeat 1.5s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+
+        #mainHeart:before,
+        #mainHeart:after {
+            content: '';
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background: #ff1744;
+            border-radius: 50%;
+        }
+
+        #mainHeart:before {
+            top: -50%;
+            left: 0;
+        }
+
+        #mainHeart:after {
+            left: 50%;
+            top: 0;
+        }
+
+        .fallingHeart {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #ff5252;
+            transform: rotate(-45deg);
+            animation: fall linear;
+        }
+
+        .fallingHeart:before,
+        .fallingHeart:after {
+            content: '';
+            width: 30px;
+            height: 30px;
+            position: absolute;
+            background: #ff5252;
+            border-radius: 50%;
+        }
+
+        .fallingHeart:before {
+            top: -15px;
+            left: 0;
+        }
+
+        .fallingHeart:after {
+            left: 15px;
+            top: 0;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(-45deg);
+            }
+        }
+
+        @keyframes heartbeat {
+            0% { transform: rotate(-45deg) scale(1); }
+            50% { transform: rotate(-45deg) scale(1.1); }
+            100% { transform: rotate(-45deg) scale(1); }
+        }
+
+        #message1, #message2 {
+            font-size: 36px;
+            color: #d32f2f;
+            font-weight: bold;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.5s ease;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        #message1.show, #message2.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        #earth {
+            font-size: 48px;
+            margin-left: 10px;
+        }
+
+        #progress {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #d32f2f;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        #audioControl {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        #audioControl:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="progress">0%</div>
+    
+    <div id="heartContainer">
+        <div id="mainHeart"></div>
+    </div>
+    
+    <div id="message1">¡MAMÁ TE QUIERO!</div>
+    <div id="message2">ERES LO QUE MÁS QUIERO DEL MUNDO<span id="earth">🌍</span></div>
+
+    <button id="audioControl" title="Play/Pause música">🔊</button>
+    
+    <audio id="bgMusic" loop>
+        <source src="https://github.com/urss680/librinet/raw/refs/heads/main/MAMA.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        let progress = 0;
+        const totalHearts = 20;
+        const progressText = document.getElementById('progress');
+        const mainHeart = document.getElementById('mainHeart');
+        const message1 = document.getElementById('message1');
+        const message2 = document.getElementById('message2');
+        const audioControl = document.getElementById('audioControl');
+        const bgMusic = document.getElementById('bgMusic');
+        
+        let isPlaying = false;
+        
+        audioControl.addEventListener('click', () => {
+            if (isPlaying) {
+                bgMusic.pause();
+                audioControl.textContent = '🔇';
+            } else {
+                bgMusic.play();
+                audioControl.textContent = '🔊';
+            }
+            isPlaying = !isPlaying;
+        });
+
+        function createFallingHeart() {
+            const heart = document.createElement('div');
+            heart.className = 'fallingHeart';
+            heart.style.left = Math.random() * window.innerWidth + 'px';
+            heart.style.animationDuration = Math.random() * 2 + 3 + 's';
+            document.body.appendChild(heart);
+
+            heart.addEventListener('animationend', () => {
+                heart.remove();
+                progress += (100 / totalHearts);
+                progressText.textContent = Math.round(progress) + '%';
+                
+                if (progress >= 100) {
+                    showMessages();
+                }
+            });
+        }
+
+        function showMessages() {
+            message1.classList.add('show');
+            
+            const utterance1 = new SpeechSynthesisUtterance('¡Mamá te quiero!');
+            utterance1.lang = 'es-ES';
+            speechSynthesis.speak(utterance1);
+            
+            setTimeout(() => {
+                message2.classList.add('show');
+                
+                const utterance2 = new SpeechSynthesisUtterance('Eres lo que más quiero del mundo');
+                utterance2.lang = 'es-ES';
+                speechSynthesis.speak(utterance2);
+            }, 2000);
+        }
+
+        let heartCount = 0;
+        const interval = setInterval(() => {
+            if (heartCount < totalHearts) {
+                createFallingHeart();
+                heartCount++;
+            } else {
+                clearInterval(interval);
+            }
+        }, 500);
+
+        let fillLevel = 0;
+        const fillInterval = setInterval(() => {
+            fillLevel += 2;
+            mainHeart.style.background = `linear-gradient(to top, #d32f2f ${fillLevel}%, #ff1744 ${fillLevel}%)`;
+            if (fillLevel >= 100) clearInterval(fillInterval);
+        }, 100);
+    </script>
+</body>
+</html>
+```
