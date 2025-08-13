@@ -1,0 +1,187 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Unir dos imágenes en una sola</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            margin: 20px 0;
+            border-radius: 5px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #4CAF50;
+            background: #f9f9f9;
+        }
+        .image-preview {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            gap: 20px;
+        }
+        .preview-box {
+            flex: 1;
+            text-align: center;
+        }
+        .preview-box img {
+            max-width: 100%;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 30px;
+        }
+        #canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Unir dos imágenes en una sola</h1>
+        
+        <div class="upload-area" onclick="document.getElementById('file1').click()">
+            <p>Click para seleccionar la primera imagen</p>
+            <input type="file" id="file1" accept="image/*">
+        </div>
+        
+        <div class="upload-area" onclick="document.getElementById('file2').click()">
+            <p>Click para seleccionar la segunda imagen</p>
+            <input type="file" id="file2" accept="image/*">
+        </div>
+        
+        <div class="image-preview">
+            <div class="preview-box">
+                <h3>Imagen 1</h3>
+                <img id="preview1" style="display:none;">
+            </div>
+            <div class="preview-box">
+                <h3>Imagen 2</h3>
+                <img id="preview2" style="display:none;">
+            </div>
+        </div>
+        
+        <button class="btn" id="joinBtn" disabled>Unir Imágenes</button>
+        
+        <div class="result">
+            <a id="downloadLink" style="display:none;" class="btn">Descargar Imagen Unida</a>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        let img1 = null, img2 = null;
+        
+        document.getElementById('file1').addEventListener('change', handleFile1);
+        document.getElementById('file2').addEventListener('change', handleFile2);
+        document.getElementById('joinBtn').addEventListener('click', joinImages);
+
+        function handleFile1(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img1 = new Image();
+                    img1.onload = function() {
+                        document.getElementById('preview1').src = e.target.result;
+                        document.getElementById('preview1').style.display = 'block';
+                        checkImages();
+                    };
+                    img1.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleFile2(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img2 = new Image();
+                    img2.onload = function() {
+                        document.getElementById('preview2').src = e.target.result;
+                        document.getElementById('preview2').style.display = 'block';
+                        checkImages();
+                    };
+                    img2.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function checkImages() {
+            if (img1 && img2) {
+                document.getElementById('joinBtn').disabled = false;
+            }
+        }
+
+        function joinImages() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Calcular dimensiones para colocar imágenes lado a lado
+            const maxHeight = Math.max(img1.height, img2.height);
+            const totalWidth = img1.width + img2.width;
+            
+            canvas.width = totalWidth;
+            canvas.height = maxHeight;
+            
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar imágenes
+            ctx.drawImage(img1, 0, 0);
+            ctx.drawImage(img2, img1.width, 0);
+            
+            // Crear enlace de descarga
+            const link = document.getElementById('downloadLink');
+            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.download = 'imagenes_unidas.jpg';
+            link.style.display = 'inline-block';
+        }
+    </script>
+</body>
+</html>
+```
