@@ -1,0 +1,238 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Subrayador de Imágenes</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    #container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    #canvas {
+      border: 1px solid #ddd;
+      cursor: crosshair;
+      display: block;
+      margin: 20px auto;
+      background: white;
+    }
+    #controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    #controls label {
+      font-weight: bold;
+    }
+    #controls input[type="color"] {
+      width: 50px;
+      height: 30px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #controls button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #uploadBtn {
+      background: #4CAF50;
+      color: white;
+    }
+    #uploadBtn:hover {
+      background: #45a049;
+    }
+    #clearBtn {
+      background: #f44336;
+      color: white;
+    }
+    #clearBtn:hover {
+      background: #da190b;
+    }
+    #downloadBtn {
+      background: #2196F3;
+      color: white;
+    }
+    #downloadBtn:hover {
+      background: #0b7dda;
+    }
+    #fileInput {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1 style="text-align: center;">Subrayador de Imágenes</h1>
+    
+    <div id="controls">
+      <label for="colorPicker">Color:</label>
+      <input type="color" id="colorPicker" value="#ffff00">
+      
+      <label for="opacitySlider">Transparencia:</label>
+      <input type="range" id="opacitySlider" min="10" max="100" value="30">
+      <span id="opacityValue">30%</span>
+      
+      <label for="strokeWidth">Grosor:</label>
+      <input type="range" id="strokeWidth" min="1" max="20" value="5">
+      <span id="strokeValue">5</span>px
+      
+      <button id="uploadBtn">Subir Imagen</button>
+      <button id="clearBtn">Limpiar</button>
+      <button id="downloadBtn">Descargar</button>
+    </div>
+    
+    <input type="file" id="fileInput" accept="image/*">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('colorPicker');
+    const opacitySlider = document.getElementById('opacitySlider');
+    const opacityValue = document.getElementById('opacityValue');
+    const strokeWidth = document.getElementById('strokeWidth');
+    const strokeValue = document.getElementById('strokeValue');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+    let img = new Image();
+    
+    // Actualizar valor del grosor y transparencia
+    strokeWidth.addEventListener('input', (e) => {
+      strokeValue.textContent = e.target.value;
+    });
+    
+    opacitySlider.addEventListener('input', (e) => {
+      opacityValue.textContent = e.target.value + '%';
+    });
+    
+    // Subir imagen
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    // Eventos del ratón
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    // Eventos táctiles
+    canvas.addEventListener('touchstart', handleTouch);
+    canvas.addEventListener('touchmove', handleTouch);
+    canvas.addEventListener('touchend', stopDrawing);
+    
+    function handleTouch(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 'mousemove', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      });
+      canvas.dispatchEvent(mouseEvent);
+    }
+    
+    function startDrawing(e) {
+      isDrawing = true;
+      [lastX, lastY] = getMousePos(canvas, e);
+    }
+    
+    function draw(e) {
+      if (!isDrawing) return;
+      
+      const [currentX, currentY] = getMousePos(canvas, e);
+      
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.lineWidth = strokeWidth.value;
+      ctx.strokeStyle = colorPicker.value;
+      ctx.globalAlpha = opacitySlider.value / 100; // Transparencia ajustable
+      
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(currentX, currentY);
+      ctx.stroke();
+      
+      [lastX, lastY] = [currentX, currentY];
+    }
+    
+    function stopDrawing() {
+      isDrawing = false;
+    }
+    
+    function getMousePos(canvas, evt) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      const clientX = evt.clientX || (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
+      const clientY = evt.clientY || (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
+      
+      return [
+        (clientX - rect.left) * scaleX,
+        (clientY - rect.top) * scaleY
+      ];
+    }
+    
+    // Limpiar subrayados
+    clearBtn.addEventListener('click', () => {
+      ctx.globalAlpha = 1;
+      ctx.drawImage(img, 0, 0);
+    });
+    
+    // Descargar imagen
+    downloadBtn.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'imagen_subrayada.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    });
+    
+    // Cargar imagen de ejemplo inicial
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iMzAwIiB5PSIyMDAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Q2FyZ2EgIHVuYSBpbWFnZW4gcGFyYSBjb21lbmphciBhIHN1YnJheWFyPC90ZXh0Pgo8L3N2Zz4=';
+  </script>
+</body>
+</html>
+```
