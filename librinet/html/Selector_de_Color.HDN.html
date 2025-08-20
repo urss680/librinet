@@ -1,0 +1,42 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Selector de Color</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+        }
+        #colorSwatch {
+            width: 100px;
+            height: 100px;
+            border: 2px solid #000;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h2>Selecciona un Color</h2>
+    <label for="colorPicker">Elige un color:</label>
+    <input type="color" id="colorPicker" value="#0000FF">
+    
+    <div id="colorSwatch"></div>
+    <p>HEX: <span id="hexDisplay">#0000FF</span></p>
+
+    <script>
+        const colorPicker = document.getElementById('colorPicker');
+        const colorSwatch = document.getElementById('colorSwatch');
+        const hexDisplay = document.getElementById('hexDisplay');
+
+        colorPicker.addEventListener('input', (e) => {
+            const colorValue = e.target.value;
+            colorSwatch.style.backgroundColor = colorValue;
+            hexDisplay.textContent = colorValue;
+        });
+    </script>
+</body>
+</html>
+```
