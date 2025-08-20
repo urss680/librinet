@@ -1,0 +1,41 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Círculo con Gradiente Dinámico y Rotación</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #000;
+        }
+        .circulo {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(0deg, hsl(0, 80%, 60%), hsl(180, 80%, 70%));
+            animation: 
+                rotation 6s linear infinite,
+                hueChange 6s linear infinite;
+        }
+
+        @keyframes rotation {
+            0%   { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes hueChange {
+            0%   { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="circulo"></div>
+</body>
+</html>
+```
