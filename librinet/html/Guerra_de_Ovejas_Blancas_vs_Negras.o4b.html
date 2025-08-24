@@ -1,0 +1,66 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Guerra de Ovejas Blancas vs Negras</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    iframe {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      z-index: 1;
+    }
+    .boton-jugar {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px 40px;
+      font-size: 24px;
+      background-color: #fff;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      z-index: 2;
+    }
+    .titulo-juego {
+      position: absolute;
+      top: 12%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 32px;
+      font-weight: bold;
+      background: rgba(0,0,0,0.6);
+      padding: 10px 20px;
+      border: 2px solid #fff;
+      color: #fff;
+      z-index: 2;
+      -webkit-text-stroke: 1px #fff;
+      text-shadow: 0 0 10px #000;
+    }
+  </style>
+</head>
+<body>
+  <iframe 
+    src="http://www.appcreator24.com/intra/app_sec_game_preview.php?ididioma=es&idsesion=1ap8bzs5rokiw9u3v6mgldehjyq47ctn20fx&idg=44&ckp=mzq78cxwni0albdyp5261suof4gkev93hrjt@1738461@0"
+    allowfullscreen></iframe>
+  <div class="titulo-juego" id="titulo-juego">GUERRA DE OVEJAS</div>
+  <button class="boton-jugar" onclick="document.querySelector('.boton-jugar').style.display='none'; document.getElementById('titulo-juego').style.display='none'">JUGAR</button>
+</body>
+</html>
+```
