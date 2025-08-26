@@ -1,0 +1,77 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dibujar sobre imagen</title>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
+        canvas { border: 1px solid #000; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>Sube una imagen y dibuja sobre ella</h2>
+    <input type="file" id="upload" accept="image/*" />
+    <button id="download" disabled>Descargar</button>
+    <canvas id="canvas" style="display: none;"></canvas>
+
+    <script>
+        const upload = document.getElementById('upload');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const downloadBtn = document.getElementById('download');
+
+        let drawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        upload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        canvas.style.display = 'block';
+                        ctx.drawImage(img, 0, 0);
+                        downloadBtn.disabled = false;
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            drawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!drawing) return;
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+
+        canvas.addEventListener('mouseup', () => drawing = false);
+        canvas.addEventListener('mouseleave', () => drawing = false);
+
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'dibujo_resultado.png';
+            link.href = canvas.toDataURL();
+            link.click();
+            canvas.style.display = 'none';
+            downloadBtn.disabled = true;
+        });
+    </script>
+</body>
+</html>
+```
