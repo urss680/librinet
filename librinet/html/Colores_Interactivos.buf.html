@@ -1,0 +1,151 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Colores Interactivos</title>
+    <style>
+        body, html {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    class Ball {
+        constructor(x, y, vx, vy, radius, color) {
+            this.x = x;
+            this.y = y;
+            this.vx = vx;
+            this.vy = vy;
+            this.radius = radius;
+            this.color = color;
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+
+            // Colisión con bordes
+            if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) this.vx *= -1;
+            if (this.y - this.radius < 0 || this.y + this.radius > canvas.height) this.vy *= -1;
+        }
+    }
+
+    function hexToRgb(hex) {
+        const bigint = parseInt(hex.replace('#', ''), 16);
+        return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+    }
+
+    function rgbToHex([r, g, b]) {
+        return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+
+    function blendColors(c1, c2) {
+        return [
+            Math.floor((c1[0] + c2[0]) / 2),
+            Math.floor((c1[1] + c2[1]) / 2),
+            Math.floor((c1[2] + c2[2]) / 2)
+        ];
+    }
+
+    let balls = [];
+
+    function initBalls() {
+        const primaryColors = ['#FF0000', '#0000FF', '#FFFF00'];
+        for (let i = 0; i < primaryColors.length; i++) {
+            const color = primaryColors[i];
+            const x = canvas.width / 4 + i * canvas.width / 4;
+            const y = canvas.height / 2;
+            const vx = (Math.random() - 0.5) * 4;
+            const vy = (Math.random() - 0.5) * 4;
+            balls.push(new Ball(x, y, vx, vy, 12, color));
+        }
+    }
+
+    function handleCollisions() {
+        if (balls.length >= 1000) return;
+
+        let collisionPairs = [];
+
+        for (let i = 0; i < balls.length; i++) {
+            for (let j = i + 1; j < balls.length; j++) {
+                const dx = balls[i].x - balls[j].x;
+                const dy = balls[i].y - balls[j].y;
+                const distance = Math.hypot(dx, dy);
+                const minDistance = balls[i].radius + balls[j].radius;
+
+                if (distance < minDistance) {
+                    collisionPairs.push([i, j]);
+                }
+            }
+        }
+
+        if (!collisionPairs.length) return;
+
+        // Procesar colisiones desde las más altas
+        collisionPairs.sort((a, b) => b[1] - a[1]);
+
+        for (const [i, j] of collisionPairs) {
+            if (i >= balls.length || j >= balls.length || i >= j) continue;
+            const ballI = balls[i];
+            const ballJ = balls[j];
+
+            const newColor = blendColors(hexToRgb(ballI.color), hexToRgb(ballJ.color));
+            const newX = (ballI.x + ballJ.x) / 2;
+            const newY = (ballI.y + ballJ.y) / 2;
+            const newVx = (ballI.vx + ballJ.vx) / 2 + (Math.random() - 0.5);
+            const newVy = (ballI.vy + ballJ.vy) / 2 + (Math.random() - 0.5);
+
+            balls.push(new Ball(newX, newY, newVx, newVy, ballI.radius, rgbToHex(newColor)));
+
+            // Eliminar colisionados
+            if (j < balls.length) balls.splice(j, 1);
+            if (i < balls.length) balls.splice(i, 1);
+        }
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        handleCollisions();
+
+        for (const ball of balls) {
+            ball.update();
+            ball.draw();
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+
+    initBalls();
+    animate();
+</script>
+</body>
+</html>
+```
