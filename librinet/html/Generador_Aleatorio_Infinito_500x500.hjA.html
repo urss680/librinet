@@ -1,0 +1,44 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generador Aleatorio Infinito 500x500</title>
+</head>
+<body onload="startInfiniteGenerator()">
+    <h1>Generador Aleatorio Infinito (500x500)</h1>
+    <canvas id="randomCanvas"></canvas>
+
+    <script>
+        function generateRandomImage() {
+            const width = 500;
+            const height = 500;
+            const canvas = document.getElementById('randomCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = Math.floor(Math.random() * 256);       // Rojo
+                data[i + 1] = Math.floor(Math.random() * 256); // Verde
+                data[i + 2] = Math.floor(Math.random() * 256); // Azul
+                data[i + 3] = 255;                               // Alfa
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function startInfiniteGenerator() {
+            // Establecer tamaño del canvas una vez
+            const canvas = document.getElementById('randomCanvas');
+            canvas.width = 500;
+            canvas.height = 500;
+            
+            // Generar imagen inicial y luego cada 100ms
+            generateRandomImage();
+            setInterval(generateRandomImage, 100);
+        }
+    </script>
+</body>
+</html>
+```
