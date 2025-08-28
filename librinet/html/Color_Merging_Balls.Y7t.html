@@ -1,0 +1,144 @@
+Aquí tienes la versión modificada del código HTML para que los colores de las bolas no desaparezcan tras la formación de un nuevo color. Ahora, cuando se crea una bola nueva que fusiona colores, se conservan las bolas originales como bolas más pequeñas con los colores originales, además de la bola fusionada.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Color Merging Balls</title>
+  <style>
+    #container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #f0f0f0;
+    }
+
+    .ball {
+      position: absolute;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+
+  <script>
+    const container = document.getElementById("container");
+    const colorMap = {
+      red: [255, 0, 0],
+      blue: [0, 0, 255],
+      yellow: [255, 255, 0]
+    };
+
+    let balls = [];
+
+    function createBall(x, y, r, g, b, radius = 30) {
+      const el = document.createElement("div");
+      el.className = "ball";
+      el.style.left = x - radius + "px";
+      el.style.top = y - radius + "px";
+      el.style.width = radius * 2 + "px";
+      el.style.height = radius * 2 + "px";
+      el.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+      container.appendChild(el);
+      return {
+        x,
+        y,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: (Math.random() - 0.5) * 1.5,
+        radius,
+        r,
+        g,
+        b,
+        el
+      };
+    }
+
+    function initBalls() {
+      const red = colorMap.red;
+      const blue = colorMap.blue;
+      const yellow = colorMap.yellow;
+
+      balls.push(createBall(100, 100, red[0], red[1], red[2]));
+      balls.push(createBall(300, 100, blue[0], blue[1], blue[2]));
+      balls.push(createBall(500, 100, yellow[0], yellow[1], yellow[2]));
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      balls.forEach(ball => {
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        // Bounce off walls
+        if (ball.x < ball.radius) {
+          ball.x = ball.radius;
+          ball.vx *= -1;
+        } else if (ball.x > window.innerWidth - ball.radius) {
+          ball.x = window.innerWidth - ball.radius;
+          ball.vx *= -1;
+        }
+
+        if (ball.y < ball.radius) {
+          ball.y = ball.radius;
+          ball.vy *= -1;
+        } else if (ball.y > window.innerHeight - ball.radius) {
+          ball.y = window.innerHeight - ball.radius;
+          ball.vy *= -1;
+        }
+
+        ball.el.style.left = ball.x - ball.radius + "px";
+        ball.el.style.top = ball.y - ball.radius + "px";
+      });
+
+      // Check for collisions and merge logic
+      for (let i = 0; i < balls.length; i++) {
+        for (let j = i + 1; j < balls.length; j++) {
+          const ball1 = balls[i];
+          const ball2 = balls[j];
+          const dx = ball2.x - ball1.x;
+          const dy = ball2.y - ball1.y;
+          const distance = Math.hypot(dx, dy);
+
+          if (distance < ball1.radius + ball2.radius) {
+            const newR = Math.floor((ball1.r + ball2.r) / 2);
+            const newG = Math.floor((ball1.g + ball2.g) / 2);
+            const newB = Math.floor((ball1.b + ball2.b) / 2);
+
+            // Remove original balls
+            container.removeChild(ball1.el);
+            container.removeChild(ball2.el);
+            balls = balls.filter((b) => b !== ball1 && b !== ball2);
+
+            // Split original balls into smaller ones
+            const halfRadius = 15;
+            const ball1a = createBall(ball1.x - 5, ball1.y - 5, ball1.r, ball1.g, ball1.b, halfRadius);
+            const ball1b = createBall(ball1.x + 5, ball1.y + 5, ball1.r, ball1.g, ball1.b, halfRadius);
+            const ball2a = createBall(ball2.x - 5, ball2.y - 5, ball2.r, ball2.g, ball2.b, halfRadius);
+            const ball2b = createBall(ball2.x + 5, ball2.y + 5, ball2.r, ball2.g, ball2.b, halfRadius);
+
+            // Create merged ball
+            const newBall = createBall((ball1.x + ball2.x) / 2, (ball1.y + ball2.y) / 2, newR, newG, newB);
+
+            balls.push(ball1a, ball1b, ball2a, ball2b, newBall);
+            break;
+          }
+        }
+      }
+    }
+
+    initBalls();
+    animate();
+  </script>
+</body>
+</html>
+```
+
+**Cambios realizados:**
+- Ahora las bolas conservan su color original tras la formación de una bola nueva.
+- Se añade la posibilidad de dividir cada bola original en dos bolas más pequeñas antes de crear la bola fundida.
+- Se mantiene la lógica de colisión y movimiento para garantizar que la animación sea fluida.
