@@ -1,0 +1,185 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LENGUAJE CONSOLA</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Courier New',monospace;background:#1a1a1a;color:#00ff00;height:100vh;display:flex;flex-direction:column}
+        .header{background:#2a2a2a;padding:20px;border-bottom:2px solid #00ff00;display:flex;justify-content:space-between;align-items:center}
+        h1{color:#00ff00;font-size:24px}
+        .ver-comandos{background:#333;color:#00ff00;border:1px solid #00ff00;padding:10px 20px;cursor:pointer;transition:all .3s}
+        .ver-comandos:hover{background:#00ff00;color:#000}
+        .contenido{flex:1;display:flex;overflow:hidden}
+        .comandos-panel{width:0;background:#222;border-right:1px solid #333;padding:20px;overflow-y:auto;transition:width .3s}
+        .comandos-panel.activo{width:350px}
+        .comandos-panel h2{margin-bottom:20px;color:#00ff00}
+        .comando-item{margin-bottom:15px;padding:10px;background:#333;border-radius:4px}
+        .comando-nombre{color:#00ff00;font-weight:bold}
+        .comando-descripcion{color:#aaa;font-size:14px;margin-top:5px}
+        .consola-container{flex:1;display:flex;flex-direction:column;padding:20px}
+        .consola{flex:1;background:#000;border:1px solid #333;padding:20px;overflow-y:auto;font-family:'Courier New',monospace;line-height:1.5}
+        .entrada-consola{margin-top:10px;display:flex;gap:10px}
+        .entrada-consola input{flex:1;background:#222;border:1px solid #333;color:#00ff00;padding:10px;font-family:'Courier New',monospace}
+        .entrada-consola button{background:#333;color:#00ff00;border:1px solid #333;padding:10px 20px;cursor:pointer}
+        .entrada-consola button:hover{background:#444}
+        .output{margin-bottom:10px;white-space:pre-wrap}
+        .prompt{color:#00ff00}
+        .error{color:#ff0000}
+        .success{color:#00ff00}
+        .info{color:#ffff00}
+        .alerta-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:1000}
+        .alerta-caja{background:#222;border:2px solid #00ff00;padding:30px;border-radius:5px;color:#00ff00;max-width:400px}
+        .alerta-caja button{margin-top:15px;padding:8px 20px;background:#333;color:#00ff00;border:1px solid #00ff00;cursor:pointer}
+        .color-preview{display:inline-block;width:20px;height:20px;border:1px solid #fff;margin-left:10px;vertical-align:middle}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>LENGUAJE DE PROGRAMACIÓN - CONSOLA</h1>
+        <button class="ver-comandos" onclick="toggleComandos()">VER COMANDOS</button>
+    </div>
+    
+    <div class="contenido">
+        <div class="comandos-panel" id="comandosPanel">
+            <h2>COMANDOS DISPONIBLES</h2>
+            <div class="comando-item"><div class="comando-nombre">IMPRIMIR [texto]</div><div class="comando-descripcion">Muestra texto</div></div>
+            <div class="comando-item"><div class="comando-nombre">ALERTA [texto]</div><div class="comando-descripcion">Ventana emergente</div></div>
+            <div class="comando-item"><div class="comando-nombre">CALCULAR [exp]</div><div class="comando-descripcion">Calcula expresiones</div></div>
+            <div class="comando-item"><div class="comando-nombre">HABLAR [texto]</div><div class="comando-descripcion">Reproduce audio</div></div>
+            <div class="comando-item"><div class="comando-nombre">COLOR [código]</div><div class="comando-descripcion">Cambia color consola</div></div>
+            <div class="comando-item"><div class="comando-nombre">VAR [n] = [v]</div><div class="comando-descripcion">Variables</div></div>
+            <div class="comando-item"><div class="comando-nombre">SI [cond]</div><div class="comando-descripcion">Condiciones</div></div>
+            <div class="comando-item"><div class="comando-nombre">LIMPIAR</div><div class="comando-descripcion">Limpia consola</div></div>
+            <div class="comando-item"><div class="comando-nombre">AYUDA</div><div class="comando-descripcion">Muestra ayuda</div></div>
+        </div>
+        
+        <div class="consola-container">
+            <div class="consola" id="consola">
+                <div class="output success">=== LENGUAJE CONSOLA INICIADO ===</div>
+                <div class="output info">Escribe AYUDA para ver comandos</div>
+            </div>
+            <div class="entrada-consola">
+                <input type="text" id="inputConsola" placeholder="> " onkeypress="manejarEnter(event)">
+                <button onclick="ejecutarComando()">EJECUTAR</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="alerta-modal" id="alertaModal">
+        <div class="alerta-caja">
+            <div id="alertaTexto"></div>
+            <button onclick="cerrarAlerta()">ACEPTAR</button>
+        </div>
+    </div>
+
+    <script>
+        let variables={},colorActual='#00ff00';const colores={verde:'#00ff00',rojo:'#ff0000',azul:'#0080ff',amarillo:'#ffff00',magenta:'#ff00ff',cyan:'#00ffff',blanco:'#ffffff',negro:'#000000'}
+
+        function toggleComandos(){document.getElementById('comandosPanel').classList.toggle('activo')}
+
+        function manejarEnter(e){if(e.key==='Enter')ejecutarComando()}
+
+        function agregarOutput(texto,clase='output'){
+            const consola=document.getElementById('consola');
+            const div=document.createElement('div');
+            div.className=clase;
+            div.textContent=texto;
+            consola.appendChild(div);
+            consola.scrollTop=consola.scrollHeight;
+        }
+
+        function ejecutarComando(){
+            const input=document.getElementById('inputConsola');
+            const comando=input.value.trim();
+            if(!comando)return;
+            agregarOutput('> '+comando,'prompt');
+            input.value='';
+            try{procesarComando(comando)}catch(e){agregarOutput('ERROR: '+e.message,'error')}
+        }
+
+        function procesarComando(comando){
+            const partes=comando.split(' ');
+            const accion=partes[0].toUpperCase();
+            const resto=comando.substring(accion.length+1);
+
+            switch(accion){
+                case 'IMPRIMIR':
+                    agregarOutput(evaluarExpresion(resto),'success');break;
+                case 'ALERTA':
+                    mostrarAlerta(evaluarExpresion(resto));break;
+                case 'CALCULAR':
+                    const res=evaluarExpresion(resto);
+                    agregarOutput('Resultado: '+res,'success');break;
+                case 'HABLAR':
+                    const texto=evaluarExpresion(resto);
+                    const utter=new SpeechSynthesisUtterance(texto);
+                    utter.lang='es-ES';
+                    speechSynthesis.speak(utter);
+                    agregarOutput('Hablando: '+texto,'info');break;
+                case 'COLOR':
+                    cambiarColor(resto);break;
+                case 'VAR':
+                    const [n,v]=resto.split('=');
+                    variables[n.trim()]=evaluarExpresion(v.trim());
+                    agregarOutput(`Variable '${n.trim()}' = ${variables[n.trim()]}`,'success');break;
+                case 'SI':
+                    const cond=evaluarCondicion(resto);
+                    agregarOutput(cond?'Condición VERDADERA':'Condición FALSA','info');break;
+                case 'LIMPIAR':
+                    document.getElementById('consola').innerHTML='';
+                    agregarOutput('=== CONSOLA LIMPIADA ===','success');break;
+                case 'AYUDA':
+                    agregarOutput('=== COMANDOS ===','info');
+                    agregarOutput('ALERTA [texto] - Ventana emergente','info');
+                    agregarOutput('CALCULAR [exp] - Calcula expresiones','info');
+                    agregarOutput('HABLAR [texto] - Reproduce voz','info');
+                    agregarOutput('COLOR [color] - Cambia color consola','info');
+                    break;
+                default:
+                    if(accion in variables)agregarOutput(variables[accion],'success');
+                    else agregarOutput('Comando no reconocido: '+accion,'error');
+            }
+        }
+
+        function evaluarExpresion(exp){
+            exp=exp.trim();
+            for(let v in variables)exp=exp.replace(new RegExp('\\b'+v+'\\b','g'),variables[v]);
+            try{return eval(exp)}catch(e){return exp}
+        }
+
+        function evaluarCondicion(cond){
+            cond=cond.trim();
+            for(let v in variables)cond=cond.replace(new RegExp('\\b'+v+'\\b','g'),variables[v]);
+            try{return eval(cond)}catch(e){return false}
+        }
+
+        function mostrarAlerta(texto){
+            document.getElementById('alertaTexto').textContent=texto;
+            document.getElementById('alertaModal').style.display='flex';
+        }
+
+        function cerrarAlerta(){
+            document.getElementById('alertaModal').style.display='none';
+        }
+
+        function cambiarColor(color){
+            const c=color.trim().toLowerCase();
+            if(colores[c]){
+                document.documentElement.style.setProperty('--color-consola',colores[c]);
+                document.body.style.color=colores[c];
+                document.querySelectorAll('.comando-nombre').forEach(el=>el.style.color=colores[c]);
+                agregarOutput(`Color cambiado a ${c}`,'success');
+            }else{
+                agregarOutput('Colores: verde,rojo,azul,amarillo,magenta,cyan,blanco,negro','error');
+            }
+        }
+
+        // Inicializar
+        document.documentElement.style.setProperty('--color-consola','#00ff00');
+    </script>
+</body>
+</html>
+```
