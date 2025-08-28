@@ -1,0 +1,101 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Colored Balls</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        .ball {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="ball" id="ball1" style="background-color: red;"></div>
+    <div class="ball" id="ball2" style="background-color: yellow;"></div>
+    <div class="ball" id="ball3" style="background-color: blue;"></div>
+    <script>
+        const size = 50;
+        let balls = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            for (let i = 0; i < 3; i++) {
+                let id = 'ball' + (i + 1);
+                let el = document.getElementById(id);
+                balls.push({
+                    el,
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    velocityX: (Math.random() - 0.5) * 2,
+                    velocityY: (Math.random() - 0.5) * 2
+                });
+            }
+
+            let ball1 = balls[0], ball2 = balls[1], ball3 = balls[2];
+
+            function areColliding(ballA, ballB) {
+                const dx = ballA.x - ballB.x;
+                const dy = ballA.y - ballB.y;
+                return Math.sqrt(dx * dx + dy * dy) < size;
+            }
+
+            function animate() {
+                for (const ball of balls) {
+                    ball.x += ball.velocityX;
+                    ball.y += ball.velocityY;
+
+                    if (ball.x < 0 || ball.x + size > window.innerWidth) {
+                        ball.velocityX *= -1;
+                    }
+                    if (ball.y < 0 || ball.y + size > window.innerHeight) {
+                        ball.velocityY *= -1;
+                    }
+
+                    ball.el.style.left = ball.x + 'px';
+                    ball.el.style.top = ball.y + 'px';
+                }
+
+                // Check collisions and change colors
+                if (areColliding(ball1, ball2)) {
+                    combineWaves(ball3.style, ball1.style, ball2.style);
+                }
+                if (areColliding(ball1, ball3)) {
+                    combineWaves(ball2.style, ball1.style, ball3.style);
+                }
+                if (areColliding(ball2, ball3)) {
+                    combineWaves(ball1.style, ball2.style, ball3.style);
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            function combineWaves(thirdStyle, aStyle, bStyle) {
+                const colorA = aStyle.backgroundColor || "red";
+                const colorB = bStyle.backgroundColor || "yellow";
+                
+                if ((colorA === "red" && colorB === "yellow") || (colorA === "yellow" && colorB === "red")) {
+                    thirdStyle.backgroundColor = "orange";
+                } else if ((colorA === "yellow" && colorB === "blue") || (colorA === "blue" && colorB === "yellow")) {
+                    thirdStyle.backgroundColor = "green";
+                } else if ((colorA === "red" && colorB === "blue") || (colorA === "blue" && colorB === "red")) {
+                    thirdStyle.backgroundColor = "purple";
+                }
+            }
+
+            animate();
+        });
+    </script>
+</body>
+</html>
+```
