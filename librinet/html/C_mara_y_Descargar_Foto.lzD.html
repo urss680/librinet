@@ -1,0 +1,73 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cámara y Descargar Foto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+        }
+        video, canvas {
+            border: 1px solid #ccc;
+            margin: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tomar Foto y Descargar</h1>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    <button id="capture">Tomar Foto</button>
+    <button id="download">Descargar Foto</button>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture');
+        const downloadBtn = document.getElementById('download');
+        let imgData = null;
+
+        // Acceder a la cámara
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                alert('No se puede acceder a la cámara: ' + err.message);
+            });
+
+        // Capturar imagen
+        captureBtn.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            imgData = canvas.toDataURL('image/png');
+            alert('Foto capturada');
+        });
+
+        // Descargar imagen
+        downloadBtn.addEventListener('click', () => {
+            if (!imgData) {
+                alert('Primero tome una foto');
+                return;
+            }
+            const link = document.createElement('a');
+            link.href = imgData;
+            link.download = 'foto.png';
+            link.click();
+        });
+    </script>
+</body>
+</html>
+```
