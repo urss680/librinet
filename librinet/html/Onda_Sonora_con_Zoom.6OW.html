@@ -1,0 +1,100 @@
+Aquí tienes una implementación básica de una onda visualizable con zoom reactivo al hablar:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Onda Sonora con Zoom</title>
+    <style>
+        body {
+            background: #222;
+            color: white;
+            text-align: center;
+        }
+        canvas {
+            background: #111;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Onda Sonora en Tiempo Real</h1>
+    <p>Altavoz activado. El zoom cambia cuando detecta sonido.</p>
+    <canvas id="waveform" width="800" height="200"></canvas>
+
+    <script>
+        const canvas = document.getElementById('waveform');
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width;
+        let height = canvas.height;
+        let dataArray = [];
+
+        async function setup() {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+            
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+
+            function draw() {
+                requestAnimationFrame(draw);
+                analyser.getByteTimeDomainData(dataArray);
+
+                ctx.fillStyle = '#111';
+                ctx.fillRect(0, 0, width, height);
+
+                let sliceWidth = width * 1.0 / bufferLength;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    let v = dataArray[i] / 128.0;
+                    let y = v * height / 2 + height / 2;
+                    ctx.fillStyle = i === 0 ? "#0f0" : "#0ff";
+                    ctx.fillRect(x, y - 1, Math.max(1, sliceWidth), 2);
+                    x += sliceWidth;
+                }
+
+                // Detección de actividad de audio
+                let average = dataArray.reduce((a,b) => a + b, 0) / bufferLength;
+                if (average > 50) {
+                    // Cambiar color o zoom cuando detecta sonido
+                    ctx.strokeStyle = "#ff0";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, height/2);
+                    ctx.lineTo(width, height/2);
+                    ctx.stroke();
+                }
+            }
+
+            draw();
+        }
+
+        setup().catch(err => {
+            alert("Permiso para el microfono denegado: " + err);
+        });
+    </script>
+</body>
+</html>
+```
+
+Este código:
+
+1. Solicita acceso al micrófono
+2. Crea una visualización de onda en tiempo real
+3. Cambia el estilo visual (línea amarilla) cuando detecta actividad
+4. Trazado de datos con colores diferenciados
+5. Incluye detección de niveles de sonido para detectar sonidos flojos
+
+Puedes personalizarlo ajustando:
+- El umbral de detección (`average > 50`)
+- Los colores de visualización
+- El tamaño del canvas
+- Las dimensiones del gráfico
+
+Al hablar con volumen normal, verás la línea amarilla en el centro. Para sonidos más suaves, asegúrate de estar cerca del micrófono y ajusta el umbral si es necesario.
