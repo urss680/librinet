@@ -1,0 +1,147 @@
+Aquí tienes una modificación del código HTML para activar elmicrófomo y pintar basándose en el sonido ambiental. Este ejemplo mostrará una pantalla negra donde aparecerá una visualización de color blanco cuya intensidad y cantidad dependen del nivel de sonido detectado:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Pintar con Sonido</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        canvas {
+            display: block;
+        }
+        #mensaje {
+            position: absolute;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            text-align: center;
+            width: 100%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="mensaje">Activando micrófono... Habla o haz sonido para pintar</div>
+
+    <script>
+        // Configuración
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const mensaje = document.getElementById('mensaje');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let stream;
+        let mediaRecorder;
+        let audioContext;
+        let microphone;
+
+        // Iniciar visualización
+        function initVisualizacion() {
+            navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                .then(startVisualizacion)
+                .catch(errorHandler);
+        }
+
+        // Visualización principal
+        function startVisualizacion(stream) {
+            this.stream = stream;
+            mensaje.textContent = "Pínta con tu voz";
+
+            // Web Audio API para analizar entrada de sonido
+            audioContext = new AudioContext();
+            microphone = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            microphone.connect(analyser);
+
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function draw() {
+                requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(dataArray);
+                
+                // Limpiar lienzo
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Dibujar puntos basados en sonido
+                for (let i = 0; i < bufferLength; i++) {
+                    const freq = dataArray[i];
+                    if (freq < 20) continue; // Ignorar niveles muy bajos
+                    
+                    // Mapear posición y tamaño según la frecuencia
+                    const x = (canvas.width / bufferLength) * i;
+                    const y = canvas.height - (freq * 5);
+                    const radio = freq * 0.2;
+                    
+                    // Color basado en intensidad
+                    const opacidad = freq / 255;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${opacidad})`;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, radio, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            draw();
+        }
+
+        // Manejo de errores
+        function errorHandler(error) {
+            console.error('Error del micrófono:', error);
+            mensaje.textContent = "No se pudo acceder al micrófono. Por favor, permita el acceso a su micrófono.";
+        }
+
+        // Ejecutar al cargar
+        window.onload = function() {
+            initVisualizacion();
+        };
+
+        // Recuperar espacio en pantallad
+        window.onresize = function() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+
+        // Cerrar al presionar ESC
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "Escape") {
+                stream.getTracks().forEach(track => track.stop());
+                mensaje.textContent = "Visualización detenida. Puede recargar para reiniciar.";
+            }
+        });
+    </script>
+</body>
+</html>
+```
+
+Este código hace lo siguiente:
+1. Solicita acceso al micrófomo del usuario
+2. Analiza el sonido entrante usando Web Audio API
+3. Crea una visualización dinámica con puntos blancos
+4. La densidad y brillantez de los puntos dependen del nivel de sonido
+5. Los puntos se actualizan constantemente y crean un efecto de rastro
+6. Presionar la tecla ESC cierra la visualización
+
+Puedes personalizar fácilmente la apariencia cambiando:
+- El color base (ahora es blanco)
+- La forma de los puntos (actualmente son círculos)
+- El estilo de transición (actualmente es un efecto de "fade out")
+- La sensibilidad al sonido (la escala de 20-255)
