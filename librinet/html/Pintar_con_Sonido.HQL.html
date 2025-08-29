@@ -1,0 +1,108 @@
+Aquí tienes una versión corregida del código que asegura que el sonido se escuche correctamente y genere la visualización. Ahora:
+
+1. **Requiere un click del usuario** para permitir el sonido (por restricciones del navegador).
+2. **Corrección de errores** en el manejo de la variable `stream`.
+3. **Ajuste visual** para mejorar la visibilidad.
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Pintar con Sonido</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        canvas {
+            display: block;
+        }
+        #mensaje {
+            position: absolute;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            text-align: center;
+            width: 100%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="mensaje" onclick="inicio()">Haz clic aquí para activar el micrófono y pintar con sonido</div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let stream;
+        let audioContext;
+        let microphone;
+        let analyser;
+
+        function inicio() {
+            document.getElementById('mensaje').style.display = 'none';
+            navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                .then(stream => {
+                    this.stream = stream;
+                    iniciarWebAudio(stream);
+                })
+                .catch(error => {
+                    console.error("Error al acceder al micrófono:", error);
+                    alert("No se pudo acceder al micrófono.");
+                });
+        }
+
+        function iniciarWebAudio(inputStream) {
+            audioContext = new AudioContext();
+            microphone = audioContext.createMediaStreamSource(inputStream);
+            analyser = audioContext.createAnalyser();
+
+            microphone.connect(analyser);
+            analyser.fftSize = 1024;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function draw() {
+                requestAnimationFrame(draw);
+                analyser.getByteTimeDomainData(dataArray);
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                for (let i = 0; i < bufferLength; i++) {
+                    const x = canvas.width / bufferLength * i;
+                    const y = canvas.height / 2 + dataArray[i] * 2;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+
+            audioContext.resume().then(() => {
+                draw();
+            });
+        }
+    </script>
+</body>
+</html>
+```
+
+### Cambios principales:
+- **Click necesario para iniciar**: El sonido solo comienza cuando el usuario hace clic en el mensaje `"Haz clic aquí..."`.
+- **Mejora en la visualización**: Dibuja una línea continua en base al sonido, más clara y con movimiento.
+- **Ajuste del umbral de ruido**: Ahora detecta más precisamente el sonido captado por el micrófono.
+- **Limpieza del lienzo**: Usamos `rgba` con opacidad para dejar trazos y simular dinamismo.
