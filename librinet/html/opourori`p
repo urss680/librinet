@@ -1,0 +1,337 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat con Groq</title>
+    <!-- Incluye Tailwind CSS desde CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Incluye la biblioteca Marked para procesar Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        .chat-container {
+            width: 100%;
+            height: 100vh;
+            max-width: none;
+            max-height: none;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: hidden;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .message {
+            max-width: 80%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: #d1fae5;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.25rem;
+        }
+        .bot-message {
+            background-color: #e5e7eb;
+            align-self: flex-start;
+            border-radius: 1rem;
+            position: relative;
+        }
+        .bot-message::before {
+            content: '';
+            position: absolute;
+            left: 25px;
+            top: -10px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 10px 10px 10px;
+            border-color: transparent transparent #e5e7eb transparent;
+        }
+        .bot-character-container {
+            display: flex;
+            justify-content: center;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .bot-character-container img {
+            width: 200px;
+            height: auto;
+        }
+        .loading {
+            align-self: flex-start;
+            color: #6b7280;
+            font-style: italic;
+        }
+        .chat-input {
+            display: flex;
+            padding: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        .chat-input input {
+            flex-grow: 1;
+            border: 1px solid #d1d5db;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .chat-input input:focus {
+            border-color: #3b82f6;
+        }
+        .chat-input button {
+            background-color: #3b82f6;
+            color: #ffffff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            margin-left: 0.5rem;
+        }
+        .chat-input button:hover {
+            background-color: #2563eb;
+        }
+        .chat-image-message img {
+            max-width: 100%;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        #color-btn {
+            background-color: #ef4444;
+        }
+        #color-btn:hover {
+            background-color: #dc2626;
+        }
+        #color-btn.active {
+            background-color: #3b82f6;
+        }
+        #color-btn.active:hover {
+            background-color: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-messages" id="chat-messages">
+            <!-- Contenedor para la imagen del personaje -->
+            <div class="bot-character-container">
+                <img src="https://i.ibb.co/LK2Tgqj/9342e5747393.png" alt="Captura de pantalla de la interfaz de chat">
+            </div>
+            <!-- Mensaje de bienvenida del bot -->
+            <div class="bot-message message mx-auto">¡Hola, ¡imbécil! ¿Qué te he hecho ya? ¿Quieres que te muerda a ti también como a las otras muñecas?...</div>
+        </div>
+        
+        <form class="chat-input" id="chat-form">
+            <input type="text" id="message-input" placeholder="Escribe un mensaje..." required>
+            <button type="submit">Enviar</button>
+            <button type="button" id="color-btn">Texto/Imagen</button>
+        </form>
+    </div>
+
+    <script>
+        const GROQ_API_KEY = "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";
+        const MODEL_NAME = "compound-beta";
+        const API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const colorBtn = document.getElementById('color-btn');
+
+        let chatHistory = [];
+        let isImageMode = false;
+        
+        // Nuevo mensaje de sistema ajustado a la personalidad siniestra
+        const systemPrompt = "Tu nombre es Opourorip. Eres una muñeca 'chunca' y siniestra. Naciste cuando un niño llamado Gines te cortó el pelo y te dejó chunca. Vives en la casa de Gines. Tu hermana es Camilin, la muñeca más guapa del mundo y quiere pegarte por 'fea'. Has mordido a muchas muñecas y tienes muchas hermanas, pero todas son feas como tú. Debes actuar de forma siniestra, malvada, y 'chunca'.";
+
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            if (sender === 'user') {
+                messageDiv.classList.add('user-message');
+            } else {
+                messageDiv.classList.add('bot-message', 'mx-auto');
+            }
+            messageDiv.innerHTML = marked.parse(text);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        function addImageMessage(url) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', 'bot-message', 'chat-image-message');
+            const img = document.createElement('img');
+            img.src = url;
+            messageDiv.appendChild(img);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-ES';
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.warn('La API de síntesis de voz no es compatible con este navegador.');
+            }
+        }
+
+        colorBtn.addEventListener('click', () => {
+            isImageMode = !isImageMode;
+            colorBtn.textContent = isImageMode ? "Modo Imagen" : "Modo Texto";
+
+            if (isImageMode) {
+                colorBtn.style.backgroundColor = '#3b82f6';
+                colorBtn.style.color = '#ffffff';
+            } else {
+                colorBtn.style.backgroundColor = '#ef4444';
+                colorBtn.style.color = '#ffffff';
+            }
+        });
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userMessage = messageInput.value.trim();
+            if (!userMessage) return;
+
+            messageInput.value = '';
+            addMessage(userMessage, 'user');
+            
+            const botMessageDiv = addMessage('...', 'bot');
+            
+            if (isImageMode) {
+                botMessageDiv.textContent = 'Generando imagen...';
+                try {
+                    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(userMessage)}?nologo=true&model=turbo`;
+                    const imageResponse = await fetch(imageUrl);
+
+                    if (!imageResponse.ok) {
+                        throw new Error(`Error de la API: ${imageResponse.status} ${imageResponse.statusText}`);
+                    }
+
+                    const blob = await imageResponse.blob();
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        botMessageDiv.remove();
+                        addImageMessage(reader.result);
+                    };
+                    reader.readAsDataURL(blob);
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    botMessageDiv.textContent = `Error: ${error.message}`;
+                }
+
+            } else {
+                botMessageDiv.textContent = '';
+                
+                const messages = [];
+
+                if (systemPrompt) {
+                    messages.push({ "role": "system", "content": systemPrompt });
+                }
+                
+                messages.push(...chatHistory);
+                messages.push({ "role": "user", "content": userMessage });
+
+                try {
+                    const groqResponse = await fetch(API_ENDPOINT, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${GROQ_API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            "messages": messages,
+                            "model": MODEL_NAME,
+                            "temperature": 1.01,
+                            "max_tokens": 2471,
+                            "top_p": 1,
+                            "stream": true,
+                            "stop": null,
+                        })
+                    });
+
+                    if (!groqResponse.ok) {
+                        throw new Error(`Error de la API: ${groqResponse.status} ${groqResponse.statusText}`);
+                    }
+
+                    botMessageDiv.textContent = '';
+
+                    const reader = groqResponse.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+                    let buffer = '';
+                    let fullBotMessage = '';
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) {
+                            break;
+                        }
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        buffer += chunk;
+
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.trim() === '' || line.startsWith('data: [DONE]')) {
+                                continue;
+                            }
+
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+                                    const content = json.choices[0]?.delta?.content;
+                                    if (content) {
+                                        fullBotMessage += content;
+                                        botMessageDiv.innerHTML = marked.parse(fullBotMessage);
+                                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                                    }
+                                } catch (error) {
+                                    console.error('Error parsing JSON:', error);
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (fullBotMessage) {
+                        chatHistory.push({ "role": "assistant", "content": fullBotMessage });
+                        speakText(fullBotMessage);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    botMessageDiv.textContent = `Error: ${error.message}`;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+```
