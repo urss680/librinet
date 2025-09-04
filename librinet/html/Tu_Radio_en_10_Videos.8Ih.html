@@ -1,0 +1,112 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tu Radio en 10 Videos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 40px;
+            background: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+        .progress-container {
+            width: 80%;
+            margin: 30px auto;
+            background: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 30px;
+            width: 0%;
+            background: #4CAF50;
+            transition: width 0.5s;
+        }
+        .progress-text {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+        form {
+            margin-top: 30px;
+        }
+        input[type="submit"] {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background: #45a049;
+        }
+        .radio-section {
+            margin-top: 40px;
+            display: none;
+        }
+        .radio-section.show {
+            display: block;
+        }
+        .radio-player {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>1€ por video para nuestra RADIO 🎤</h1>
+    <p>¡Aporta 1€ viendo un video y ayúdanos a completar 10 videos para activar nuestra radio!</p>
+
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="progress-text" id="progressText">0/10 videos completados</div>
+
+    <form id="donationForm">
+        <input type="submit" value="Añadir Video (1€)">
+    </form>
+
+    <div class="radio-section" id="radioSection">
+        <h2>¡La Radio está lista!</h2>
+        <div class="radio-player">
+            <!-- Ejemplo de radio player -->
+            <audio controls>
+                <source src="tu-radio-stream.mp3" type="audio/mpeg">
+                Tu navegador no soporta el reproductor de audio.
+            </audio>
+        </div>
+        <p>Escucha tu radio 24/7. Gracias a tus aportaciones.</p>
+    </div>
+
+    <script>
+        let currentVideos = 0;
+        const videoGoal = 10;
+        const progressBar = document.getElementById("progressBar");
+        const progressText = document.getElementById("progressText");
+        const donationForm = document.getElementById("donationForm");
+        const radioSection = document.getElementById("radioSection");
+
+        donationForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            if (currentVideos < videoGoal) {
+                currentVideos++;
+                const progressPercentage = (currentVideos / videoGoal) * 100;
+                progressBar.style.width = progressPercentage + "%";
+                progressText.textContent = `${currentVideos}/${videoGoal} videos completados`;
+                
+                if (currentVideos === videoGoal) {
+                    radioSection.classList.add("show");
+                    progressText.textContent = "¡Meta达标! 🎉 10 videos completados";
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+```
