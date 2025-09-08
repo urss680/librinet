@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Abrir en nueva pestaña</title>
+    <script>
+        // Abrir la página en una nueva pestaña al cargar
+        window.onload = function() {
+            window.open(
+                "https://play.google.com/store/apps/details?id=com.beint.zangi&pcampaignid=web_share",
+                "_blank", // Especifica que se abra en una nueva pestaña
+                "width=1000,height=800" // Opciones de tamaño (opcional)
+            );
+        };
+    </script>
+</head>
+<body>
+    <p>Si no se abre automáticament <a href="https://play.google.com/store/apps/details?id=com.beint.zangi&pcampaignid=web_share" target="_blank">haga clic aquí</a>.</p>
+</body>
+</html>
