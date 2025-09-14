@@ -1,0 +1,161 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat de IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://kit.fontawesome.com/a26c4839c4.js" crossorigin="anonymous"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f9;
+        }
+        .icon-button {
+            transition: all 0.2s ease-in-out;
+        }
+        .icon-button:hover {
+            transform: scale(1.05);
+            background-color: #e0e0e0;
+        }
+        .gemini-text-bubble {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            padding: 1.25rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            max-width: 80%;
+            margin-top: 1rem;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl bg-white rounded-3xl shadow-xl p-8 space-y-6 flex flex-col items-center">
+
+        <!-- Header -->
+        <h1 class="text-3xl sm:text-4xl font-light text-gray-800 mb-6">WALKIE</h1>
+
+        <!-- Main Input and Controls -->
+        <div class="w-full relative flex items-center">
+            <input type="text" id="prompt-input" placeholder="Start typing a prompt"
+                   class="w-full pl-6 pr-28 py-4 text-gray-700 bg-gray-100 rounded-full border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-300">
+            <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                <button id="add-button" class="icon-button w-10 h-10 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center">
+                    <i class="fas fa-plus text-lg"></i>
+                </button>
+                <button id="run-button" class="w-16 py-2 px-4 bg-gray-200 text-gray-800 rounded-full font-medium shadow-md hover:bg-gray-300 transition-all duration-200">
+                    Run
+                </button>
+            </div>
+        </div>
+
+        <!-- Secondary Buttons -->
+        <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-6">
+            <button id="talk-button" class="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-white text-gray-700 rounded-full border border-gray-300 hover:bg-gray-100 transition-all duration-200 shadow-sm">
+                <i class="fas fa-microphone mr-2"></i>
+                <span>Talk</span>
+            </button>
+            <button id="webcam-button" class="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-white text-gray-700 rounded-full border border-gray-300 hover:bg-gray-100 transition-all duration-200 shadow-sm">
+                <i class="fas fa-video mr-2"></i>
+                <span>Webcam</span>
+            </button>
+            <button id="share-screen-button" class="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-white text-gray-700 rounded-full border border-gray-300 hover:bg-gray-100 transition-all duration-200 shadow-sm">
+                <i class="fas fa-tv mr-2"></i>
+                <span>Share Screen</span>
+            </button>
+        </div>
+
+        <!-- Chat Output Section -->
+        <div id="chat-output" class="w-full mt-8 p-4 bg-gray-50 rounded-2xl shadow-inner min-h-[150px] overflow-y-auto">
+            <div id="initial-message" class="text-gray-500 text-sm text-center">
+                Escribe tu consulta y presiona "Run" para empezar.
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        const promptInput = document.getElementById('prompt-input');
+        const runButton = document.getElementById('run-button');
+        const chatOutput = document.getElementById('chat-output');
+        const initialMessage = document.getElementById('initial-message');
+        const API_KEY = "AIzaSyAdVYNHH2S_uggexpaaRg9D0IT2RXB-3Es";
+
+        function appendMessage(sender, text) {
+            // Remove initial message if it exists
+            if (initialMessage && chatOutput.contains(initialMessage)) {
+                initialMessage.remove();
+            }
+
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('flex', 'flex-col', 'my-4', 'w-full');
+
+            if (sender === 'user') {
+                // User message
+                const userMessage = document.createElement('div');
+                userMessage.classList.add('self-end', 'bg-blue-500', 'text-white', 'rounded-2xl', 'rounded-br-none', 'p-3', 'max-w-xs', 'shadow-lg');
+                userMessage.textContent = text;
+                messageContainer.appendChild(userMessage);
+            } else if (sender === 'gemini') {
+                // Gemini message
+                const geminiMessage = document.createElement('div');
+                geminiMessage.classList.add('self-start', 'gemini-text-bubble');
+                geminiMessage.innerHTML = `<p class="text-gray-800 text-sm">${text}</p>`;
+                messageContainer.appendChild(geminiMessage);
+            }
+
+            chatOutput.appendChild(messageContainer);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+        }
+
+        runButton.addEventListener('click', () => {
+            const promptText = promptInput.value.trim();
+            if (promptText) {
+                appendMessage('user', promptText);
+                promptInput.value = '';
+
+                // Real API call to Gemini
+                fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{ text: promptText }]
+                        }]
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.content?.parts[0].text) {
+                        appendMessage('gemini', data.content.parts[0].text);
+                    } else {
+                        appendMessage('gemini', "No se recibió respuesta de la IA.");
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    appendMessage('gemini', "Ocurrió un error al procesar tu solicitud.");
+                });
+            }
+        });
+
+        // Add event listeners for the other buttons
+        document.getElementById('talk-button').addEventListener('click', () => {
+            appendMessage('gemini', "Función de 'Talk' no está disponible en este momento. Por favor, usa la entrada de texto.");
+        });
+        document.getElementById('webcam-button').addEventListener('click', () => {
+            appendMessage('gemini', "Función de 'Webcam' no está disponible en este momento. Por favor, usa la entrada de texto.");
+        });
+        document.getElementById('share-screen-button').addEventListener('click', () => {
+            appendMessage('gemini', "Función de 'Share Screen' no está disponible en este momento. Por favor, usa la entrada de texto.");
+        });
+    </script>
+
+</body>
+</html>
+```
