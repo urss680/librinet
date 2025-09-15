@@ -1,0 +1,120 @@
+Aquí tienes una aplicación básica de transcripción de voz a texto en tiempo real usando HTML, CSS y JavaScript. Esta versión utiliza el API de Web Speech (SpeechRecognition) del navegador, compatible principalmente con Chrome y Edge:
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Transcripción de Voz en Tiempo Real</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 1rem;
+        }
+        #transcription {
+            width: 100%;
+            height: 200px;
+            margin-top: 1rem;
+            resize: none;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            margin-right: 0.5rem;
+            font-size: 1rem;
+        }
+        .status {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>Transcripción en Tiempo Real</h1>
+    <button id="startBtn">Iniciar</button>
+    <button id="stopBtn" disabled>Detener</button>
+    <div class="status">Estado: <span id="status">Detenido</span></div>
+    <textarea id="transcription" placeholder="Texto transcurrido..." readonly></textarea>
+
+    <script>
+        let recognition;
+        let isListening = false;
+        let finalTranscript = '';
+
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'es-ES';
+
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                document.getElementById('transcription').value = finalTranscript + 
+                    (interimTranscript ? '\n\n[Intermedio: ' + interimTranscript + ']' : '');
+            };
+
+            recognition.onerror = function(event) {
+                document.getElementById('status').textContent = 'Error: ' + event.error;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('startBtn').disabled = false;
+            };
+
+            recognition.onend = function() {
+                isListening = false;
+                document.getElementById('status').textContent = 'Detenido';
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('startBtn').disabled = false;
+            };
+
+            document.getElementById('startBtn').onclick = function() {
+                if (!isListening) {
+                    isListening = true;
+                    finalTranscript = '';
+                    document.getElementById('transcription').value = '';
+                    document.getElementById('status').textContent = 'Grabando...';
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    recognition.start();
+                }
+            };
+
+            document.getElementById('stopBtn').onclick = function() {
+                if (isListening) {
+                    isListening = false;
+                    recognition.stop();
+                }
+            };
+        } else {
+            alert("Tu navegador no soporta el reconocimiento de voz. Usa Chrome o Edge.");
+        }
+    </script>
+</body>
+</html>
+```
+
+Este ejemplo tiene estas características:
+- Transcripción continua en tiempo real
+- Muestra resultados finales e intermedios
+- Sistema de estado para controlar el estado de grabación
+- Notifica errores si ocurren
+
+Limitaciones actuales:
+1. Solo funciona en navegadores compatibles (Chrome/Edge)
+2. No usa un backend para procesamiento
+3. Tiene los limites de reconocimiento del API de Web Speech (mejor en inglés)
+
+¿Quieres que agregue:
+1. Integración con un servicio de IA como Google Speech-to-Text para mejor precisión?
+2. Guardado de transcripciones en el servidor
+3. Manejo de dispositivos de audio específico?
+4. ¿O prefieres crear una versión completamente nueva?
