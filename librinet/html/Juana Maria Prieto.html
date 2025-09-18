@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Librillaia Pensamiento profundo</title>
+    <style>
+        /* Estilos CSS Mejorados (simulados y adaptados de Tailwind) */
+        body {
+            background-color: #0f172a; /* bg-gray-950 */
+            color: #f8fafc; /* text-gray-50 */
+            font-family: 'Inter', sans-serif;  /* Fuente Inter */
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem; /* Aumentado el padding */
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem; /* Aumentado el gap */
+        }
+        .message {
+            border-radius: 1rem; /* Más redondeado */
+            padding: 1.25rem; /* Aumentado el padding */
+            max-width: 90%; /* Aumentado el ancho máximo */
+            margin-left: auto;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Sutil sombra */
+            transition: transform 0.2s ease;
+        }
+        .message:hover {
+              transform: translateY(-2px);
+        }
+        .user-message {
+            background-image: linear-gradient(to right, #3b82f6, #6366f1); /* bg-gradient-to-r from-blue-500 to-indigo-500 */
+            color: #fff;
+            align-items: flex-end;
+        }
+        .assistant-message {
+            background-image: linear-gradient(to right, #4b5563, #6b7280);
+            color: #f8fafc;  /* text-gray-50 */
+            align-items: flex-start;
+            margin-left: 0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+         .assistant-message:hover {
+             transform: translateY(-1px);
+         }
+
+        .input-area {
+            padding: 1.5rem; /* Aumentado el padding */
+            background-color: #1e293b; /* bg-gray-900 */
+            border-top: 1px solid #6b7280; /* border-gray-600 */
+        }
+        .input-container {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        textarea {
+            flex: 1;
+            background-color: #374151; /* bg-gray-800 */
+            color: #f8fafc; /* text-gray-50 */
+            border: 1px solid #6b7280; /* border-gray-600 */
+            border-radius: 0.75rem; /* Más redondeado */
+            min-height: 3rem; /* Aumentado la altura */
+            resize: none;
+            padding: 1rem; /* Aumentado el padding */
+            font-size: 1rem;
+            line-height: 1.5rem;
+            margin: 0;
+            outline: none;
+            transition: border-color 0.2s ease; /* Transición para el borde */
+        }
+        textarea::placeholder {
+            color: #9ca3af; /* placeholder:text-gray-400 */
+        }
+        textarea:focus {
+            outline: 2px solid #3b82f6; /* focus:ring-2 focus:ring-blue-500 */
+            border-color: #6366f1; /* focus:border-blue-500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .send-button {
+            background-color: #4f46e5; /* bg-indigo-600 */
+            color: #fff;
+            padding: 0.8rem 2rem; /* Ajustado el padding */
+            border-radius: 0.75rem; /* Más redondeado */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease, transform 0.2s ease; /* Transiciones */
+            border: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Sombra */
+        }
+        .send-button:hover {
+            background-color: #4338ca; /* hover:bg-indigo-700 */
+            transform: translateY(-2px) scale(1.05); /* Pequeño efecto de elevación */
+        }
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .message-icon {
+            width: 1.25rem; /* Aumentado el tamaño del icono */
+            height: 1.25rem;
+            margin-right: 0.5rem; /* Aumentado el margen */
+            color: #e5e7eb;
+        }
+        .loading-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem; /* Aumentado el gap */
+            color: #d1d5db;
+        }
+        .error-message {
+            color: #f87171;
+            margin-top: 0.75rem; /* Aumentado el margen */
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: #fee2e2;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid #fecaca;
+        }
+        .error-icon {
+            width: 1.5rem; /* Aumentado el tamaño del icono */
+            height: 1.5rem;
+            color: #dc2626;
+        }
+        .retry-button {
+            color: #fca5a5;
+            padding-left: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            height: auto;
+            text-decoration: underline;
+            border: none;
+            background-color: transparent;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        .retry-button:hover{
+            color: #f87171;
+        }
+
+        .clear-button {
+            color: #d1d5db;
+            border: 1px solid #6b7280;
+            padding: 0.8rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            background-color: transparent;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .clear-button:hover {
+            background-color: #6b7280;
+            color: #fff;
+        }
+        .close-icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            color: #d1d5db;
+        }
+        .MathJax_Display {
+            margin: 1em 0;
+            text-align: center;
+            display: block;
+            overflow-x: auto;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            background-color: #f0f4f8;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markdown-css@1.0.1/css/markdown.min.css" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="message assistant-message">
+            <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square message-icon"><path d="M14 9V5a3 3 0 0 0-3-3H5a3 3 0 0 0-3 3v11a3 3 0 0 0 3 3h11a3 3 0 0 0 3-3v-4"/><path d="M12 17v-4c0-1.333-.8-4-4-4"/></svg>
+                <span class="text-sm font-semibold text-gray-300">Librillaia</span>
+            </div>
+            <div class="text-white whitespace-pre-wrap break-words markdown-body">Soy Librillaia, tu asistente. ¡Pregúntame lo que quieras!</div>
+        </div>
+        <div ref="messagesEndRef"></div>
+    </div>
+    <div class="input-area">
+        <div class="input-container">
+            <textarea placeholder="Escribe tu mensaje..."></textarea>
+            <div class="flex gap-3">
+                <button class="send-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send message-icon"><path d="m22 2-7 20-4-9-9-4 20-7z"/><path d="M18 18 6 6"/></svg>
+                    <span class="sr-only">Enviar mensaje</span>
+                </button>
+                <button class="clear-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x-circle close-icon"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+                    <span class="sr-only">Limpiar chat</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Este script simula la interactividad básica de React.
+        // En una aplicación real de React, esto se manejaría con JavaScript y el DOM virtual.
+
+        const chatContainer = document.querySelector('.chat-container');
+        const inputElement = document.querySelector('textarea');
+        const sendButton = document.querySelector('.send-button');
+        const messagesEndRef = document.querySelector('[ref="messagesEndRef"]');
+        const clearButton = document.querySelector('.clear-button');
+
+        let messages = [
+            { role: 'assistant', content: 'Soy Librillaia, tu asistente. ¡Pregúntame lo que quieras!' },
+        ];
+
+        function createMessageElement(role, content, isHtml = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = "text-white whitespace-pre-wrap markdown-body";
+            if (isHtml) {
+                contentDiv.innerHTML = content;
+            }
+            else {
+                // Simple Markdown conversion (for demonstration purposes)
+                let formattedContent = content
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')      // Italics
+                    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">'); // Images
+
+
+                //Basicamente busca cualquier string que comienze con $$ y termine con $$ y lo envuelve en un span para que mathjax lo renderize
+                let stringWithMath = formattedContent.replace(/\$\$(.*?)\$\$/g, '<span class="MathJax_Display">\\($1\\)</span>');
+                contentDiv.innerHTML = stringWithMath;
+            }
+
+            messageDiv.appendChild(contentDiv);
+
+            if (role === 'assistant') {
+                const iconDiv = document.createElement('div');
+                iconDiv.className = "flex items-center gap-2 mb-2";
+                iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square message-icon"><path d="M14 9V5a3 3 0 0 0-3-3H5a3 3 0 0 0-3 3v11a3 3 0 0 0 3 3h11a3 3 0 0 0 3-3v-4"/><path d="M12 17v-4c0-1.333-.8-4-4-4"/></svg><span class="text-sm font-semibold text-gray-300">Librillaia</span>`;
+                messageDiv.prepend(iconDiv);
+            }
+            return messageDiv;
+        }
+
+        function addMessageToChat(role, content, isHtml = false) {
+            const messageElement = createMessageElement(role, content, isHtml);
+            chatContainer.appendChild(messageElement);
+            scrollToBottom();
+             if (role === 'assistant') {
+                MathJax.typesetPromise();
+            }
+        }
+
+        function scrollToBottom() {
+            messagesEndRef.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        sendButton.addEventListener('click', () => {
+            const messageText = inputElement.value.trim();
+            if (messageText) {
+                addMessageToChat('user', messageText);
+                messages.push({ role: 'user', content: messageText });
+                inputElement.value = '';
+                inputElement.style.height = 'auto';
+
+                const loadingMessage = createMessageElement('assistant', `<div class="loading-indicator"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-2 h-6 w-6 animate-spin"><path d="M21 12a9 9 0 1 0-6.219-8.56"/></svg><span>Pensando...</span></div>`);
+                chatContainer.appendChild(loadingMessage);
+                scrollToBottom();
+
+                const chatHistory = messages.map(m => ({ role: m.role, content: m.content }));
+
+                fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer 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`,
+                    },
+                    body: JSON.stringify({
+                        model: 'gemma2-9b-it',
+                        messages: chatHistory,
+                        stream: false,
+                    }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(errorText => {
+                            throw new Error(`Error HTTP! Estado: ${response.status}, Respuesta: ${errorText}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    chatContainer.removeChild(loadingMessage);
+                    const aiResponse = data.choices?.[0]?.message?.content || 'No hay respuesta';
+                    const filteredResponse = aiResponse.replace(/<think>.*?<\/think>/g, '');
+                    addMessageToChat('assistant', filteredResponse, false);
+                    messages.push({ role: 'assistant', content: filteredResponse });
+                })
+                .catch(error => {
+                    console.error('Error al obtener respuesta:', error);
+                    chatContainer.removeChild(loadingMessage);
+                    const errorMessage = createMessageElement('assistant', `<div class="error-message"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle error-icon"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>Se produjo un error. <button class="retry-button">Reintentar</button></span></div>`, true);
+                    chatContainer.appendChild(errorMessage);
+
+                    const retryButton = errorMessage.querySelector('.retry-button');
+                    retryButton.addEventListener('click', () => {
+                        chatContainer.removeChild(errorMessage);
+                        sendButton.click();
+                    });
+
+                    scrollToBottom();
+                });
+            }
+        });
+
+        inputElement.addEventListener('input', () => {
+            inputElement.style.height = 'auto';
+            inputElement.style.height = `${inputElement.scrollHeight}px`;
+        });
+
+        inputElement.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendButton.click();
+            }
+        });
+
+        clearButton.addEventListener('click', () => {
+            chatContainer.innerHTML = `<div class="message assistant-message">
+            <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square message-icon"><path d="M14 9V5a3 3 0 0 0-3-3H5a3 3 0 0 0-3 3v11a3 3 0 0 0 3 3h11a3 3 0 0 0 3-3v-4"/><path d="M12 17v-4c0-1.333-.8-4-4-4"/></svg>
+                <span class="text-sm font-semibold text-gray-300">Librillaia</span>
+            </div>
+            <div class="text-white whitespace-pre-wrap break-words markdown-body">Soy Librillaia, tu asistente. ¡Pregúntame lo que quieras!</div>
+        </div><div ref="messagesEndRef"></div>`;
+            inputElement.value = '';
+            inputElement.style.height = 'auto';
+            messages = [{ role: 'assistant', content: 'Soy Librillaia, tu asistente. ¡Pregúntame lo que quieras!' }];
+             MathJax.typesetPromise();
+        });
+
+        scrollToBottom();
+    </script>
+</body>
+</html>
