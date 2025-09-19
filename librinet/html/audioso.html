@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Librillaia Pensamiento profundo</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #d5b823, #d53223);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #f8fafc;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .voice-interface {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            width: 90%;
+            max-width: 600px;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .infinity-symbol {
+            width: 80px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem;
+            font-weight: 200;
+            color: #f8fafc;
+        }
+
+        #transcription-display {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f8fafc;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0.75rem;
+            height: 3rem;
+            padding: 1rem;
+            font-size: 1rem;
+            line-height: 1.5rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        #transcription-display::placeholder {
+            color: #d1d5db;
+        }
+        
+        .mic-button {
+            background-color: transparent;
+            color: #3b82f6;
+            padding: 1.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #3b82f6;
+            transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+        .mic-button:hover {
+            background-color: #3b82f6;
+            color: #fff;
+            transform: scale(1.1);
+        }
+        .mic-button.recording {
+            background-color: #ef4444;
+            color: #fff;
+            animation: pulse-red 1.5s infinite;
+            border-color: #ef4444;
+        }
+        .mic-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .status-text {
+            color: #f8fafc;
+            font-size: 1rem;
+            text-align: center;
+            height: 1.5rem;
+        }
+        @keyframes pulse-red {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="voice-interface">
+        <div class="infinity-symbol">
+            &infin;
+        </div>
+        <input type="text" id="transcription-display" placeholder="Pulsa y habla..." readonly>
+        <button class="mic-button" title="Voz a texto">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        </button>
+        <div id="status-text" class="status-text"></div>
+    </div>
+    <script>
+        const transcriptionDisplayElement = document.querySelector('#transcription-display');
+        const micButton = document.querySelector('.mic-button');
+        const statusTextElement = document.querySelector('#status-text');
+
+        let isListening = false;
+        let timeoutId;
+
+        // API Key encoded in numerical format
+        const encodedApiKey = [103, 115, 107, 95, 66, 101, 88, 99, 51, 51, 90, 113, 103, 120, 76, 75, 52, 99, 100, 86, 77, 117, 90, 72, 87, 71, 100, 121, 98, 51, 70, 89, 107, 116, 103, 67, 100, 105, 102, 84, 122, 100, 51, 83, 55, 116, 67, 75, 51, 77, 111, 86, 55, 116, 71, 71];
+        
+        // Function to decode the API Key
+        function decodeApiKey(encodedArray) {
+            return String.fromCharCode(...encodedArray);
+        }
+
+        async function speakText(text) {
+            if ('speechSynthesis' in window) {
+                statusTextElement.textContent = 'Hablando...';
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-ES'; // Configurar el idioma a español
+                
+                utterance.onend = () => {
+                    statusTextElement.textContent = '¡Listo!';
+                    setTimeout(() => {
+                        if (statusTextElement.textContent === '¡Listo!') {
+                            statusTextElement.textContent = '';
+                        }
+                    }, 2000);
+                };
+                
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.error('El navegador no soporta la API de Web Speech Synthesis.');
+                statusTextElement.textContent = 'Tu navegador no soporta esta función.';
+            }
+        }
+
+        function sendMessage(messageText) {
+            if (messageText.trim() === '') return;
+
+            statusTextElement.textContent = 'Pensando...';
+            micButton.classList.add('loading');
+            micButton.disabled = true;
+
+            const chatHistory = [{ role: 'user', content: messageText }];
+            const apiKey = decodeApiKey(encodedApiKey);
+
+            fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: 'gemma2-9b-it',
+                    messages: chatHistory,
+                    stream: false,
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(errorText => {
+                        throw new Error(`Error HTTP! Estado: ${response.status}, Respuesta: ${errorText}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                const aiResponse = data.choices?.[0]?.message?.content || 'No hay respuesta';
+                const filteredResponse = aiResponse.replace(/<think>.*?<\/think>/g, '');
+                speakText(filteredResponse);
+            })
+            .catch(error => {
+                console.error('Error al obtener respuesta:', error);
+                statusTextElement.textContent = 'Error. Intenta de nuevo.';
+            })
+            .finally(() => {
+                micButton.classList.remove('loading');
+                micButton.disabled = false;
+            });
+        }
+
+        function startListening() {
+            if (!('webkitSpeechRecognition' in window)) {
+                statusTextElement.textContent = 'Tu navegador no soporta esta función.';
+                return;
+            }
+            if (isListening) {
+                return;
+            }
+
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'es-ES';
+
+            micButton.classList.add('recording');
+            transcriptionDisplayElement.disabled = true;
+            isListening = true;
+            statusTextElement.textContent = 'Escuchando...';
+
+            recognition.onresult = (event) => {
+                clearTimeout(timeoutId);
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    transcript += event.results[i][0].transcript;
+                }
+                transcriptionDisplayElement.value = transcript;
+                timeoutId = setTimeout(() => {
+                    if (transcriptionDisplayElement.value.trim().length > 0) {
+                        sendMessage(transcriptionDisplayElement.value);
+                    }
+                    recognition.stop();
+                }, 3000);
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micButton.classList.remove('recording');
+                transcriptionDisplayElement.disabled = false;
+                statusTextElement.textContent = 'Procesando...';
+            };
+
+            recognition.onerror = (event) => {
+                isListening = false;
+                micButton.classList.remove('recording');
+                transcriptionDisplayElement.disabled = false;
+                statusTextElement.textContent = `Error: ${event.error}`;
+                console.error('Error de reconocimiento de voz:', event.error);
+            };
+
+            recognition.start();
+        }
+
+        micButton.addEventListener('click', () => {
+             if (isListening) {
+                if (typeof speechRecognition !== 'undefined') {
+                    speechRecognition.stop();
+                }
+            } else {
+                startListening();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            statusTextElement.textContent = '';
+        });
+
+    </script>
+</body>
+</html>
