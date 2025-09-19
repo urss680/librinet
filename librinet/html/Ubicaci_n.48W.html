@@ -1,0 +1,70 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ubicación</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 50px;
+    }
+    #status {
+      font-size: 1.2em;
+      margin: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Permiso de Ubicación</h1>
+  <p id="status">Haga clic en el botón para compartir su ubicación.</p>
+  <button onclick="getLocation()">Compartir Ubicación</button>
+  <div id="coordinates" style="margin-top: 20px;"></div>
+
+  <script>
+    function getLocation() {
+      if (!navigator.geolocation) {
+        document.getElementById('status').innerHTML = 'Geolocalización no soportada por este navegador.';
+        return;
+      }
+      
+      document.getElementById('status').innerHTML = 'Solicitando permiso para obtener su ubicación...';
+      document.getElementById('coordinates').innerHTML = '';
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          document.getElementById('status').innerHTML = 'Ubicación obtenida con éxito.';
+          document.getElementById('coordinates').innerHTML = 
+            `Coordenadas: Latitud: ${latitude}, Longitud: ${longitude}`;
+        },
+        (error) => {
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              document.getElementById('status').innerHTML = 'Permiso denegado. No se puede obtener su ubicación.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              document.getElementById('status').innerHTML = 'Ubicación no disponible.';
+              break;
+            case error.TIMEOUT:
+              document.getElementById('status').innerHTML = 'Tiempo de espera excedido.';
+              break;
+            default:
+              document.getElementById('status').innerHTML = 'Error desconocido al obtener la ubicación.';
+          }
+          document.getElementById('coordinates').innerHTML = '';
+        }
+      );
+    }
+  </script>
+</body>
+</html>
+```
