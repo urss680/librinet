@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Librillaia Pensamiento profundo</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #d5b823, #d53223);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #f8fafc;
+            position: relative;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .voice-interface {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            width: 90%;
+            max-width: 600px;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+        }
+        
+        .infinity-symbol {
+            width: 80px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem;
+            font-weight: 200;
+            color: #f8fafc;
+        }
+
+        #image-display-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        #image-display-container img {
+            width: 45%;
+            height: auto;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        #transcription-display {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f8fafc;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0.75rem;
+            height: 3rem;
+            padding: 1rem;
+            font-size: 1rem;
+            line-height: 1.5rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        #transcription-display::placeholder {
+            color: #d1d5db;
+        }
+        
+        .mic-button {
+            background-color: transparent;
+            color: #3b82f6;
+            padding: 1.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #3b82f6;
+            transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+        .mic-button:hover {
+            background-color: #3b82f6;
+            color: #fff;
+            transform: scale(1.1);
+        }
+        .mic-button.recording {
+            background-color: #ef4444;
+            color: #fff;
+            animation: pulse-red 1.5s infinite;
+            border-color: #ef4444;
+        }
+        .mic-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .status-text {
+            color: #f8fafc;
+            font-size: 1rem;
+            text-align: center;
+            height: 1.5rem;
+        }
+        @keyframes pulse-red {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .settings-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: #f8fafc;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: background-color 0.2s ease;
+        }
+        .settings-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .settings-button svg {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: #2d3748;
+            padding: 2rem;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            color: #f8fafc;
+        }
+        .modal-content h3 {
+            margin: 0;
+            text-align: center;
+        }
+        #system-prompt-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #4a5568;
+            background: #1a202c;
+            color: #f8fafc;
+            font-size: 1rem;
+            resize: vertical;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .modal-actions button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        #save-prompt-button {
+            background-color: #3b82f6;
+            color: #fff;
+        }
+        #save-prompt-button:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+        }
+        #clear-prompt-button {
+            background-color: #ef4444;
+            color: #fff;
+        }
+        #clear-prompt-button:hover {
+            background-color: #dc2626;
+            transform: translateY(-2px);
+        }
+
+    </style>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="voice-interface">
+        <div class="infinity-symbol">
+            &infin;
+        </div>
+        <button class="settings-button" id="settings-button" title="Configuración del asistente">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.39a2 2 0 0 0 .73 2.73l.15.08a2 2 0 0 1 1 1.74v.17a2 2 0 0 1-1 1.74l-.15.08a2 2 0 0 0-.73 2.73l.22.39a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2-1.74v-.17a2 2 0 0 1 1-1.74l.43-.25a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.74v.17a2 2 0 0 0 1 1.74l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.17a2 2 0 0 1 1-1.74l.43-.25a2 2 0 0 1 2-1.74l.15.08a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 1.74v.17a2 2 0 0 1-1-1.73l-.43-.25a2 2 0 0 0-2-1.74V2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+        <div id="image-display-container"></div>
+        <input type="text" id="transcription-display" placeholder="Pulsa y habla..." readonly>
+        <button class="mic-button" title="Voz a texto">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        </button>
+        <div id="status-text" class="status-text"></div>
+    </div>
+    
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Configurar el rol del asistente</h3>
+            <textarea id="system-prompt-textarea" placeholder="Añade aquí tus propias instrucciones para el asistente.&#10;Se unirán al rol principal para personalizar la respuesta."></textarea>
+            <div class="modal-actions">
+                <button id="save-prompt-button">Guardar</button>
+                <button id="clear-prompt-button">Limpiar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const transcriptionDisplayElement = document.querySelector('#transcription-display');
+        const micButton = document.querySelector('.mic-button');
+        const statusTextElement = document.querySelector('#status-text');
+        const settingsButton = document.querySelector('#settings-button');
+        const settingsModal = document.querySelector('#settings-modal');
+        const systemPromptTextarea = document.querySelector('#system-prompt-textarea');
+        const savePromptButton = document.querySelector('#save-prompt-button');
+        const clearPromptButton = document.querySelector('#clear-prompt-button');
+        const imageDisplayContainer = document.getElementById('image-display-container');
+
+        let isListening = false;
+        let timeoutId;
+        let recognition;
+        
+        // El prompt fijo que no se puede modificar.
+        const fixedPrompt = "Eres un asistente de voz. Lo que digas te escucharán en voz alta. Habla en español y actúa como una persona. Si el usuario te pide que generes una imagen, responde usando el comando @color(descripción de la imagen). Por ejemplo, si el usuario dice 'genera una imagen de un dragón', tu respuesta debe ser '@color(un dragón volando sobre una ciudad) y añadir algo de texto aartae de la generacion'.";
+        
+        // El prompt adicional que el usuario puede añadir.
+        let userPrompt = '';
+
+        window.waitForImageGeneration = false;
+        
+        // La clave API está codificada en Base64 para una simple ofuscación.
+        // NOTA: Esto NO es una encriptación segura y la clave aún puede ser leída con herramientas del navegador.
+        const encodedApiKey = "Z3NrX1FkTHVYTVFPN0xkWVJTVGNscWczV0dkeWIzRllCczNMR09pcHNuc3NROXBBMk96eWV1TFE=";
+
+        // Descodifica la clave API para usarla en la llamada a la API.
+        const apiKey = atob(encodedApiKey);
+
+        // La memoria conversacional se almacena aquí, pero ya no se muestra en la interfaz.
+        let chatHistory = [];
+
+        // Función para reproducir un pitido de forma programática.
+        async function playBeep() {
+            return new Promise((resolve) => {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.start();
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.1);
+
+                setTimeout(() => {
+                    oscillator.stop();
+                    resolve();
+                }, 100); // Duración del pitido
+            });
+        }
+
+        async function speakText(text) {
+            await playBeep();
+            if ('speechSynthesis' in window) {
+                statusTextElement.textContent = 'Hablando...';
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-ES';
+                
+                utterance.onend = () => {
+                    statusTextElement.textContent = '¡Listo!';
+                    setTimeout(() => {
+                        if (statusTextElement.textContent === '¡Listo!') {
+                            statusTextElement.textContent = '';
+                        }
+                        if (!window.waitForImageGeneration) {
+                            startListening();
+                        }
+                    }, 2000);
+                };
+                
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.error('El navegador no soporta la API de Web Speech Synthesis.');
+                statusTextElement.textContent = 'Tu navegador no soporta esta función.';
+                setTimeout(() => {
+                    if (!window.waitForImageGeneration) {
+                        startListening();
+                    }
+                }, 3000);
+            }
+        }
+
+        function sendMessage(messageText) {
+            if (!apiKey) {
+                statusTextElement.textContent = 'Error: Falta la clave de la API. Pega tu clave de Groq en el código.';
+                console.error('Error: No se ha proporcionado una clave de API.');
+                return;
+            }
+
+            if (messageText.trim() === '') {
+                statusTextElement.textContent = 'No se detectó ningún mensaje de voz. ¡Inténtalo de nuevo!';
+                startListening();
+                return;
+            }
+
+            statusTextElement.textContent = 'Pensando...';
+            micButton.classList.add('loading');
+            micButton.disabled = true;
+
+            // Combina el prompt fijo y el del usuario para el mensaje.
+            const finalSystemPrompt = fixedPrompt + (userPrompt.trim() !== '' ? ' ' + userPrompt : '');
+            
+            // Añade el mensaje del usuario al historial de forma invisible.
+            chatHistory.push({ role: 'user', content: messageText });
+
+            const messagesPayload = [
+                { role: 'system', content: finalSystemPrompt },
+                ...chatHistory
+            ];
+
+            fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: 'gemma2-9b-it',
+                    messages: messagesPayload,
+                    stream: false,
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(errorText => {
+                        throw new Error(`Error HTTP! Estado: ${response.status}, Respuesta: ${errorText}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                let aiResponse = data.choices?.[0]?.message?.content || 'No hay respuesta';
+                const imageCommandMatch = aiResponse.match(/@color\((.*?)\)/);
+
+                if (imageCommandMatch) {
+                    const imagePrompt = imageCommandMatch[1].trim();
+                    const textToSpeak = aiResponse.replace(imageCommandMatch[0], '').trim();
+                    
+                    generateImage(imagePrompt, textToSpeak);
+
+                } else {
+                    const filteredResponse = aiResponse.replace(/<think>.*?<\/think>/g, '');
+                    // Añade la respuesta del asistente al historial de forma invisible.
+                    chatHistory.push({ role: 'assistant', content: filteredResponse });
+                    speakText(filteredResponse);
+                }
+            })
+            .catch(error => {
+                console.error('Error al obtener respuesta:', error);
+                statusTextElement.textContent = 'Error. Intenta de nuevo.';
+            })
+            .finally(() => {
+                micButton.classList.remove('loading');
+                micButton.disabled = false;
+            });
+        }
+
+        async function generateImage(prompt, textToSpeak) {
+            statusTextElement.textContent = 'Generando imagen con color...';
+            micButton.classList.add('loading');
+            micButton.disabled = true;
+            window.waitForImageGeneration = true;
+
+            const fluxUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=flux&width=512&height=512&nologo=true`;
+            const turboUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=turbo&width=512&height=512&nologo=true`;
+            
+            async function fetchAndConvert(url) {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch image from ${url}`);
+                }
+                const blob = await response.blob();
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            }
+
+            try {
+                const [fluxDataUrl, turboDataUrl] = await Promise.all([
+                    fetchAndConvert(fluxUrl),
+                    fetchAndConvert(turboUrl)
+                ]);
+
+                imageDisplayContainer.innerHTML = '';
+                
+                const fluxImg = document.createElement('img');
+                fluxImg.src = fluxDataUrl;
+                fluxImg.alt = 'Imagen generada por Flux';
+                
+                const turboImg = document.createElement('img');
+                turboImg.src = turboDataUrl;
+                turboImg.alt = 'Imagen generada por Turbo';
+
+                imageDisplayContainer.appendChild(fluxImg);
+                imageDisplayContainer.appendChild(turboImg);
+
+                // Habla el texto después de que las imágenes se hayan cargado.
+                if (textToSpeak) {
+                    await speakText(textToSpeak);
+                }
+
+                // Espera 5 segundos y luego reinicia el reconocimiento de voz
+                statusTextElement.textContent = 'Imágenes generadas. Esperando 5 segundos...';
+                setTimeout(() => {
+                    window.waitForImageGeneration = false;
+                    startListening();
+                }, 5000);
+
+            } catch (error) {
+                console.error('Error al generar las imágenes:', error);
+                statusTextElement.textContent = 'Error al generar las imágenes. Intenta de nuevo.';
+                speakText('Lo siento, hubo un error al generar las imágenes.');
+                window.waitForImageGeneration = false;
+            } finally {
+                micButton.classList.remove('loading');
+                micButton.disabled = false;
+            }
+        }
+
+        async function startListening() {
+            if (!('webkitSpeechRecognition' in window)) {
+                statusTextElement.textContent = 'Tu navegador no soporta esta función.';
+                return;
+            }
+            if (isListening) {
+                return;
+            }
+            if (!apiKey) {
+                statusTextElement.textContent = 'Error: Falta la clave de la API. Pega tu clave de Groq en el código.';
+                return;
+            }
+            await playBeep();
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'es-ES';
+
+            micButton.classList.add('recording');
+            transcriptionDisplayElement.disabled = true;
+            isListening = true;
+            statusTextElement.textContent = 'Escuchando...';
+
+            recognition.onresult = (event) => {
+                clearTimeout(timeoutId);
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    transcript += event.results[i][0].transcript;
+                }
+                transcriptionDisplayElement.value = transcript;
+                timeoutId = setTimeout(() => {
+                    if (transcriptionDisplayElement.value.trim().length > 0) {
+                        sendMessage(transcriptionDisplayElement.value);
+                    } else {
+                         statusTextElement.textContent = 'No se detectó ninguna voz.';
+                         recognition.stop();
+                         startListening();
+                    }
+                }, 3000);
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micButton.classList.remove('recording');
+                transcriptionDisplayElement.disabled = false;
+                if (!window.waitForImageGeneration) {
+                     statusTextElement.textContent = 'Procesando...';
+                }
+            };
+
+            recognition.onerror = (event) => {
+                isListening = false;
+                micButton.classList.remove('recording');
+                transcriptionDisplayElement.disabled = false;
+                statusTextElement.textContent = `Error: ${event.error}`;
+                console.error('Error de reconocimiento de voz:', event.error);
+            };
+
+            recognition.start();
+        }
+
+        micButton.addEventListener('click', () => {
+            if (isListening) {
+                if (recognition) {
+                    recognition.stop();
+                    statusTextElement.textContent = 'Grabación detenida.';
+                }
+            } else {
+                startListening();
+            }
+        });
+
+        settingsButton.addEventListener('click', () => {
+            settingsModal.classList.add('show');
+            systemPromptTextarea.value = userPrompt;
+        });
+
+        settingsModal.addEventListener('click', (event) => {
+            if (event.target === settingsModal) {
+                settingsModal.classList.remove('show');
+            }
+        });
+
+        savePromptButton.addEventListener('click', () => {
+            userPrompt = systemPromptTextarea.value;
+            chatHistory = [];
+            settingsModal.classList.remove('show');
+            statusTextElement.textContent = 'Rol guardado. ¡El historial se ha limpiado!';
+        });
+
+        clearPromptButton.addEventListener('click', () => {
+            systemPromptTextarea.value = '';
+            userPrompt = '';
+            chatHistory = [];
+            settingsModal.classList.remove('show');
+            statusTextElement.textContent = 'Rol limpiado. ¡El historial se ha limpiado!';
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!apiKey) {
+                statusTextElement.textContent = 'Por favor, pega tu clave de API de Groq en el código para continuar.';
+            } else {
+                statusTextElement.textContent = '';
+            }
+        });
+    </script>
+</body>
+</html>
