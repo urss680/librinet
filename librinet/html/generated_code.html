@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Acceso a Edu-Nube</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <h1>Introduce el código de municipio para acceder a Edu-Nube</h1>
+    <input type="text" id="municipioCode" placeholder="Código de Municipio">
+    <button onclick="checkCodeAndOpenEduNube()">Acceder</button>
+
+    <script>
+        function checkCodeAndOpenEduNube() {
+            var inputCode = document.getElementById('municipioCode').value;
+            if (inputCode.toLowerCase() === 'librilla') {
+                window.open('https://sites.google.com/view/edunubelibri/edu-nube', '_blank');
+            } else {
+                alert('incorrecto');
+            }
+        }
+    </script>
+</body>
+</html>
