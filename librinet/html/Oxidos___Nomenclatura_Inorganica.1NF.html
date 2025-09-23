@@ -1,0 +1,96 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Oxidos - Nomenclatura Inorganica</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    .solution-text {
+      display: none;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>Nomenclatura de Óxidos Inorgánicos</h1>
+  <p>Haga clic en el botón para ver las soluciones de nomenclatura</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Fórmula</th>
+        <th>Estequiométrica</th>
+        <th>Stock</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Ejemplo 1 -->
+      <tr>
+        <td>FeO</td>
+        <td class="solution-text">Monóxido de hierro</td>
+        <td class="solution-text">Óxido de hierro(II)</td>
+        <td><button onclick="toggleSolutions(this)">Mostrar Soluciones</button></td>
+      </tr>
+      <!-- Ejemplo 2 -->
+      <tr>
+        <td>Fe₂O₃</td>
+        <td class="solution-text">Trióxido de dihierro</td>
+        <td class="solution-text">Óxido de hierro(III)</td>
+        <td><button onclick="toggleSolutions(this)">Mostrar Soluciones</button></td>
+      </tr>
+      <!-- Ejemplo 3 -->
+      <tr>
+        <td>CuO</td>
+        <td class="solution-text">Monóxido de cobre</td>
+        <td class="solution-text">Óxido de cobre(II)</td>
+        <td><button onclick="toggleSolutions(this)">Mostrar Soluciones</button></td>
+      </tr>
+      <!-- Ejemplo 4 -->
+      <tr>
+        <td>Al₂O₃</td>
+        <td class="solution-text">Trióxido de dialuminio</td>
+        <td class="solution-text">Óxido de aluminio(III)</td>
+        <td><button onclick="toggleSolutions(this)">Mostrar Soluciones</button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <script>
+    function toggleSolutions(btn) {
+      const row = btn.parentNode.parentNode;
+      const cells = row.cells;
+      cells[1].classList.toggle("solution-text");
+      cells[2].classList.toggle("solution-text");
+    }
+  </script>
+</body>
+</html>
+```
