@@ -1,0 +1,76 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Comparador de Texto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        textarea {
+            width: 45%;
+            height: 300px;
+            margin: 10px;
+            font-family: monospace;
+        }
+        .diferencia {
+            background-color: #ffe6e6;
+            display: inline-block;
+            border: 1px solid #ffcccc;
+        }
+        #resultado {
+            margin-top: 20px;
+        }
+        .label {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Comparador de Texto</h2>
+    
+    <div>
+        <label for="texto1"><strong>Texto 1:</strong></label>
+        <textarea id="texto1" placeholder="Escribe o pega el primer texto"></textarea>
+    </div>
+    <div>
+        <label for="texto2"><strong>Texto 2:</strong></label>
+        <textarea id="texto2" placeholder="Escribe o pega el segundo texto"></textarea>
+    </div>
+    
+    <button onclick="compararTextos()">Comparar Textos</button>
+    
+    <div class="label">
+        <strong>Diferencias:</strong>
+    </div>
+    <div id="resultado" class="label"></div>
+
+    <script>
+        function compararTextos() {
+            const texto1 = document.getElementById('texto1').value;
+            const texto2 = document.getElementById('texto2').value;
+            let resultado = '';
+            
+            // Determinar longitud máxima
+            const max = Math.max(texto1.length, texto2.length);
+            
+            // Comparar caracter por caracter
+            for (let i = 0; i < max; i++) {
+                const char1 = texto1[i] || '';
+                const char2 = texto2[i] || '';
+                
+                if (char1 === char2) {
+                    resultado += char1;
+                } else {
+                    resultado += `<span class="diferencia">[${char1}]</span><span class="diferencia">[${char2}]</span>`;
+                }
+            }
+            
+            document.getElementById('resultado').innerHTML = resultado;
+        }
+    </script>
+</body>
+</html>
+```
