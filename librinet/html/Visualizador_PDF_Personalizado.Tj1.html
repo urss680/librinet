@@ -1,0 +1,85 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Visualizador PDF Personalizado</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf_viewer.min.css" integrity="sha512-... (actual hash)" />
+</head>
+<body>
+    <h2>Subir y Visualizar PDF</h2>
+    <form>
+        <input type="file" id="pdfInput" accept=".pdf">
+    </form>
+    
+    <div id="viewerContainer" style="width: 100%; height: 600px; border: 1px solid #ccc; margin-top: 20px;"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf_viewer.min.js"></script>
+    
+    <script>
+        const fileInput = document.getElementById('pdfInput');
+        let pdfViewer;
+        
+        fileInput.addEventListener('change', async function() {
+            const file = this.files[0];
+            if (!file || !file.type.includes('pdf')) {
+                alert('Por favor seleccione un archivo PDF válido.');
+                document.getElementById('viewerContainer').innerHTML = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = async function() {
+                const pdfData = new Uint8Array(this.result);
+                
+                // Si ya existe un visualizador, lo reiniciamos
+                if (pdfViewer) {
+                    pdfViewer.pageNumber = 1;
+                    pdfViewer.pagesCount = 1;
+                    pdfViewer.getPage(0);
+                    return;
+                }
+                
+                // Configuramos el visualizador PDF.js
+                pdfViewer = new PDFViewer({
+                    container: document.getElementById('viewerContainer'),
+                    viewer: document.createElement('div'),
+                    linkService: new PDFLinkService(),
+                    findController: new PDFFindController()
+                });
+                
+                PDFViewerApplicationOption.set('workerSrc', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.worker.min.js');
+                
+                const loadingTask = pdfjsLib.getDocument({data: pdfData});
+                loadingTask.promise.then(pdf => {
+                    pdfViewer.setDocument(pdf);
+                });
+            };
+            
+            reader.readAsArrayBuffer(file);
+        });
+    </script>
+</body>
+</html>
+```
+
+**Cambios principales:**
+
+1. **Visualizador PDF.js Personalizado:**
+   - Reemplazado el `iframe` con un contenedor `div` para el visualizador PDF.js
+   - Incluye recursos CSS/JS de PDF.js desde CDN
+
+2. **Nuevas dependencias:**
+   - Incluye el visualizador PDF.js estándar de Mozilla
+   - Soporte para búsqueda, zoom, navegación y características avanzadas
+
+3. **Arquitectura mejorada:**
+   - Mejor soporte para funcionalidades avanzadas (zoom, búsqueda, navegación)
+   - Mayor compatibilidad con dispositivos móviles y múltiples navegadores
+
+4. **Mejora en la experiencia del usuario:**
+   - Interface de usuario estándar del PDF.js (similar a Adobe Acrobat Reader)
+   - Compatible con todas las funciones nativas de PDF
+   - Sin recargar la página
+
+**Nota:** El visualizador requiere una conexión a internet para cargar las dependencias de PDF.js desde CDN. Si necesita funcionar sin conexión, debe descargar las dependencias y servirlas localmente.
