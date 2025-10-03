@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>App de Efectos de Audio Mejorada</title>
+    <style>
+        body { font-family: Arial; text-align: center; padding: 2em; }
+        canvas { border: 1px solid #ccc; margin: 1em auto; display: block; }
+        button { margin: 0.5em; padding: 1em; font-size: 1em; }
+    </style>
+</head>
+<body>
+    <h1>Grabadora con Efectos mejorada</h1>
+    <button id="record">Iniciar Grabación</button>
+    <button id="stop" disabled>Detener</button>
+    <button id="play">Reproducir Original</button>
+    
+    <h2>Efectos Disponibles</h2>
+    <button id="reverse">Inversión</button>
+    <button id="delay">Retardo</button>
+    <button id="reverb">Reverberación</button>
+    
+    <canvas id="waveform" width="800" height="200"></canvas>
+    <script>
+        let audioContext, microphone, isRecording = false;
+        let originalBuffer, modifiedBuffer;
+        let audioInput, analyser, source, scriptNode;
+
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(stream => {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                microphone = audioContext.createMediaStreamSource(stream);
+                
+                // Configurar visualización mejorada
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 1024; // Resolución más alta
+                microphone.connect(analyser);
+                
+                scriptNode = audioContext.createScriptProcessor(8192, 1, 1);
+                scriptNode.onaudioprocess = function(e) {
+                    if (!isRecording) return;
+                    for (let ch = 0; ch < e.inputBuffer.numberOfChannels; ch++) {
+                        let input = e.inputBuffer.getChannelData(ch);
+                        if (!buffer) buffer = [];
+                        buffer.push(new Float32Array(input));
+                    }
+                };
+                microphone.connect(scriptNode);
+                scriptNode.connect(audioContext.destination);
+                
+                setupVisualizer();
+            })
+            .catch(err => console.error("Error al acceder al micro:", err));
+
+        document.getElementById("record").addEventListener("click", () => {
+            buffer = [];
+            microphone.connect(scriptNode);
+            isRecording = true;
+        });
+
+        document.getElementById("stop").addEventListener("click", () => {
+            isRecording = false;
+            microphone.disconnect(scriptNode);
+            audioContext.decodeAudioData(mergeBuffers(buffer),
+                data => originalBuffer = data,
+                err => console.error("Error al decodificar:", err)
+            );
+        });
+
+        document.getElementById("play").addEventListener("click", () => {
+            if (!originalBuffer) return;
+            audioContext.decodeAudioData(originalBuffer,
+                data => playAudio(data),
+                err => console.error("Error al reproducir:", err)
+            );
+        });
+
+        document.getElementById("reverse").addEventListener("click", () => {
+            if (!originalBuffer) return;
+            let reversed = reverseAudio(originalBuffer);
+            playAudio(reversed);
+        });
+
+        document.getElementById("delay").addEventListener("click", () => {
+            if (!originalBuffer) return;
+            playAudio(modifyAudio(originalBuffer, delayEffect));
+        });
+
+        document.getElementById("reverb").addEventListener("click", () => {
+            if (!originalBuffer) return;
+            playAudio(modifyAudio(originalBuffer, chorusReverb));
+        });
+
+        function reverseAudio(buffer) {
+            let newBuffer = audioContext.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+            for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+                let channelData = buffer.getChannelData(ch).slice();
+                channelData.reverse();
+                newBuffer.copyToChannel(channelData, ch);
+            }
+            return newBuffer;
+        }
+
+        function delayEffect(buffer) {
+            let newBuffer = audioContext.createBuffer(1, buffer.length + 2048, buffer.sampleRate);
+            let delayTime = 0.5; // segundos
+            let feedback = 0.5;
+            let delayNode = audioContext.createDelay(delayTime);
+            let gainNode = audioContext.createGain();
+            
+            let src = audioContext.createBufferSource();
+            src.buffer = buffer;
+            src.connect(delayNode);
+            src.start();
+            
+            gainNode.gain.value = feedback;
+            delayNode.delayTime.value = delayTime;
+            delayNode.connect(gainNode);
+            gainNode.connect(newBuffer.getChannelData(0));
+            
+            return newBuffer;
+        }
+
+        function chorusReverb(buffer) {
+            let newBuffer = audioContext.createBuffer(1, buffer.length, buffer.sampleRate);
+            let channel = buffer.getChannelData(0);
+            
+            for (let i = 0; i < channel.length; i++) {
+                newBuffer.getChannelData(0)[i] = channel[i] * 0.7 + 
+                    (channel[Math.max(0, i - 4410)] || 0) * 0.3; // 100ms reverb
+            }
+            return newBuffer;
+        }
+
+        function modifyAudio(buffer, effectFn) {
+            let newBuffer = audioContext.createBuffer(buffer.numberOfChannels, 
+                                                    buffer.length, 
+                                                    buffer.sampleRate);
+            for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+                effectFn(buffer.getChannelData(ch), newBuffer.getChannelData(ch));
+            }
+            return newBuffer;
+        }
+
+        function playAudio(buffer) {
+            let source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContext.destination);
+            source.start(0);
+        }
+
+        function mergeBuffers(buffer) {
+            let result = new Float32Array(buffer.length * buffer[0].length);
+            let index = 0;
+            for (let i = 0; i < buffer.length; i++) {
+                result.set(buffer[i], index);
+                index += buffer[0].length;
+            }
+            return result;
+        }
+
+        let canvasCtx;
+        function setupVisualizer() {
+            canvasCtx = document.getElementById("waveform").getContext("2d");
+            function draw() {
+                requestAnimationFrame(draw);
+                analyser.getByteTimeDomainData(freqData); // Mostrar ondas sonoras
+                
+                // Dibujar ondas visibles
+                canvasCtx.fillStyle = "#000";
+                canvasCtx.fillRect(0, 0, 800, 200);
+                canvasCtx.lineWidth = 2;
+                canvasCtx.strokeStyle = "#0f0";
+                canvasCtx.beginPath();
+                
+                for (let i = 0; i < bufferLength; i++) {
+                    let x = (i * (canvasCtx.canvas.width / bufferLength));
+                    let v = freqData[i] / 128.0 - 1.0;
+                    let y = (v * canvasCtx.canvas.height/2) + canvasCtx.canvas.height/2;
+                    if (i === 0) {
+                        canvasCtx.moveTo(x, y);
+                    } else {
+                        canvasCtx.lineTo(x, y);
+                    }
+                }
+                canvasCtx.stroke();
+            }
+            requestAnimationFrame(draw);
+        }
+        
+        // Variables para visualización
+        const bufferLength = analyser.fftSize;
+        const freqData = new Uint8Array(bufferLength);
+    </script>
+</body>
+</html>
