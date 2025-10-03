@@ -1,0 +1,129 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gravador de Áudio com Visualização de Ondas</title>
+    <style>
+        canvas {
+            border: 1px solid #ccc;
+            margin-top: 20px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gravador de Áudio</h1>
+    <button id="start">Gravar</button>
+    <button id="stop" disabled>Parar</button>
+    <button id="play" disabled>Reproduzir</button>
+    
+    <canvas id="visual" width="500" height="100"></canvas>
+    <audio id="audioPlayback" controls style="display:none;"></audio>
+
+    <script>
+        let mediaRecorder, audioChunks = [];
+        let audioContext, analyser;
+        let isRecording = false;
+        const startBtn = document.getElementById('start');
+        const stopBtn = document.getElementById('stop');
+        const playBtn = document.getElementById('play');
+        const audioPlayback = document.getElementById('audioPlayback');
+        const canvas = document.getElementById('visual');
+        const ctx = canvas.getContext('2d');
+
+        startBtn.onclick = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                // Configura Web Audio API para visualização
+                audioContext = new AudioContext();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                
+                // Buffer para os dados de gravação
+                mediaRecorder.ondataavailable = e => {
+                    audioChunks.push(e.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audioPlayback.src = audioUrl;
+                    audioPlayback.style.display = 'block';
+                    playBtn.disabled = false;
+                    audioChunks = [];
+                    isRecording = false;
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                // Inicia desenho da onda
+                draw();
+
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            } catch (err) {
+                alert('Permissão para o microfone foi negada ou não é suportada');
+            }
+        };
+
+        stopBtn.onclick = () => {
+            mediaRecorder.stop();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        };
+
+        playBtn.onclick = () => {
+            audioPlayback.play();
+        };
+
+        function draw() {
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            const WIDTH = canvas.width;
+            const HEIGHT = canvas.height;
+            let drawVisual = false;
+            
+            function renderFrame() {
+                if (!isRecording) return;
+                
+                // Limpa o canvas
+                ctx.clearRect(0, 0, WIDTH, HEIGHT);
+                
+                // Desenha a onda de som
+                analyser.getByteTimeDomainData(dataArray);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#007bff';
+                ctx.beginPath();
+                
+                let sliceWidth = WIDTH * 1.0 / bufferLength;
+                let x = 0;
+                
+                for(let i = 0; i < bufferLength; i++) {
+                    let v = dataArray[i] / 128.0;
+                    let y = v * HEIGHT/2;
+                    if(i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                    x += sliceWidth;
+                }
+                
+                ctx.lineTo(WIDTH, HEIGHT/2);
+                ctx.stroke();
+                
+                requestAnimationFrame(renderFrame);
+            }
+            
+            requestAnimationFrame(renderFrame);
+        }
+    </script>
+</body>
+</html>
+```
