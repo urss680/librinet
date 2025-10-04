@@ -1,0 +1,112 @@
+Aquí tienes el código HTML que implementa las condiciones descritas:
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Efecto Caótico AI</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: #000;
+    }
+
+    h1, p {
+      color: #fff;
+      animation: caos 3s ease-out;
+    }
+
+    @keyframes caos {
+      0% { transform: scale(1); color: #fff; }
+      20% { transform: scale(1.5) rotate(10deg); color: #ff0000; }
+      50% { transform: scale(2) skewX(20deg); color: #00ff00; }
+      80% { transform: scale(3) rotate(45deg); color: #0000ff; }
+      100% { opacity: 0; }
+    }
+
+    .boton {
+      position: fixed;
+      padding: 15px 30px;
+      background: #fff;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .boton-movil {
+      animation: caosBoton 0.5s infinite alternate;
+    }
+
+    @keyframes caosBoton {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(var(--dx), var(--dy)); }
+    }
+  </style>
+</head>
+<body>
+  <h1>Texto Principal - Inicio</h1>
+  <p class="contenido">Este es el contenido del artículo que se volverá loco.</p>
+  <button class="boton" id="aiButton">AI</button>
+
+  <script>
+    const boton = document.getElementById('aiButton');
+    const elementosTexto = document.querySelectorAll('h1, p');
+    const todosBotones = document.getElementsByClassName('boton');
+
+    let intervaloMovenBotones;
+
+    boton.addEventListener('click', async () => {
+      // 1. Texto caótico y desaparición
+      elementosTexto.forEach(elemento => {
+        elemento.style.animation = 'caos 3s ease-out forwards';
+        elemento.style.setProperty('--dx', '100px');
+        elemento.style.setProperty('--dy', '200px');
+        
+        // Eliminar elementos después de la animación
+        setTimeout(() => {
+          elemento.style.display = 'none';
+        }, 3000);
+      });
+
+      // 2. Mover botones continuamente
+      function moverBotones() {
+        Array.from(todosBotones).forEach(btn => {
+          const x = Math.random() * (window.innerWidth - btn.offsetWidth);
+          const y = Math.random() * (window.innerHeight - btn.offsetHeight);
+          btn.style.setProperty('--dx', `${x}px`);
+          btn.style.setProperty('--dy', `${y}px`);
+        });
+      }
+
+      intervaloMovenBotones = setInterval(moverBotones, 100);
+
+      // 3. Loop pantalla completa
+      document.documentElement.requestFullscreen();
+      requestAnimationFrame(() => {
+        // Ejecutar en bucle para mantener el estado caótico
+        requestAnimationFrame(() => {
+          moverBotones();
+          requestAnimationFrame(loop);
+        });
+      });
+    });
+
+    function loop() {
+      // Función de loop para mantener el estado caótico
+      requestAnimationFrame(loop);
+    }
+  </script>
+</body>
+</html>
+```
+
+### Funcionamiento:
+1. **Texto "loco"**: Los textos (h1, párrafos) tienen una animación CSS que les da efectos de escalado, rotación, cambio de color y desaparición.
+2. **Botones en movimiento**: Tras hacer clic en el botón "AI", todos los botones empiezan a moverse aleatoriamente por la pantalla con un movimiento continuo.
+3. **Loop de pantalla completa**: La página se maximiza al 100% y mantiene un ciclo de actualización continuo para el efecto caótico.
+
+Cada parte del efecto se ejecuta en el orden especificado y las animaciones se mantienen en bucle hasta que el usuario recargue la página.
