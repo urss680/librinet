@@ -1,0 +1,52 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Canción Callaos</title>
+    <script>
+        const mensaje = `¡Callaos, callaos!
+¡Ya no aguanto más!
+Silencio, silencio, 
+que viene la canción`;
+
+        function cantar() {
+            const canción = new SpeechSynthesisUtterance(mensaje);
+            canción.lang = 'es-ES';
+            canción.pitch = 1.2; // Tonos más cantables
+            canción.rate = 0.85; // Ritmo más rítmico
+            canción.volume = 1;
+            
+            // Efecto musical con sonido real
+            const notaMusical = new Audio('https://www.myinstants.com/media/sounds/8-bit-pacman.mp3');
+            notaMusical.play().catch(e => console.log('Error sonido: ', e));
+            
+            window.speechSynthesis.speak(canción);
+        }
+    </script>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Comic Sans MS', cursive;
+            background: #222;
+            color: gold;
+        }
+        button {
+            padding: 20px 40px;
+            font-size: 26px;
+            border-radius: 12px;
+            background: royalblue;
+            color: white;
+            cursor: pointer;
+            border: 3px solid gold;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="cantar()">¡Haz que cante!</button>
+</body>
+</html>
+```
