@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reconocimiento Facial Básico</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            font-family: sans-serif;
+            flex-direction: column;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .container {
+            position: relative;
+            width: 640px; /* Ancho deseado del video */
+            height: 480px; /* Alto deseado del video */
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Reflejar video para una vista de espejo */
+            display: block;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1); /* Reflejar canvas para que coincida con el video */
+            pointer-events: none; /* Permite clics a través del canvas */
+        }
+        #loading-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.2em;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reconocimiento Facial</h1>
+    <div class="container">
+        <video id="videoInput" autoplay muted></video>
+        <canvas id="overlay"></canvas>
+        <div id="loading-message">Cargando modelos de IA...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script>
+        const video = document.getElementById('videoInput');
+        const canvas = document.getElementById('overlay');
+        const loadingMessage = document.getElementById('loading-message');
+        let displaySize;
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/models';
+
+        async function loadModels() {
+            try {
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL) // Opcional: para detectar expresiones
+                ]);
+                console.log('Modelos cargados exitosamente.');
+                loadingMessage.style.display = 'none';
+                startVideo();
+            } catch (error) {
+                console.error('Error al cargar los modelos:', error);
+                loadingMessage.textContent = 'Error al cargar los modelos. Por favor, recarga la página.';
+            }
+        }
+
+        function startVideo() {
+            navigator.mediaDevices.getUserMedia({ video: {} })
+                .then(stream => {
+                    video.srcObject = stream;
+                    video.addEventListener('play', () => {
+                        displaySize = { width: video.width, height: video.height };
+                        faceapi.matchDimensions(canvas, displaySize);
+                        detectFaces();
+                    });
+                })
+                .catch(err => {
+                    console.error('Error al acceder a la cámara:', err);
+                    alert('No se pudo acceder a la cámara. Por favor, asegúrate de haber dado permiso.');
+                });
+        }
+
+        async function detectFaces() {
+            setInterval(async () => {
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceExpressions()
+                    .withFaceDescriptors(); // Para obtener descriptores faciales para reconocimiento
+
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+
+                faceapi.draw.drawDetections(canvas, resizedDetections);
+                faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+                faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+
+                // Aquí es donde se podría implementar la lógica de "reconocimiento"
+                // Necesitarías una base de datos de descriptores faciales de personas conocidas
+                // y comparar los descriptores actuales con los de la base de datos.
+                // Ejemplo rudimentario (solo muestra el descriptor, no realiza el reconocimiento completo):
+                resizedDetections.forEach(detection => {
+                    if (detection.descriptor) {
+                        // console.log('Descriptor facial:', detection.descriptor); // Para depuración
+                        const box = detection.detection.box;
+                        const text = `ID: ${detection.descriptor.slice(0, 5).join('-')}...`; // Muestra parte del descriptor como ID
+                        new faceapi.draw.DrawBox(box, { label: text, boxColor: 'blue' }).draw(canvas);
+                    }
+                });
+
+            }, 100); // Ejecutar detección cada 100ms
+        }
+
+        loadModels();
+    </script>
+</body>
+</html>
