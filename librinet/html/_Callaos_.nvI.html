@@ -1,0 +1,50 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>¡Callaos!</title>
+    <script>
+        const shhSound = new Audio('https://www.myinstants.com/media/sounds/shh-1.mp3'); // ✅ Reemplazar URL con sonido 'shh' deseado
+
+        function silenciar() {
+            // Detección de voz en castellano
+            const texto = '¡Os calléis!';
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = 'es-ES';
+            
+            // Reproducir ambos efectos en serie
+            window.speechSynthesis.speak(utterance);
+            shhSound.play().catch(e => console.log('Error reproduciendo sonido: ', e));
+        }
+    </script>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            background: #111;
+            color: #fff;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 24px;
+            border-radius: 8px;
+            background: red;
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="silenciar()">¡Haz que se callen!</button>
+</body>
+</html>
+```
