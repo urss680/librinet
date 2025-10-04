@@ -1,0 +1,124 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<canvas id="greenGrowth"></canvas>
+<script>
+    const canvas = document.getElementById("greenGrowth");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let lines = [];
+    let running = true;
+
+    class LineSegment {
+        constructor(x, y, angle, length) {
+            this.x = x;
+            this.y = y;
+            this.angle = angle || Math.random() * Math.PI * 2;
+            this.length = length || 30;
+            this.growing = true;
+        }
+    }
+
+    function rand(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    function createInitialBranches() {
+        let center = [canvas.width/2, canvas.height/2];
+        lines.push(new LineSegment(center[0], center[1], Math.PI/2, 0)); // Start growing downward from center dot
+    }
+
+    function draw() {
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw all lines
+        lines.forEach(line => {
+            ctx.beginPath();
+            ctx.moveTo(line.x, line.y);
+            ctx.lineTo(line.x + Math.cos(line.angle) * line.length, 
+                      line.y + Math.sin(line.angle) * line.length);
+            ctx.strokeStyle = "green";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        });
+    }
+
+    function update() {
+        let newLines = [];
+        lines.forEach(line => {
+            // If line is still active
+            if (!line.growing) return;
+
+            // Move the line forward
+            line.length += 0.5;
+            
+            // Add branches randomly
+            if (Math.random() < 0.03 && line.length > 30) { 
+                // Create left branch
+                newLines.push(new LineSegment(
+                    line.x + Math.cos(line.angle) * line.length, 
+                    line.y + Math.sin(line.angle) * line.length,
+                    line.angle - rand(0.3, 0.8),
+                    0
+                ));
+                // Create right branch
+                newLines.push(new LineSegment(
+                    line.x + Math.cos(line.angle) * line.length, 
+                    line.y + Math.sin(line.angle) * line.length,
+                    line.angle + rand(0.3, 0.8),
+                    0
+                ));
+            }
+
+            // Stop growing when too long
+            if (line.length > rand(200, 300)) {
+                line.growing = false;
+            }
+        });
+
+        lines = [...lines.filter(line => line.growing), ...newLines];
+        
+        draw();
+        
+        // Stop after 5 seconds
+        if (running) {
+            setTimeout(() => running = false, 5000);
+        }
+        
+        if (running) requestAnimationFrame(update);
+    }
+
+    // Start with a green dot in center
+    ctx.beginPath();
+    ctx.arc(canvas.width/2, canvas.height/2, 2, 0, Math.PI*2);
+    ctx.fillStyle = "green";
+    ctx.fill();
+
+    // Create initial branches
+    createInitialBranches();
+    
+    // Start animation
+    requestAnimationFrame(update);
+</script>
+</body>
+</html>
+```
