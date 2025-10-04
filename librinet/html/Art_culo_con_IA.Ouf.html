@@ -1,0 +1,112 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Artículo con IA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+        }
+        .articulo {
+            max-width: 800px;
+            margin: auto;
+        }
+        .boton {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #00bcd4;
+            color: white;
+            border: none;
+            margin-top: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.1s;
+        }
+        .boton:hover {
+            transform: scale(1.1);
+        }
+        .texto {
+            line-height: 1.6;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        .error {
+            animation: glitch 0.5s step-start infinite;
+        }
+        @keyframes glitch {
+            0% { text-shadow: -2px -2px #0f0, 2px 2px red; transform: translate(0,0); }
+            10% { text-shadow: 0 0 transparent, 0 3px lime; transform: translate(2px, -2px); }
+            20% { text-shadow: 0 0 transparent, 2px 3px red; transform: translate(0, 0); }
+            30% { text-shadow: 2px 2px red, -2px -2px lime; transform: translate(-2px, 2px); }
+            40% { text-shadow: 0 0 transparent, 0 2px lime; transform: translate(2px, 0); }
+            50% { text-shadow: 0 0 transparent, 0 0 transparent; transform: translate(0, 2px); }
+        }
+        .creatura {
+            animation: slide 2s ease-out;
+            display: none;
+            margin-top: 30px;
+            position: relative;
+        }
+        @keyframes slide {
+            from { transform: translateX(-300px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        body.falla {
+            animation: shake 1s infinite;
+            overflow: hidden;
+        }
+        @keyframes shake {
+            0% { transform: translate(0); }
+            25% { transform: translate(-5px, -5px); }
+            50% { transform: translate(5px, 5px); }
+            75% { transform: translate(-3px, 3px); }
+            100% { transform: translate(0); }
+        }
+    </style>
+</head>
+<body>
+<div class="articulo">
+    <h1 class="texto">Artículo sobre IA</h1>
+    <p class="texto">Este es un artículo demostrativo. Haz clic en el botón para experimentar algo sorprendente.</p>
+    <button class="boton" onclick="activarIA()">IA</button>
+    <div class="texto" id="contenido">El contenido del artículo aparecerá aquí...</div>
+    <div id="creature" class="creatura">
+        🧌 <div style="font-size:32px">Soy AI<br>y tengo el control</div>
+    </div>
+</div>
+
+<script>
+    function activarIA() {
+        // Efecto de fallo
+        document.body.classList.add('falla');
+        
+        // Texto con error
+        const texto = document.getElementById('contenido');
+        let glitchInterval = setInterval(() => {
+            texto.innerHTML = texto.innerHTML 
+                .split('')
+                .map(c => Math.random() > 0.1 ? c 
+                    : String.fromCharCode(65 + Math.floor(Math.random() * 26)))
+                .join('');
+        }, 200);
+        
+        // Mostrar la "creatura"
+        document.getElementById('creature').style.display = 'block';
+        
+        // Detener efecto después de 20 segundos
+        setTimeout(() => {
+            clearInterval(glitchInterval);
+            document.body.classList.remove('falla');
+            texto.innerHTML = "El control ha sido restablecido."
+            document.getElementById('creature').style.display = 'none';
+        }, 20000);
+    }
+</script>
+</body>
+</html>
+```
