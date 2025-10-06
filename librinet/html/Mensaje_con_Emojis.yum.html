@@ -1,0 +1,72 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mensaje con Emojis</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #fff5f5;
+            margin: 0;
+            font-family: 'Segoe UI Emoji', sans-serif;
+        }
+        .emoji-message {
+            text-align: center;
+            padding: 30px;
+            background: #ffe6e6;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(255, 224, 224, 0.5);
+            transition: 0.3s;
+        }
+        .emoji-message:hover {
+            transform: scale(1.05);
+        }
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: #ff4d4d;
+        }
+        p {
+            font-size: 1.5em;
+            color: #ff6666;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 10px;
+            background: #ffcce6;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #ff99cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="emoji-message">
+        <h1>✨ ¡Hola Mundo! 🌍💖</h1>
+        <p>¿Lista/o para hacer magia con emojis? 🪄🎉</p>
+        <button onclick="changeEmoji()">🚀 Comenzar</button>
+        <p id="emojiResult"></p>
+    </div>
+
+    <script>
+        const emojis = ["🔥", "🌟", "💫", "💎", "🚀", "🎉"];
+        let index = 0;
+        document.getElementById("emojiResult").textContent = emojis[0];
+        
+        function changeEmoji() {
+            index = (index + 1) % emojis.length;
+            document.getElementById("emojiResult").textContent = emojis[index];
+        }
+    </script>
+</body>
+</html>
+```
