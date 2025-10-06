@@ -1,0 +1,87 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Película en Animación</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+        nav {
+            margin-top: 10px;
+        }
+        nav a {
+            color: white;
+            margin: 0 15px;
+            text-decoration: none;
+        }
+        section {
+            padding: 20px;
+            background: #fff;
+            margin: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .animated-text {
+            animation: slideIn 2s ease-in-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 class="animated-text">Película en Animación</h1>
+        <nav>
+            <a href="#">Inicio</a>
+            <a href="#">Sinopsis</a>
+            <a href="#">Tráiler</a>
+        </nav>
+    </header>
+    <main>
+        <section>
+            <h2>Aventura Espacial</h2>
+            <p>Una emocionante historia de animación que explora los misterios del universo a través de una nave espacial robótica.</p>
+            <img src="https://via.placeholder.com/600x400" alt="Imagén de la película">
+            <button onclick="showAlert()">¡Más información!</button>
+        </section>
+    </main>
+    <footer>
+        <p>Información de Película en Animación</p>
+        <p>Dirección: Carlos Mendoza | Producción: Estudio Creativo</p>
+    </footer>
+    <script>
+        function showAlert() {
+            alert("¡Pronto disponible en cines!");
+        }
+    </script>
+</body>
+</html>
+```
