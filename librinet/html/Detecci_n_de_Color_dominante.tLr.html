@@ -1,0 +1,80 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Detección de Color dominante</title>
+    <style>
+        body { text-align: center; padding: 20px; }
+        #colorSample { width: 100px; height: 100px; margin-top: 20px; border: 1px solid #000; }
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+    <h1>Detección de Color Dominante</h1>
+    <input type="file" id="imageInput" accept="image/*">
+    <div><strong>Color RGB:</strong> <span id="colorValue"></span></div>
+    <div id="colorSample"></div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        imageInput.addEventListener('change', handleImage, false);
+
+        document.addEventListener('paste', async (e) => {
+            for (const item of e.clipboardData.items) {
+                if (item.type.startsWith('image/')) {
+                    const blob = item.getAsFile();
+                    const url = URL.createObjectURL(blob);
+                    const img = new Image();
+                    img.onload = () => {
+                        URL.revokeObjectURL(url);
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        getColor();
+                    };
+                    img.src = url;
+                }
+            }
+        });
+
+        function handleImage(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const img = new Image();
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                getColor();
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function getColor() {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            const pixelCount = imageData.length / 4;
+            let r = 0, g = 0, b = 0;
+
+            for (let i = 0; i < imageData.length; i += 4) {
+                r += imageData[i];     // Red
+                g += imageData[i+1];   // Green
+                b += imageData[i+2];   // Blue
+            }
+
+            r = Math.floor(r/pixelCount);
+            g = Math.floor(g/pixelCount);
+            b = Math.floor(b/pixelCount);
+
+            document.getElementById('colorValue').textContent = `RGB(${r},${g},${b})`;
+            document.getElementById('colorSample').style.backgroundColor = `rgb(${r},${g},${b})`;
+        }
+    </script>
+</body>
+</html>
+```
