@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Librillaia Pensamiento profundo</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #d5b823, #d53223);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #f8fafc;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .voice-interface {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            width: 90%;
+            max-width: 600px;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .infinity-symbol {
+            width: 80px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem;
+            font-weight: 200;
+            color: #f8fafc;
+        }
+
+        #transcription-display {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f8fafc;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0.75rem;
+            height: 3rem;
+            padding: 1rem;
+            font-size: 1rem;
+            line-height: 1.5rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        #transcription-display::placeholder {
+            color: #d1d5db;
+        }
+        
+        .mic-button {
+            background-color: transparent;
+            color: #3b82f6;
+            padding: 1.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #3b82f6;
+            transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+        .mic-button:hover {
+            background-color: #3b82f6;
+            color: #fff;
+            transform: scale(1.1);
+        }
+        .mic-button.recording {
+            background-color: #ef4444;
+            color: #fff;
+            animation: pulse-red 1.5s infinite;
+            border-color: #ef4444;
+        }
+        .mic-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .status-text {
+            color: #f8fafc;
+            font-size: 1rem;
+            text-align: center;
+            height: 1.5rem;
+        }
+        @keyframes pulse-red {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="voice-interface">
+        <div class="infinity-symbol">
+            &infin;
+        </div>
+        <input type="text" id="transcription-display" placeholder="Pulsa y habla..." readonly>
+        <button class="mic-button" title="Voz a texto">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        </button>
+        <div id="status-text" class="status-text"></div>
+    </div>
+    <script>
+        const transcriptionDisplayElement = document.querySelector('#transcription-display');
+        const micButton = document.querySelector('.mic-button');
+        const statusTextElement = document.querySelector('#status-text');
+
+        let isListening = false;
+        let timeoutId;
+        let esVoice = null; // Variable para almacenar la voz en español
+
+        // API Key encoded in numerical format
+        const encodedApiKey = [103, 115, 107, 95, 117, 107, 71, 55, 101, 74, 108, 117, 90, 52, 65, 106, 80, 82, 122, 80, 50, 52, 99, 102, 87, 71, 100, 121, 98, 51, 70, 89, 99, 53, 51, 109, 86, 54, 120, 88, 118, 85, 76, 49, 105, 71, 113, 54, 85, 85, 113, 106, 52, 75, 78, 100];
+        
+        // Function to decode the API Key
+        function decodeApiKey(encodedArray) {
+            return String.fromCharCode(...encodedArray);
+        }
+
+        // --- INICIO DE LA CORRECCIÓN DE VOZ ---
+        // La voz deseada es: "Microsoft Helena - Spanish (Spain) (es-ES)"
+        const PREFERRED_VOICE_NAME = "Microsoft Helena - Spanish (Spain)";
+
+        function loadSpanishVoice() {
+            const voices = window.speechSynthesis.getVoices();
+            
+            // 1. Intenta encontrar la voz específica primero
+            let preferredVoice = voices.find(voice => 
+                voice.name === PREFERRED_VOICE_NAME && voice.lang.startsWith('es-')
+            );
+
+            // 2. Si no se encuentra la específica, busca cualquier otra voz en español
+            if (!preferredVoice) {
+                preferredVoice = voices.find(voice => voice.lang.startsWith('es-'));
+            }
+
+            esVoice = preferredVoice;
+
+            if (!esVoice) {
+                console.log('No se encontró una voz específica en español. Usando la voz predeterminada del sistema.');
+            } else {
+                console.log(`Voz seleccionada: ${esVoice.name} (${esVoice.lang})`);
+            }
+        }
+
+        if ('speechSynthesis' in window) {
+            // Cargar las voces inmediatamente y luego escuchar si cambian
+            loadSpanishVoice();
+            // Esto asegura que si las voces se cargan asincrónicamente, las obtenemos.
+            window.speechSynthesis.onvoiceschanged = loadSpanishVoice;
+        }
+        // --- FIN DE LA CORRECCIÓN DE VOZ ---
+
+
+        async function speakText(text) {
+            if ('speechSynthesis' in window) {
+                // 1. Muestra el texto de la IA
+                transcriptionDisplayElement.value = text;
+                // 2. Muestra el signo de "hablando"
+                statusTextElement.textContent = '🗣️ Hablando...';
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-ES'; // Configurar el idioma a español
+                
+                // Asignar la voz en español seleccionada para asegurar la funcionalidad
+                if (esVoice) {
+                    utterance.voice = esVoice;
+                }
+                
+                utterance.onend = () => {
+                    // Restablece el estado solo después de que la IA ha terminado de hablar
+                    statusTextElement.textContent = '¡Listo!';
+                    micButton.classList.remove('loading');
+                    micButton.disabled = false;
+                    
+                    setTimeout(() => {
+                        if (statusTextElement.textContent === '¡Listo!') {
+                            statusTextElement.textContent = '';
+                            // 3. Vacía el campo de texto
+                            transcriptionDisplayElement.value = '';
+                        }
+                    }, 2000);
+                };
+
+                utterance.onerror = (e) => {
+                    // Asegúrate de restablecer el estado en caso de error de voz
+                    console.error('Error en la síntesis de voz:', e);
+                    statusTextElement.textContent = 'Error al hablar.';
+                    micButton.classList.remove('loading');
+                    micButton.disabled = false;
+                    // 4. Vacía el campo de texto en caso de error
+                    transcriptionDisplayElement.value = '';
+                };
+                
+                window.speechSynthesis.speak(utterance);
+            } else {
+                // Fallback si no hay soporte de voz.
+                console.error('El navegador no soporta la API de Web Speech Synthesis.');
+                statusTextElement.textContent = 'Tu navegador no soporta esta función.';
+                micButton.classList.remove('loading');
+                micButton.disabled = false;
+                // Muestra el texto de la IA, pero lo vacía inmediatamente si no puede hablar.
+                transcriptionDisplayElement.value = text;
+                setTimeout(() => { transcriptionDisplayElement.value = ''; }, 3000);
+            }
+        }
+
+        function sendMessage(messageText) {
+            if (messageText.trim() === '') return;
+
+            // Limpia el campo de texto para la nueva respuesta de la IA
+            transcriptionDisplayElement.value = '';
+            statusTextElement.textContent = 'Pensando...';
+            micButton.classList.add('loading');
+            micButton.disabled = true;
+
+            const chatHistory = [{ role: 'user', content: messageText }];
+            const apiKey = decodeApiKey(encodedApiKey);
+
+            fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.1-8b-instant',
+                    messages: chatHistory,
+                    stream: false,
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(errorText => {
+                        throw new Error(`Error HTTP! Estado: ${response.status}, Respuesta: ${errorText}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                const aiResponse = data.choices?.[0]?.message?.content || 'No hay respuesta';
+                const filteredResponse = aiResponse.replace(/<think>.*?<\/think>/g, '');
+                // SpeakText ahora maneja la visualización del texto y el restablecimiento final del botón
+                speakText(filteredResponse);
+            })
+            .catch(error => {
+                console.error('Error al obtener respuesta:', error);
+                statusTextElement.textContent = 'Error. Intenta de nuevo.';
+                // Restablecer el botón solo en caso de un error de API
+                micButton.classList.remove('loading');
+                micButton.disabled = false;
+            });
+        }
+
+        function startListening() {
+            if (!('webkitSpeechRecognition' in window)) {
+                statusTextElement.textContent = 'Tu navegador no soporta esta función.';
+                return;
+            }
+            if (isListening) {
+                return;
+            }
+            
+            // Si hay voz hablando, detenla
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'es-ES';
+
+            // Vacía el campo de texto antes de empezar a transcribir
+            transcriptionDisplayElement.value = '';
+
+            micButton.classList.add('recording');
+            transcriptionDisplayElement.disabled = true;
+            isListening = true;
+            statusTextElement.textContent = 'Escuchando...';
+
+            recognition.onresult = (event) => {
+                clearTimeout(timeoutId);
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    transcript += event.results[i][0].transcript;
+                }
+                transcriptionDisplayElement.value = transcript;
+                timeoutId = setTimeout(() => {
+                    if (transcriptionDisplayElement.value.trim().length > 0) {
+                        sendMessage(transcriptionDisplayElement.value);
+                    }
+                    recognition.stop();
+                }, 3000);
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micButton.classList.remove('recording');
+                transcriptionDisplayElement.disabled = false;
+                statusTextElement.textContent = 'Procesando...';
+            };
+
+            recognition.onerror = (event) => {
+                isListening = false;
+                micButton.classList.remove('recording');
+                transcriptionDisplayElement.disabled = false;
+                statusTextElement.textContent = `Error: ${event.error}`;
+                console.error('Error de reconocimiento de voz:', event.error);
+            };
+
+            recognition.start();
+        }
+
+        micButton.addEventListener('click', () => {
+             if (isListening) {
+                // Si está escuchando, se detiene por el timeout o el fin de la voz.
+            } else if (window.speechSynthesis.speaking) {
+                // Si la IA está hablando, cancela el habla y reinicia el estado
+                window.speechSynthesis.cancel();
+                micButton.classList.remove('loading');
+                micButton.disabled = false;
+                statusTextElement.textContent = 'Detenido.';
+                transcriptionDisplayElement.value = '';
+                setTimeout(() => { statusTextElement.textContent = ''; }, 1000);
+            } else {
+                startListening();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            statusTextElement.textContent = '';
+        });
+
+    </script>
+</body>
+</html>
