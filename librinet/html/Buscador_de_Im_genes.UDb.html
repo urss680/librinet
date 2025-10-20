@@ -1,0 +1,75 @@
+A continuación te proporciono un ejemplo básico de código HTML para un buscador de imágenes que apunta por defecto a Google Images. También incluyo anotaciones para personalizarlo con otros bancos de imágenes:
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Buscador de Imágenes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .search-container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        input[type="text"] {
+            flex: 1 1 80%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ccc;
+            border-top-left-radius: 5px;
+            border-bottom-left-radius: 5px;
+        }
+        button[type="submit"] {
+            flex: 1 1 20%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-top-right-radius: 5px;
+            border-bottom-right-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .note {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h2>Búsqueda de Imágenes</h2>
+    <form class="search-container" action="https://www.google.com/search" method="GET">
+        <input type="hidden" name="tbm" value="isch">
+        <input type="text" name="q" placeholder="Buscar imágenes..." required>
+        <button type="submit">Buscar</button>
+    </form>
+
+    <div class="note">
+        <p>Por defecto, este buscará en Google Images. Para otros bancos de imágenes:</p>
+        <ul>
+            <li>Unsplash: Cambia la acción a <code>https://unsplash.com/search</code> y elimina el campo oculto</li>
+            <li>Pixabay: Usa <code>https://pixabay.com/es/illustrations/</code> con el nombre de imagen</li>
+        </ul>
+    </div>
+</body>
+</html>
+``` 
+
+Este código crea:
+1. Una interfaz responsiva con campo de búsqueda y botón
+2. Personalización para diferentes bancos de imágenes (Google Images predeterminado)
+3. Estilo CSS sencillo que resaltamos los elementos
+
+¿Quieres que modifique algún aspecto específico como cambiar el target a otro banco de imágenes, agregar funcionalidad de clave API o mejorar el diseño?
