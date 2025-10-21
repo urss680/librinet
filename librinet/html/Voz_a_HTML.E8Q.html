@@ -1,0 +1,91 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voz a HTML</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    select, button {
+      padding: 10px;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    .controls {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Voz desde dispositivos</h1>
+  <textarea id="inputText" placeholder="Ingresa el texto a leer"></textarea>
+  <div class="controls">
+    <select id="voiceSelector" disabled>
+      <option>Selccione una voz</option>
+    </select>
+    <button id="speakButton">Leer</button>
+  </div>
+
+  <script>
+    const inputText = document.getElementById('inputText');
+    const voiceSelector = document.getElementById('voiceSelector');
+    const speakButton = document.getElementById('speakButton');
+    let voices = [];
+
+    function populateVoices() {
+      voices = window.speechSynthesis.getVoices();
+      voiceSelector.innerHTML = '<option>Selccione una voz</option>';
+      
+      voices.sort((a, b) => {
+        const nameA = a.name.toUpperCase();
+        const nameB = b.name.toUpperCase();
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+        return 0;
+      });
+
+      voices.forEach((voice, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        voiceSelector.appendChild(option);
+      });
+      voiceSelector.disabled = false;
+    }
+
+    window.speechSynthesis.onvoiceschanged = () => {
+      populateVoices();
+    };
+
+    speakButton.addEventListener('click', () => {
+      const utterance = new SpeechSynthesisUtterance(inputText.value);
+      if (voices.length > 0) {
+        const selectedIndex = voiceSelector.value;
+        utterance.voice = voices[selectedIndex];
+      }
+      window.speechSynthesis.speak(utterance);
+    });
+
+    // Llenado inicial en caso de que las voces ya estén cargadas
+    window.addEventListener('load', () => {
+      if (!window.speechSynthesis) {
+        alert('Tu navegador no soporta la API de voz');
+        document.body.innerHTML = '<h2 style="color:red;">Navegador sin soporte para voz</h2>';
+        return;
+      }
+      populateVoices();
+    });
+  </script>
+</body>
+</html>
+```
