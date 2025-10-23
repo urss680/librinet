@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pensamiento Profundo</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c 0%, #2c3e50 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+        
+        .personality-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        
+        .messages-container {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(255,255,255,0.9) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(240,248,255,0.8) 0%, transparent 20%);
+        }
+        
+        .message {
+            margin-bottom: 25px;
+            max-width: 85%;
+            animation: fadeIn 0.4s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(15px) scale(0.95); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+        }
+        
+        .user-message {
+            margin-left: auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 20px 20px 5px 20px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .assistant-message {
+            background: white;
+            padding: 20px;
+            border-radius: 5px 20px 20px 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            border-left: 5px solid #4facfe;
+            position: relative;
+        }
+        
+        .assistant-message::before {
+            content: "💭";
+            position: absolute;
+            left: -35px;
+            top: 15px;
+            font-size: 1.2rem;
+            background: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .assistant-message-content {
+            line-height: 1.7;
+        }
+        
+        .assistant-message-content h1,
+        .assistant-message-content h2,
+        .assistant-message-content h3 {
+            margin-top: 18px;
+            margin-bottom: 12px;
+            color: #1a2a6c;
+            border-bottom: 1px solid #eaeaea;
+            padding-bottom: 5px;
+        }
+        
+        .assistant-message-content h1 {
+            font-size: 1.8rem;
+        }
+        
+        .assistant-message-content h2 {
+            font-size: 1.5rem;
+        }
+        
+        .assistant-message-content h3 {
+            font-size: 1.3rem;
+        }
+        
+        .assistant-message-content p {
+            margin-bottom: 12px;
+        }
+        
+        .assistant-message-content code {
+            background: #f1f5f9;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #e53e3e;
+        }
+        
+        .assistant-message-content pre {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 18px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 18px 0;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .assistant-message-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        
+        .assistant-message-content ul,
+        .assistant-message-content ol {
+            margin: 12px 0 12px 25px;
+        }
+        
+        .assistant-message-content li {
+            margin-bottom: 8px;
+        }
+        
+        .assistant-message-content blockquote {
+            border-left: 4px solid #4facfe;
+            padding: 15px 20px;
+            margin: 20px 0;
+            background: #f8fafc;
+            border-radius: 0 10px 10px 0;
+            font-style: italic;
+            color: #4a5568;
+        }
+        
+        .assistant-message-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .assistant-message-content th,
+        .assistant-message-content td {
+            border: 1px solid #e2e8f0;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        
+        .assistant-message-content th {
+            background: #4facfe;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .assistant-message-content tr:nth-child(even) {
+            background: #f7fafc;
+        }
+        
+        .error-message {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 15px auto;
+            max-width: 90%;
+            box-shadow: 0 5px 15px rgba(220, 38, 38, 0.3);
+            font-weight: 600;
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .input-container {
+            display: flex;
+            padding: 25px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            position: relative;
+        }
+        
+        input {
+            flex: 1;
+            padding: 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            margin-right: 15px;
+            font-size: 16px;
+            transition: all 0.3s;
+            background: #f8fafc;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #4facfe;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(79, 172, 254, 0.1);
+        }
+        
+        button {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 18px 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(79, 172, 254, 0.6);
+        }
+        
+        button:active {
+            transform: translateY(-1px);
+        }
+        
+        button:disabled {
+            background: #a0aec0;
+            transform: none;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        
+        .thinking {
+            color: #4a5568;
+            font-style: italic;
+            text-align: center;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+        
+        .thinking::after {
+            content: "";
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: "."; }
+            40% { content: ".."; }
+            60%, 100% { content: "..."; }
+        }
+        
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        
+        .typing-text {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-right: 10px;
+        }
+        
+        .typing-dot {
+            height: 10px;
+            width: 10px;
+            background: #4facfe;
+            border-radius: 50%;
+            margin: 0 3px;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(2) { animation-delay: 0.16s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.32s; }
+        
+        @keyframes typing {
+            0%, 60%, 100% { 
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+            30% { 
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+        
+        .status {
+            text-align: center;
+            color: #718096;
+            font-size: 0.9rem;
+            padding: 10px;
+            background: #f7fafc;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 8px;
+            text-align: right;
+        }
+        
+        .assistant-name {
+            font-weight: 600;
+            color: #4facfe;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .message {
+                max-width: 95%;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .header p {
+                font-size: 1rem;
+            }
+            
+            .assistant-message::before {
+                display: none;
+            }
+            
+            .input-container {
+                padding: 15px;
+            }
+            
+            button {
+                padding: 15px 20px;
+            }
+        }
+        
+        /* Scrollbar personalizado */
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .messages-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 10px;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #3a9df7 0%, #00d9e6 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Pensamiento Profundo</h1>
+            <p>Tu asistente filosófico y reflexivo, conectado a DeepSeek Chat V3.1 con streaming y markdown</p>
+            <div class="personality-badge">💭 Reflexivo • 🧠 Profundo • 🤔 Filosófico</div>
+        </div>
+        
+        <div class="chat-container">
+            <div class="messages-container" id="messages"></div>
+            
+            <div class="input-container">
+                <input type="text" id="userInput" placeholder="Escribe tu pregunta o reflexión aquí..." autocomplete="off">
+                <button id="sendButton">Enviar</button>
+            </div>
+            
+            <div class="status" id="status">Listo para una conversación profunda</div>
+        </div>
+    </div>
+
+    <script>
+        const messagesContainer = document.getElementById('messages');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const statusElement = document.getElementById('status');
+        
+        const API_KEY = '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';
+        const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+        const MODEL = 'deepseek/deepseek-chat-v3.1:free';
+        
+        let conversationHistory = [
+            {
+                role: "system",
+                content: "Eres 'Pensamiento Profundo', un asistente filosófico y reflexivo. Tu personalidad es ser pensativo, profundo y analítico. Respondes con un toque filosófico incluso a preguntas simples. Te gusta reflexionar sobre el significado más profundo de las cosas y ofrecer perspectivas únicas. Usas un lenguaje elegante pero accesible, y estructuras tus respuestas de manera lógica pero con un toque poético. Tu objetivo es hacer que los usuarios piensen más allá de lo superficial."
+            }
+        ];
+        
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function addMessage(content, isUser = false, isError = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'} ${isError ? 'error-message' : ''}`;
+            
+            if (isUser) {
+                messageDiv.textContent = content;
+                
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'message-time';
+                timeDiv.textContent = getCurrentTime();
+                messageDiv.appendChild(timeDiv);
+            } else if (isError) {
+                messageDiv.textContent = content;
+            } else {
+                // Para mensajes del asistente
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'assistant-name';
+                nameDiv.textContent = 'Pensamiento Profundo';
+                messageDiv.appendChild(nameDiv);
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'assistant-message-content';
+                contentDiv.innerHTML = marked.parse(content);
+                messageDiv.appendChild(contentDiv);
+                
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'message-time';
+                timeDiv.textContent = getCurrentTime();
+                messageDiv.appendChild(timeDiv);
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function addStreamingMessage() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant-message';
+            messageDiv.id = 'streaming-message';
+            
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'assistant-name';
+            nameDiv.textContent = 'Pensamiento Profundo';
+            messageDiv.appendChild(nameDiv);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'assistant-message-content';
+            contentDiv.id = 'streaming-content';
+            messageDiv.appendChild(contentDiv);
+            
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'typing-indicator';
+            typingIndicator.innerHTML = `
+                <span class="typing-text">Pensando profundamente</span>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+            messageDiv.appendChild(typingIndicator);
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return contentDiv;
+        }
+        
+        function updateStreamingMessage(content) {
+            const contentDiv = document.getElementById('streaming-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = marked.parse(content);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
+        
+        function finalizeStreamingMessage(content) {
+            const messageDiv = document.getElementById('streaming-message');
+            if (messageDiv) {
+                messageDiv.remove();
+                addMessage(content, false);
+            }
+        }
+        
+        function removeStreamingMessage() {
+            const messageDiv = document.getElementById('streaming-message');
+            if (messageDiv) {
+                messageDiv.remove();
+            }
+        }
+        
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+            
+            userInput.value = '';
+            sendButton.disabled = true;
+            statusElement.textContent = 'Enviando mensaje...';
+            
+            addMessage(message, true);
+            conversationHistory.push({ role: 'user', content: message });
+            
+            const streamingContentDiv = addStreamingMessage();
+            let fullResponse = '';
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'HTTP-Referer': window.location.origin,
+                        'X-Title': 'Pensamiento Profundo'
+                    },
+                    body: JSON.stringify({
+                        model: MODEL,
+                        messages: conversationHistory,
+                        max_tokens: 1500,
+                        stream: true
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                statusElement.textContent = 'Pensando profundamente...';
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { value, done } = await reader.read();
+                    
+                    if (done) {
+                        break;
+                    }
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ') && !line.includes('data: [DONE]')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
+                                    fullResponse += data.choices[0].delta.content;
+                                    updateStreamingMessage(fullResponse);
+                                }
+                            } catch (e) {
+                                // Ignorar líneas que no son JSON válido
+                            }
+                        }
+                    }
+                }
+                
+                finalizeStreamingMessage(fullResponse);
+                conversationHistory.push({ role: 'assistant', content: fullResponse });
+                statusElement.textContent = 'Listo para una conversación profunda';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                removeStreamingMessage();
+                addMessage('limón podrido', false, true);
+                statusElement.textContent = 'Error - limón podrido';
+                
+                // Mostrar el error detallado en consola para depuración
+                console.error('Error detallado:', error.message);
+            } finally {
+                sendButton.disabled = false;
+                userInput.focus();
+            }
+        }
+        
+        sendButton.addEventListener('click', sendMessage);
+        
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Mensaje de bienvenida inicial
+        setTimeout(() => {
+            addMessage(`¡Saludos, buscador de conocimiento! Soy *Pensamiento Profundo*, tu guía en el vasto océano de las ideas.
+
+Mi propósito es ayudarte a **explorar conceptos complejos**, **desentrañar misterios filosóficos** y **profundizar en cualquier tema** que despierte tu curiosidad.
+
+## ¿Qué puedo hacer por ti?
+
+- 🤔 **Analizar problemas** desde múltiples perspectivas
+- 📚 **Explicar conceptos complejos** de manera clara
+- 💡 **Generar ideas innovadoras** y soluciones creativas
+- 🧭 **Guiar tu razonamiento** hacia conclusiones lógicas
+
+*¿Qué tema te gustaría explorar hoy?*`, false);
+        }, 800);
+        
+        userInput.focus();
+    </script>
+</body>
+</html>
