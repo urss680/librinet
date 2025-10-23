@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconocimiento de Voz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        #startBtn {
+            background: #48bb78;
+            color: white;
+        }
+
+        #startBtn:hover {
+            background: #38a169;
+        }
+
+        #startBtn.listening {
+            background: #f56565;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        #saveBtn {
+            background: #4299e1;
+            color: white;
+        }
+
+        #saveBtn:hover {
+            background: #3182ce;
+        }
+
+        #clearBtn {
+            background: #ed8936;
+            color: white;
+        }
+
+        #clearBtn:hover {
+            background: #dd6b20;
+        }
+
+        .transcript-box {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 150px;
+            margin-bottom: 30px;
+            font-size: 18px;
+            line-height: 1.6;
+            color: #2d3748;
+        }
+
+        .transcript-box:empty:before {
+            content: 'Haz clic en "Iniciar" y comienza a hablar...';
+            color: #a0aec0;
+            font-style: italic;
+        }
+
+        .notes-section h2 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .note-item {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .note-date {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .note-actions button {
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+
+        .delete-btn {
+            background: #fc8181;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #f56565;
+        }
+
+        .speak-btn {
+            background: #9f7aea;
+            color: white;
+        }
+
+        .speak-btn:hover {
+            background: #805ad5;
+        }
+
+        .note-text {
+            color: #2d3748;
+            line-height: 1.5;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .status.listening {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .status.ready {
+            background: #c6f6d5;
+            color: #276749;
+        }
+
+        .unsupported {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Reconocimiento de Voz</h1>
+        
+        <div id="statusBar" class="status ready">Listo para grabar</div>
+
+        <div class="controls">
+            <button id="startBtn">
+                <span id="micIcon">🎤</span>
+                <span id="btnText">Iniciar</span>
+            </button>
+            <button id="saveBtn">💾 Guardar Nota</button>
+            <button id="clearBtn">🗑️ Limpiar</button>
+        </div>
+
+        <div id="transcript" class="transcript-box"></div>
+
+        <div class="notes-section">
+            <h2>📝 Notas Guardadas</h2>
+            <div id="notesList"></div>
+        </div>
+    </div>
+
+    <script>
+        let recognition = null;
+        let isListening = false;
+        let savedNotes = [];
+
+        // Verificar soporte del navegador
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'es-ES';
+
+            recognition.onresult = (event) => {
+                let transcript = '';
+                
+                for (let i = 0; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                
+                document.getElementById('transcript').textContent = transcript;
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Error:', event.error);
+                stopListening();
+            };
+
+            recognition.onend = () => {
+                stopListening();
+            };
+        } else {
+            document.querySelector('.container').innerHTML = `
+                <div class="unsupported">
+                    <h2>⚠️ Navegador no compatible</h2>
+                    <p>Tu navegador no soporta reconocimiento de voz.</p>
+                    <p>Por favor, usa Chrome, Edge o Safari.</p>
+                </div>
+            `;
+        }
+
+        // Botón iniciar/detener
+        document.getElementById('startBtn').addEventListener('click', () => {
+            if (!recognition) return;
+            
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        });
+
+        function startListening() {
+            recognition.start();
+            isListening = true;
+            
+            const btn = document.getElementById('startBtn');
+            btn.classList.add('listening');
+            btn.innerHTML = '<span>⏹️</span><span>Detener</span>';
+            
+            document.getElementById('statusBar').textContent = '🔴 Grabando...';
+            document.getElementById('statusBar').className = 'status listening';
+        }
+
+        function stopListening() {
+            if (recognition) {
+                recognition.stop();
+            }
+            isListening = false;
+            
+            const btn = document.getElementById('startBtn');
+            btn.classList.remove('listening');
+            btn.innerHTML = '<span>🎤</span><span>Iniciar</span>';
+            
+            document.getElementById('statusBar').textContent = 'Listo para grabar';
+            document.getElementById('statusBar').className = 'status ready';
+        }
+
+        // Guardar nota
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            const text = document.getElementById('transcript').textContent;
+            
+            if (text.trim()) {
+                const note = {
+                    id: Date.now(),
+                    text: text.trim(),
+                    date: new Date().toLocaleString('es-ES')
+                };
+                
+                savedNotes.unshift(note);
+                renderNotes();
+                document.getElementById('transcript').textContent = '';
+            }
+        });
+
+        // Limpiar transcripción
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            document.getElementById('transcript').textContent = '';
+        });
+
+        // Renderizar notas
+        function renderNotes() {
+            const notesList = document.getElementById('notesList');
+            
+            if (savedNotes.length === 0) {
+                notesList.innerHTML = '<p style="color: #a0aec0; font-style: italic;">No hay notas guardadas</p>';
+                return;
+            }
+            
+            notesList.innerHTML = savedNotes.map(note => `
+                <div class="note-item">
+                    <div class="note-header">
+                        <span class="note-date">${note.date}</span>
+                        <div class="note-actions">
+                            <button class="speak-btn" onclick="speakNote(${note.id})">🔊</button>
+                            <button class="delete-btn" onclick="deleteNote(${note.id})">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="note-text">${note.text}</div>
+                </div>
+            `).join('');
+        }
+
+        // Eliminar nota
+        function deleteNote(id) {
+            savedNotes = savedNotes.filter(note => note.id !== id);
+            renderNotes();
+        }
+
+        // Leer nota en voz alta
+        function speakNote(id) {
+            const note = savedNotes.find(n => n.id === id);
+            if (note && 'speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(note.text);
+                utterance.lang = 'es-ES';
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Inicializar
+        renderNotes();
+    </script>
+</body>
+</html>
