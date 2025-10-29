@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bosque 3D Interactivo</title>
+    <style>
+        body, html {
+            height: 100%;
+            overflow: hidden;
+            margin: 0;
+            background-color: #87CEEB; /* Color del cielo */
+            font-family: Arial, sans-serif;
+            color: white;
+            cursor: default;
+        }
+
+        #world {
+            width: 100%;
+            height: 100%;
+            perspective: 1000px; /* Perspectiva del mundo, simula profundidad */
+            perspective-origin: center center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #scene { /* Contenedor para todos los objetos del mundo (árboles, suelo) */
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            transform-style: preserve-3d;
+            transform: translate3d(0, 0, 0) rotateY(0deg); /* Transformaciones iniciales */
+            transition: transform 0.05s linear; /* Suaviza el movimiento */
+        }
+
+        .tree-container {
+            position: absolute;
+            transform-style: preserve-3d;
+            bottom: 0; /* Asegura que la base del árbol esté en el suelo */
+            transform: translate3d(0, 0, 0); /* Se actualizará con JS */
+        }
+
+        .tree-trunk {
+            position: absolute;
+            width: 30px;
+            height: 200px;
+            background-color: #8B4513; /* Marrón */
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            transform-origin: bottom center;
+        }
+
+        .tree-leaves {
+            position: absolute;
+            bottom: 180px; /* Por encima del tronco */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            transform-style: preserve-3d;
+        }
+
+        .tree-leaves div {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background-color: #228B22; /* Verde bosque */
+            border-radius: 50%;
+            opacity: 0.9;
+            top: -100px; /* Ajuste para centrar el 'globo' */
+            left: -100px; /* Ajuste para centrar el 'globo' */
+            transform-origin: center center;
+            /* Estos se rotarán para formar una especie de esfera/arbusto */
+        }
+        .tree-leaves div:nth-child(1) { transform: rotateY(0deg) rotateX(20deg); }
+        .tree-leaves div:nth-child(2) { transform: rotateY(45deg) rotateX(20deg); }
+        .tree-leaves div:nth-child(3) { transform: rotateY(90deg) rotateX(20deg); }
+        .tree-leaves div:nth-child(4) { transform: rotateY(135deg) rotateX(20deg); }
+        .tree-leaves div:nth-child(5) { transform: rotateY(180deg) rotateX(20deg); }
+        .tree-leaves div:nth-child(6) { transform: rotateY(225deg) rotateX(20deg); }
+        .tree-leaves div:nth-child(7) { transform: rotateY(270deg) rotateX(20deg); }
+        .tree-leaves div:nth-child(8) { transform: rotateY(315deg) rotateX(20deg); }
+        /* Una capa superior más pequeña para dar volumen */
+        .tree-leaves div:nth-child(9) { transform: scale(0.7) rotateY(20deg) rotateX(60deg) translateY(-50px); }
+        .tree-leaves div:nth-child(10) { transform: scale(0.7) rotateY(70deg) rotateX(60deg) translateY(-50px); }
+        .tree-leaves div:nth-child(11) { transform: scale(0.7) rotateY(120deg) rotateX(60deg) translateY(-50px); }
+        .tree-leaves div:nth-child(12) { transform: scale(0.7) rotateY(170deg) rotateX(60deg) translateY(-50px); }
+
+
+        #ground {
+            position: absolute;
+            width: 20000px; /* Tamaño muy grande para simular infinito */
+            height: 20000px;
+            background-color: #6B8E23; /* Verde oliva para el suelo */
+            top: 50%; /* Posiciona el centro del suelo en el centro del viewport */
+            left: 50%;
+            margin-left: -10000px; /* Mueve la mitad del ancho a la izquierda */
+            margin-top: -10000px; /* Mueve la mitad del alto hacia arriba */
+            transform: rotateX(90deg) translateZ(-100px); /* Acuéstalo y bájalo un poco */
+            transform-origin: center center;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5) inset;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="world">
+        <div id="scene">
+            <div id="ground"></div>
+            <!-- Los árboles se generarán aquí por JavaScript -->
+        </div>
+    </div>
+    <div id="instructions">
+        <h2>Controles:</h2>
+        <ul>
+            <li>↑: Avanzar</li>
+            <li>↓: Retroceder</li>
+            <li>←: Girar a la izquierda</li>
+            <li>→: Girar a la derecha</li>
+        </ul>
+    </div>
+
+    <script>
+        const scene = document.getElementById('scene');
+        const worldSize = 5000; // Radio del área del bosque
+        const numTrees = 200; // Cantidad de árboles
+        const treeHeight = 200; // Altura base del tronco
+        const treeLeavesHeight = 200; // Altura de las hojas
+
+        let cameraX = 0;
+        let cameraZ = 0;
+        let cameraRotY = 0; // Rotación de la cámara en grados alrededor del eje Y
+
+        const moveSpeed = 20; // Velocidad de movimiento
+        const rotationSpeed = 3; // Velocidad de rotación en grados
+
+        let keys = {};
+
+        document.addEventListener('keydown', (event) => {
+            keys[event.key] = true;
+        });
+
+        document.addEventListener('keyup', (event) => {
+            keys[event.key] = false;
+        });
+
+        function updateScene() {
+            let moved = false;
+            let rotated = false;
+
+            if (keys['ArrowUp']) {
+                cameraX += Math.sin(cameraRotY * Math.PI / 180) * moveSpeed;
+                cameraZ -= Math.cos(cameraRotY * Math.PI / 180) * moveSpeed;
+                moved = true;
+            }
+            if (keys['ArrowDown']) {
+                cameraX -= Math.sin(cameraRotY * Math.PI / 180) * moveSpeed;
+                cameraZ += Math.cos(cameraRotY * Math.PI / 180) * moveSpeed;
+                moved = true;
+            }
+            if (keys['ArrowLeft']) {
+                cameraRotY -= rotationSpeed;
+                rotated = true;
+            }
+            if (keys['ArrowRight']) {
+                cameraRotY += rotationSpeed;
+                rotated = true;
+            }
+
+            if (moved || rotated) {
+                // Limit camera X and Z to stay within a bound, e.g., worldSize * 2
+                cameraX = Math.max(-worldSize, Math.min(worldSize, cameraX));
+                cameraZ = Math.max(-worldSize, Math.min(worldSize, cameraZ));
+
+                // Aplica las transformaciones a la escena (el mundo se mueve alrededor de la cámara)
+                scene.style.transform = `translate3d(${-cameraX}px, 0px, ${-cameraZ}px) rotateY(${-cameraRotY}deg)`;
+            }
+
+            requestAnimationFrame(updateScene);
+        }
+
+        function createTree(x, z) {
+            const treeContainer = document.createElement('div');
+            treeContainer.classList.add('tree-container');
+
+            // Altura y ancho ligeramente aleatorios para variedad
+            const randomHeightFactor = 0.8 + Math.random() * 0.4; // 80% to 120%
+            const currentTreeHeight = treeHeight * randomHeightFactor;
+            const currentTrunkWidth = 30 * (0.8 + Math.random() * 0.4);
+
+            const trunk = document.createElement('div');
+            trunk.classList.add('tree-trunk');
+            trunk.style.height = `${currentTreeHeight}px`;
+            trunk.style.width = `${currentTrunkWidth}px`;
+            treeContainer.appendChild(trunk);
+
+            const leaves = document.createElement('div');
+            leaves.classList.add('tree-leaves');
+            leaves.style.bottom = `${currentTreeHeight - 20}px`; // Hojas un poco por debajo del tope del tronco
+
+            // Crear múltiples planos para las hojas
+            for (let i = 0; i < 12; i++) {
+                const leafPart = document.createElement('div');
+                const scale = 0.7 + Math.random() * 0.3; // Escala aleatoria para cada parte de la hoja
+                const rotY = i * (360 / 8) + (Math.random() * 30 - 15); // Rotación aleatoria
+                const rotX = 20 + (Math.random() * 20 - 10); // Inclinación aleatoria
+                const translateY = -50 + (Math.random() * 20 - 10); // Desplazamiento vertical
+                leafPart.style.transform = `scale(${scale}) rotateY(${rotY}deg) rotateX(${rotX}deg) translateY(${translateY}px)`;
+                leafPart.style.backgroundColor = `hsl(120, 50%, ${30 + Math.random() * 20}%)`; // Tonos de verde variados
+                leafPart.style.width = `${currentTreeHeight * 0.8 + Math.random() * 50}px`;
+                leafPart.style.height = `${currentTreeHeight * 0.8 + Math.random() * 50}px`;
+                leaves.appendChild(leafPart);
+            }
+            treeContainer.appendChild(leaves);
+
+            treeContainer.style.transform = `translate3d(${x}px, 0, ${z}px)`;
+            scene.appendChild(treeContainer);
+        }
+
+        // Generar árboles en un área circular
+        for (let i = 0; i < numTrees; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * worldSize; // Los árboles pueden estar cerca o lejos del centro
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            createTree(x, z);
+        }
+
+        // Iniciar el bucle de actualización
+        updateScene();
+    </script>
+</body>
+</html>
