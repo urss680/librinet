@@ -1,0 +1,281 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dinosaurio 3D</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 60%, #90EE90 60%, #90EE90 100%);
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            color: #333;
+            font-weight: bold;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: Arial, sans-serif;
+            font-size: 48px;
+            color: #ff0000;
+            display: none;
+            text-align: center;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Puntuación: 0</div>
+    <div id="gameOver">
+        ¡GAME OVER!<br>
+        <span style="font-size: 24px;">Presiona ESPACIO para reiniciar</span>
+    </div>
+    <div id="instructions">Presiona ESPACIO para saltar</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Escena, cámara y renderizador
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Luz
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        // Suelo
+        const groundGeometry = new THREE.PlaneGeometry(100, 20);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x90EE90 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Dinosaurio (cuerpo principal)
+        const dinoGroup = new THREE.Group();
+        
+        // Cuerpo
+        const bodyGeometry = new THREE.BoxGeometry(2, 1, 0.8);
+        const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x4a4a4a });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.castShadow = true;
+        dinoGroup.add(body);
+
+        // Cabeza
+        const headGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+        const head = new THREE.Mesh(headGeometry, bodyMaterial);
+        head.position.set(1.2, 0.2, 0);
+        head.castShadow = true;
+        dinoGroup.add(head);
+
+        // Ojos
+        const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(1.6, 0.3, 0.2);
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        rightEye.position.set(1.6, 0.3, -0.2);
+        dinoGroup.add(leftEye);
+        dinoGroup.add(rightEye);
+
+        // Piernas
+        const legGeometry = new THREE.BoxGeometry(0.3, 1, 0.3);
+        const legMaterial = new THREE.MeshLambertMaterial({ color: 0x3a3a3a });
+        
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.5, -0.8, 0.3);
+        leftLeg.castShadow = true;
+        
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(-0.5, -0.8, -0.3);
+        rightLeg.castShadow = true;
+        
+        dinoGroup.add(leftLeg);
+        dinoGroup.add(rightLeg);
+
+        // Posición inicial del dinosaurio
+        dinoGroup.position.set(-5, 0, 0);
+        scene.add(dinoGroup);
+
+        // Cactus
+        const cacti = [];
+        function createCactus() {
+            const cactusGroup = new THREE.Group();
+            
+            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 2, 8);
+            const cactusMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const trunk = new THREE.Mesh(trunkGeometry, cactusMaterial);
+            trunk.castShadow = true;
+            cactusGroup.add(trunk);
+            
+            // Brazos del cactus
+            const armGeometry = new THREE.CylinderGeometry(0.15, 0.2, 1, 6);
+            const leftArm = new THREE.Mesh(armGeometry, cactusMaterial);
+            leftArm.position.set(-0.5, 0.3, 0);
+            leftArm.rotation.z = Math.PI / 2;
+            cactusGroup.add(leftArm);
+            
+            const rightArm = new THREE.Mesh(armGeometry, cactusMaterial);
+            rightArm.position.set(0.5, 0.3, 0);
+            rightArm.rotation.z = -Math.PI / 2;
+            cactusGroup.add(rightArm);
+            
+            cactusGroup.position.set(20, -1, 0);
+            return cactusGroup;
+        }
+
+        // Variables del juego
+        let score = 0;
+        let gameSpeed = 0.1;
+        let isJumping = false;
+        let jumpVelocity = 0;
+        let gravity = -0.01;
+        let gameOver = false;
+        let cactusSpawnTimer = 0;
+
+        // Controles
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Space' && !isJumping && !gameOver) {
+                isJumping = true;
+                jumpVelocity = 0.3;
+                e.preventDefault();
+            } else if (e.code === 'Space' && gameOver) {
+                resetGame();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // Colisión
+        function checkCollision(dino, cactus) {
+            const dinoBox = new THREE.Box3().setFromObject(dino);
+            const cactusBox = new THREE.Box3().setFromObject(cactus);
+            return dinoBox.intersectsBox(cactusBox);
+        }
+
+        // Reiniciar juego
+        function resetGame() {
+            score = 0;
+            gameSpeed = 0.1;
+            gameOver = false;
+            dinoGroup.position.set(-5, 0, 0);
+            
+            // Limpiar cactus
+            cacti.forEach(cactus => scene.remove(cactus));
+            cacti.length = 0;
+            
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('score').textContent = 'Puntuación: 0';
+        }
+
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!gameOver) {
+                // Actualizar puntuación
+                score++;
+                document.getElementById('score').textContent = 'Puntuación: ' + score;
+
+                // Aumentar velocidad gradualmente
+                if (score % 500 === 0) {
+                    gameSpeed += 0.01;
+                }
+
+                // Salto
+                if (isJumping) {
+                    dinoGroup.position.y += jumpVelocity;
+                    jumpVelocity += gravity;
+                    
+                    if (dinoGroup.position.y <= 0) {
+                        dinoGroup.position.y = 0;
+                        isJumping = false;
+                        jumpVelocity = 0;
+                    }
+                }
+
+                // Generar nuevos cactus
+                cactusSpawnTimer++;
+                if (cactusSpawnTimer > 100 + Math.random() * 100) {
+                    const cactus = createCactus();
+                    cacti.push(cactus);
+                    scene.add(cactus);
+                    cactusSpawnTimer = 0;
+                }
+
+                // Mover y verificar cactus
+                for (let i = cacti.length - 1; i >= 0; i--) {
+                    cacti[i].position.x -= gameSpeed;
+                    
+                    // Verificar colisión
+                    if (checkCollision(dinoGroup, cacti[i])) {
+                        gameOver = true;
+                        document.getElementById('gameOver').style.display = 'block';
+                    }
+                    
+                    // Eliminar cactus que salieron de la pantalla
+                    if (cacti[i].position.x < -20) {
+                        scene.remove(cacti[i]);
+                        cacti.splice(i, 1);
+                    }
+                }
+
+                // Animar piernas (efecto de correr)
+                const time = Date.now() * 0.01;
+                leftLeg.rotation.x = Math.sin(time) * 0.3;
+                rightLeg.rotation.x = -Math.sin(time) * 0.3;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Posición de la cámara
+        camera.position.set(0, 3, 10);
+        camera.lookAt(0, 0, 0);
+
+        // Manejar cambio de tamaño de ventana
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Iniciar animación
+        animate();
+    </script>
+</body>
+</html>
+```
