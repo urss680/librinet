@@ -1,0 +1,119 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D First-Person Movement</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+    <script>
+        // Escena y cámara
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 10, 30);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Iluminación
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        directionalLight.position.set(5, 20, 8);
+        scene.add(directionalLight);
+
+        // Suelo
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(200, 200),
+            new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.5, metalness: 0.1 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        // Movimiento del personaje
+        let moveVelocity = new THREE.Vector3();
+        const speed = 0.1;
+
+        // Teclado
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowUp' || e.code === 'KeyW') moveVelocity.z = -1;
+            if (e.code === 'ArrowDown' || e.code === 'KeyS') moveVelocity.z = 1;
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') moveVelocity.x = -1;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') moveVelocity.x = 1;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyW' || e.code === 'KeyS') {
+                moveVelocity.z = 0;
+            }
+            if (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'KeyA' || e.code === 'KeyD') {
+                moveVelocity.x = 0;
+            }
+        });
+
+        // Control de ratón (rotación)
+        let yaw = 0, pitch = 0;
+        let mouseSensitivity = 0.002;
+        const lockChange = () => {
+            const isLocked = (document.pointerLockElement === renderer.domElement);
+            if (isLocked) {
+                document.addEventListener('mousemove', onPointerMove);
+            } else {
+                document.removeEventListener('mousemove', onPointerMove);
+            }
+        };
+
+        document.addEventListener('pointerlockchange', lockChange, false);
+        document.addEventListener('mozpointerlockchange', lockChange, false);
+
+        const onPointerMove = (e) => {
+            yaw += e.movementX * mouseSensitivity;
+            pitch -= e.movementY * mouseSensitivity;
+            pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+        };
+
+        // Pulsar el canvas para activar el movimiento del ratón
+        renderer.domElement.addEventListener('click', () => {
+            renderer.domElement.requestPointerLock = renderer.domElement.requestPointerLock ||
+                renderer.domElement.mozRequestPointerLock;
+            if (renderer.domElement.requestPointerLock) {
+                renderer.domElement.requestPointerLock();
+            }
+        });
+
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Calcular dirección de movimiento
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+
+            // Aplicar movimiento
+            camera.position.add(forward.clone().multiplyScalar(moveVelocity.z * speed));
+            camera.position.add(right.clone().multiplyScalar(moveVelocity.x * speed));
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Ajustar ventana
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
+```
