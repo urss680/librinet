@@ -1,0 +1,370 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comer o Ser Comido - Infinito</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: red;
+            font-size: 48px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">
+        <div>Tamaño Jugador: <span id="playerSize">1.0</span></div>
+        <div id="enemySizes"></div>
+    </div>
+    <div id="gameOver">¡TE COMIERON!</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 15, 20);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.left = -50;
+        directionalLight.shadow.camera.right = 50;
+        directionalLight.shadow.camera.top = 50;
+        directionalLight.shadow.camera.bottom = -50;
+        scene.add(directionalLight);
+        
+        const floorGeometry = new THREE.PlaneGeometry(100, 100);
+        const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+        
+        let playerSize = 1;
+        const playerMaterial = new THREE.MeshLambertMaterial({ color: 0xffff00 });
+        let playerGeometry = new THREE.BoxGeometry(playerSize, playerSize, playerSize);
+        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        player.position.y = playerSize / 2;
+        player.castShadow = true;
+        scene.add(player);
+        
+        const playerLabel = createLabel('YO', player.position);
+        
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+        
+        const speed = 0.2;
+        
+        function createLabel(text, position) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 128;
+            
+            context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            context.font = 'bold 48px Arial';
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, canvas.width / 2, canvas.height / 2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(2, 1, 1);
+            
+            return sprite;
+        }
+        
+        function updateDisplay() {
+            document.getElementById('playerSize').textContent = playerSize.toFixed(1);
+            
+            const enemySizesDiv = document.getElementById('enemySizes');
+            enemySizesDiv.innerHTML = '<strong>Enemigos:</strong><br>';
+            
+            enemies.forEach((enemy, index) => {
+                const color = enemy.userData.size > playerSize ? '🔴' : '🟠';
+                enemySizesDiv.innerHTML += `${color} Enemigo ${index + 1}: ${enemy.userData.size.toFixed(1)}<br>`;
+            });
+        }
+        
+        function gameOver() {
+            document.getElementById('gameOver').style.display = 'block';
+            setTimeout(() => {
+                if (confirm('¿Quieres jugar de nuevo?')) {
+                    location.reload();
+                }
+            }, 1000);
+        }
+        
+        const enemies = [];
+        const foods = [];
+        const enemyLabels = [];
+        const foodLabels = [];
+        
+        function createFood() {
+            const size = 0.2 + Math.random() * 0.3;
+            const geometry = new THREE.BoxGeometry(size, size, size);
+            const material = new THREE.MeshLambertMaterial({ color: 0xffff00 });
+            const food = new THREE.Mesh(geometry, material);
+            
+            food.position.x = (Math.random() - 0.5) * 80;
+            food.position.z = (Math.random() - 0.5) * 80;
+            food.position.y = size / 2;
+            
+            food.castShadow = true;
+            food.userData = { size: size };
+            
+            const label = createLabel('COMIDA', food.position);
+            
+            scene.add(food);
+            foods.push(food);
+            foodLabels.push(label);
+            scene.add(label);
+        }
+        
+        function createEnemy() {
+            const size = 0.5 + Math.random() * 2.0;
+            const color = size > playerSize ? 0xff0000 : 0xffa500;
+            const speed = 0.04 + Math.random() * 0.06;
+            
+            const geometry = new THREE.BoxGeometry(size, size, size);
+            const material = new THREE.MeshLambertMaterial({ color: color });
+            const enemy = new THREE.Mesh(geometry, material);
+            
+            enemy.position.x = (Math.random() - 0.5) * 80;
+            enemy.position.z = (Math.random() - 0.5) * 80;
+            enemy.position.y = size / 2;
+            
+            enemy.castShadow = true;
+            enemy.userData = {
+                size: size,
+                speed: speed,
+                direction: Math.random() * Math.PI * 2,
+                baseSpeed: speed
+            };
+            
+            const label = createLabel(size > playerSize ? 'ENEMIGO' : 'ENEMIGO', enemy.position);
+            
+            scene.add(enemy);
+            enemies.push(enemy);
+            enemyLabels.push(label);
+            scene.add(label);
+        }
+        
+        for (let i = 0; i < 10; i++) createFood();
+        for (let i = 0; i < 6; i++) createEnemy();
+        
+        function checkCollisions() {
+            for (let i = foods.length - 1; i >= 0; i--) {
+                const food = foods[i];
+                const distance = player.position.distanceTo(food.position);
+                const minDistance = (playerSize + food.userData.size) / 2;
+                
+                if (distance < minDistance) {
+                    scene.remove(food);
+                    scene.remove(foodLabels[i]);
+                    foods.splice(i, 1);
+                    foodLabels.splice(i, 1);
+                    playerSize += food.userData.size * 0.5;
+                    
+                    scene.remove(player);
+                    playerGeometry.dispose();
+                    playerGeometry = new THREE.BoxGeometry(playerSize, playerSize, playerSize);
+                    player.geometry = playerGeometry;
+                    player.position.y = playerSize / 2;
+                    scene.add(player);
+                    
+                    setTimeout(() => createFood(), 1000);
+                }
+            }
+            
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                const distance = player.position.distanceTo(enemy.position);
+                const minDistance = (playerSize + enemy.userData.size) / 2;
+                
+                if (distance < minDistance) {
+                    if (playerSize > enemy.userData.size) {
+                        scene.remove(enemy);
+                        scene.remove(enemyLabels[i]);
+                        enemies.splice(i, 1);
+                        enemyLabels.splice(i, 1);
+                        playerSize += enemy.userData.size * 0.3;
+                        
+                        scene.remove(player);
+                        playerGeometry.dispose();
+                        playerGeometry = new THREE.BoxGeometry(playerSize, playerSize, playerSize);
+                        player.geometry = playerGeometry;
+                        player.position.y = playerSize / 2;
+                        scene.add(player);
+                        
+                        setTimeout(() => createEnemy(), 2000);
+                    } else {
+                        gameOver();
+                    }
+                }
+            }
+            
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    if (i < j) {
+                        const enemy1 = enemies[i];
+                        const enemy2 = enemies[j];
+                        const distance = enemy1.position.distanceTo(enemy2.position);
+                        const minDistance = (enemy1.userData.size + enemy2.userData.size) / 2;
+                        
+                        if (distance < minDistance) {
+                            if (enemy1.userData.size > enemy2.userData.size * 1.1) {
+                                scene.remove(enemy2);
+                                scene.remove(enemyLabels[j]);
+                                enemies.splice(j, 1);
+                                enemyLabels.splice(j, 1);
+                                enemy1.userData.size += enemy2.userData.size * 0.3;
+                                
+                                scene.remove(enemy1);
+                                const newGeometry = new THREE.BoxGeometry(
+                                    enemy1.userData.size,
+                                    enemy1.userData.size,
+                                    enemy1.userData.size
+                                );
+                                enemy1.geometry = newGeometry;
+                                enemy1.position.y = enemy1.userData.size / 2;
+                                scene.add(enemy1);
+                                
+                                if (enemy1.userData.size > playerSize) {
+                                    enemy1.material.color.setHex(0xff0000);
+                                }
+                                
+                                setTimeout(() => createEnemy(), 3000);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (keys['w'] || keys['arrowup']) player.position.z -= speed;
+            if (keys['s'] || keys['arrowdown']) player.position.z += speed;
+            if (keys['a'] || keys['arrowleft']) player.position.x -= speed;
+            if (keys['d'] || keys['arrowright']) player.position.x += speed;
+            
+            const limit = 45;
+            player.position.x = Math.max(-limit, Math.min(limit, player.position.x));
+            player.position.z = Math.max(-limit, Math.min(limit, player.position.z));
+            
+            player.rotation.x += 0.01;
+            player.rotation.y += 0.01;
+            
+            playerLabel.position.set(player.position.x, player.position.y + playerSize + 1, player.position.z);
+            
+            enemies.forEach((enemy, index) => {
+                const dx = player.position.x - enemy.position.x;
+                const dz = player.position.z - enemy.position.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                
+                if (distance < 10) {
+                    const targetDirection = Math.atan2(dz, dx);
+                    if (enemy.userData.size > playerSize) {
+                        enemy.userData.direction = targetDirection;
+                        enemy.userData.speed = enemy.userData.baseSpeed * 1.2;
+                    } else if (enemy.userData.size < playerSize) {
+                        enemy.userData.direction = targetDirection + Math.PI;
+                        enemy.userData.speed = enemy.userData.baseSpeed * 1.5;
+                    } else {
+                        enemy.userData.speed = enemy.userData.baseSpeed;
+                    }
+                } else {
+                    enemy.userData.speed = enemy.userData.baseSpeed;
+                }
+                
+                enemy.position.x += Math.cos(enemy.userData.direction) * enemy.userData.speed;
+                enemy.position.z += Math.sin(enemy.userData.direction) * enemy.userData.speed;
+                
+                if (Math.abs(enemy.position.x) > 45) {
+                    enemy.userData.direction += Math.PI;
+                    enemy.position.x = Math.sign(enemy.position.x) * 45;
+                }
+                if (Math.abs(enemy.position.z) > 45) {
+                    enemy.userData.direction += Math.PI;
+                    enemy.position.z = Math.sign(enemy.position.z) * 45;
+                }
+                
+                enemy.rotation.x += 0.01;
+                enemy.rotation.y += 0.01;
+                
+                enemyLabels[index].position.set(enemy.position.x, enemy.position.y + enemy.userData.size + 1, enemy.position.z);
+            });
+            
+            foods.forEach((food, index) => {
+                food.rotation.x += 0.02;
+                food.rotation.y += 0.02;
+                
+                foodLabels[index].position.set(food.position.x, food.position.y + food.userData.size + 1, food.position.z);
+            });
+            
+            checkCollisions();
+            
+            camera.position.x = player.position.x;
+            camera.position.z = player.position.z + 20 + playerSize;
+            camera.position.y = player.position.y + 15 + playerSize;
+            camera.lookAt(player.position);
+            
+            updateDisplay();
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        animate();
+    </script>
+</body>
+</html>
+```
