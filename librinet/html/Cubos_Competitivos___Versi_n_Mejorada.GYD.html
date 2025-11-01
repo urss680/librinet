@@ -1,0 +1,263 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cubos Competitivos - Versión Mejorada</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: red;
+            font-size: 48px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Tamaño: 1.0</div>
+    <div id="gameOver">¡TE COMIERON!</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Escena, cámara y renderizador
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 15, 20);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        
+        // Luz
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.left = -50;
+        directionalLight.shadow.camera.right = 50;
+        directionalLight.shadow.camera.top = 50;
+        directionalLight.shadow.camera.bottom = -50;
+        scene.add(directionalLight);
+        
+        // Suelo
+        const floorGeometry = new THREE.PlaneGeometry(100, 100);
+        const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+        
+        // Jugador
+        let playerSize = 1;
+        const playerMaterial = new THREE.MeshLambertMaterial({ color: 0x0066ff });
+        let playerGeometry = new THREE.BoxGeometry(playerSize, playerSize, playerSize);
+        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        player.position.y = playerSize / 2;
+        player.castShadow = true;
+        scene.add(player);
+        
+        // Tipos de enemigos
+        const enemies = {
+            amarillos: [], // Estáticos, dan comida
+            naranjas: [],  // Móviles, controlados por IA
+            rojos: []      // Móviles, peligrosos
+        };
+        
+        // Crear enemigos
+        function createEnemy(type) {
+            let size, color, speed;
+            
+            switch(type) {
+                case 'amarillo':
+                    size = 0.5;
+                    color = 0xffff00;
+                    speed = 0;
+                    break;
+                case 'naranja':
+                    size = 1;
+                    color = 0xffa500;
+                    speed = 0.03 + Math.random() * 0.04;
+                    break;
+                case 'rojo':
+                    size = 1.5 + Math.random() * 0.5;
+                    color = 0xff0000;
+                    speed = 0.06 + Math.random() * 0.04;
+                    break;
+            }
+            
+            const geometry = new THREE.BoxGeometry(size, size, size);
+            const material = new THREE.MeshLambertMaterial({ color: color });
+            const enemy = new THREE.Mesh(geometry, material);
+            
+            // Posición aleatoria
+            enemy.position.x = (Math.random() - 0.5) * 80;
+            enemy.position.z = (Math.random() - 0.5) * 80;
+            enemy.position.y = size / 2;
+            
+            enemy.castShadow = true;
+            enemy.userData = {
+                type: type,
+                size: size,
+                speed: speed,
+                direction: Math.random() * Math.PI * 2,
+                targetPosition: null
+            };
+            
+            scene.add(enemy);
+            enemies[type + 's'].push(enemy);
+        }
+        
+        // Crear enemigos iniciales
+        for (let i = 0; i < 10; i++) createEnemy('amarillo');
+        for (let i = 0; i < 5; i++) createEnemy('naranja');
+        for (let i = 0; i < 3; i++) createEnemy('rojo');
+        
+        // Controles
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+        
+        // Velocidad de movimiento
+        const speed = 0.2;
+        
+        // Actualizar el marcador
+        function updateDisplay() {
+            document.getElementById('score').textContent = `Tamaño: ${playerSize.toFixed(1)}`;
+        }
+        
+        // Game Over
+        function gameOver() {
+            document.getElementById('gameOver').style.display = 'block';
+            setTimeout(() => {
+                if (confirm('¿Quieres jugar de nuevo?')) {
+                    location.reload();
+                }
+            }, 1000);
+        }
+        
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Movimiento del jugador
+            if (keys['w'] || keys['arrowup']) player.position.z -= speed;
+            if (keys['s'] || keys['arrowdown']) player.position.z += speed;
+            if (keys['a'] || keys['arrowleft']) player.position.x -= speed;
+            if (keys['d'] || keys['arrowright']) player.position.x += speed;
+            
+            // Limitar el área de juego
+            const limit = 45;
+            player.position.x = Math.max(-limit, Math.min(limit, player.position.x));
+            player.position.z = Math.max(-limit, Math.min(limit, player.position.z));
+            
+            // Rotación del jugador
+            player.rotation.x += 0.01;
+            player.rotation.y += 0.01;
+            
+            // Mover enemigos
+            Object.keys(enemies).forEach(type => {
+                enemies[type].forEach((enemy, index) => {
+                    if (enemy.userData.speed > 0) {
+                        // Movimiento basado en el tipo
+                        if (enemy.userData.type === 'naranja') {
+                            // Movimiento aleatorio suave
+                            enemy.userData.direction += (Math.random() - 0.5) * 0.1;
+                        } else if (enemy.userData.type === 'rojo') {
+                            // Perseguir al jugador
+                            const dx = player.position.x - enemy.position.x;
+                            const dz = player.position.z - enemy.position.z;
+                            enemy.userData.direction = Math.atan2(dz, dx);
+                        }
+                        
+                        enemy.position.x += Math.cos(enemy.userData.direction) * enemy.userData.speed;
+                        enemy.position.z += Math.sin(enemy.userData.direction) * enemy.userData.speed;
+                        
+                        // Limitar área
+                        if (Math.abs(enemy.position.x) > 45) enemy.userData.direction += Math.PI;
+                        if (Math.abs(enemy.position.z) > 45) enemy.userData.direction += Math.PI;
+                    }
+                    
+                    // Verificar colisión con jugador
+                    const distance = player.position.distanceTo(enemy.position);
+                    const minDistance = (playerSize + enemy.userData.size) / 2;
+                    
+                    if (distance < minDistance) {
+                        if (playerSize > enemy.userData.size) {
+                            // Comer al enemigo
+                            scene.remove(enemy);
+                            enemies[type].splice(index, 1);
+                            playerSize += enemy.userData.size * 0.1;
+                            
+                            // Actualizar jugador
+                            scene.remove(player);
+                            playerGeometry.dispose();
+                            playerGeometry = new THREE.BoxGeometry(playerSize, playerSize, playerSize);
+                            player.geometry = playerGeometry;
+                            player.position.y = playerSize / 2;
+                            scene.add(player);
+                            
+                            // Crear nuevo enemigo
+                            setTimeout(() => {
+                                createEnemy(enemy.userData.type);
+                            }, 2000);
+                        } else if (enemy.userData.type === 'rojo') {
+                            // El enemigo rojo te come
+                            gameOver();
+                            return;
+                        }
+                    }
+                });
+            });
+            
+            // Seguimiento de cámara
+            camera.position.x = player.position.x;
+            camera.position.z = player.position.z + 20 + playerSize;
+            camera.position.y = player.position.y + 15 + playerSize;
+            camera.lookAt(player.position);
+            
+            updateDisplay();
+            renderer.render(scene, camera);
+        }
+        
+        // Manejar redimensionamiento
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Iniciar
+        animate();
+    </script>
+</body>
+</html>
+```
