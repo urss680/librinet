@@ -1,0 +1,147 @@
+Aquí tienes la versión corregida que **muestra claramente el movimiento de los árboles** mientras los recorres con las flechas. Se ha aumentado la velocidad y amplitude de la animación para que sea más visible durante el desplazamiento, y se ha corregido cualquier posible error en la lógica de rotación:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Forest (Animated Trees with Camera Movement)</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+    <script>
+        // Escena y cámara
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 10, 30); // Vista inicial más alta
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Iluminación mejorada
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        directionalLight.position.set(5, 20, 8);
+        scene.add(directionalLight);
+
+        // Suelo con textura
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(100, 100),
+            new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.8, metalness: 0.1 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        // Generador de árboles con movimiento
+        function createAnimatedTree(x, z) {
+            const treeGroup = new THREE.Group();
+
+            // Tronco
+            const trunk = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1, 0.2, 2, 16),
+                new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+            );
+            trunk.position.set(x, 1, z);
+
+            // Copa de árbol
+            const leaves = new THREE.Mesh(
+                new THREE.SphereGeometry(1.2, 32, 32),
+                new THREE.MeshStandardMaterial({ color: 0x228B22, flatShading: true })
+            );
+            leaves.position.set(x, 3, z);
+
+            treeGroup.add(trunk, leaves);
+            return treeGroup;
+        }
+
+        // Bosque de árboles con movimiento independiente
+        const forestGroup = new THREE.Group();
+        const treeCount = 120;
+        for (let i = 0; i < treeCount; i++) {
+            const radius = Math.random() * 25;
+            const angle = Math.random() * Math.PI * 2;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            const tree = createAnimatedTree(x, z);
+            const size = 0.6 + Math.random() * 0.5;
+            tree.scale.set(size, size, size);
+            tree.userData.animationPhase = i * Math.random() * 0.7; // Fase aleatoria de movimiento
+            forestGroup.add(tree);
+        }
+        scene.add(forestGroup);
+
+        // Movimiento suave de la cámara
+        let cameraVelocity = new THREE.Vector3(0, 0, 0);
+        const cameraSpeed = 0.5;
+        const friction = 0.98;
+
+        // Controles con teclado
+        window.addEventListener('keydown', e => {
+            const speed = 0.15;
+            switch (e.key) {
+                case 'ArrowLeft':  cameraVelocity.x = -speed; break;
+                case 'ArrowRight': cameraVelocity.x = speed;  break;
+                case 'ArrowDown':  cameraVelocity.z = speed;  break;
+                case 'ArrowUp':    cameraVelocity.z = -speed; break;
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            if (['ArrowLeft', 'ArrowRight'].includes(e.key)) cameraVelocity.x = 0;
+            if (['ArrowUp', 'ArrowDown'].includes(e.key)) cameraVelocity.z = 0;
+        });
+
+        // Animación principal (movimiento de cámara y balance de árboles)
+        let previousTime = 0;
+        function animate(time) {
+            requestAnimationFrame(animate);
+
+            // Actualizar posición de la cámara
+            camera.position.add(cameraVelocity);
+            cameraVelocity.multiplyScalar(friction);
+
+            // Animate trees sway with increased amplitude and frequency
+            const globalTime = time * 0.002; // Mayor frecuencia de movimiento
+
+            forestGroup.children.forEach(tree => {
+                const phase = tree.userData.animationPhase;
+                const sway = Math.sin(globalTime + phase) * 0.5; // Aumentada amplitud
+                const swayX = Math.sin(globalTime * 1 + phase) * 0.3; // Aumentada amplitud X
+
+                // Rotación para dar efecto de balanceo más obvio
+                tree.rotation.y = sway;
+                tree.rotation.x = -swayX;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        animate(previousTime);
+
+        // Manejar resolución de ventana
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
+```
+
+### Cambios clave:
+1. **Aumentada la frecuencia de la animación** (`globalTime = time * 0.002`).
+2. **Mayor amplitud de movimiento** (`sway = Math.sin(...) * 0.5`, `swayX = Math.sin(...) * 0.3`).
+3. **Balance de árbol solo en X e Y** para que su movimiento parezca más natural como respuesta al viento.
+4. **Simplificación lógica de rotación** para asegurar que cada árbol se mueva de manera visible.
+
+### Observación:
+- Mientras **te mueves con las flechas**, los árboles seguirán **balanceándose** como respuesta a una ilusión de "viento" (animación basada en tiempo).
+- Si quieres que los árboles reaccionen directamente al movimiento de la cámara (ej: inclinarse en dirección opuesta), se necesita una fórmula adicional que vincule la dirección de movimiento del personaje con la rotación del árbol. Si necesitas eso, también puedo adaptarlo.
