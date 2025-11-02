@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Despertador de Sueño</title>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@0.0.2/dist/face-landmarks-detection.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #video { border: 2px solid #333; margin-top: 20px; }
+        #status { margin-top: 20px; font-size: 1.2em; }
+        button { padding: 10px 20px; font-size: 1em; }
+    </style>
+</head>
+<body>
+    <h1>Despertador de Sueño</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <div id="status">Presiona "Iniciar" para activar</div>
+    <button onclick="toggleCamera()">Iniciar</button>
+    <button onclick="stopAlert()" style="display:none;" id="resetBtn">Sonido</button>
+
+    <audio id="alarmSound" src="https://www.soundjay.com/alarm/sounds/alarm-07.mp3" preload="auto"></audio>
+
+    <script>
+        let detector;
+        let video;
+        let eyeClosedCounter = 0;
+        let alarmPlaying = false;
+
+        async function loadModel() {
+            try {
+                detector = await faceLandmarksDetection.load(
+                    faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+                    { maxFaces: 1 }
+                );
+            } catch (err) {
+                alert("Error cargando modelo de detección");
+                console.error(err);
+            }
+        }
+
+        async function detectDrowsiness() {
+            const result = await detector.estimateFaces({ input: video });
+            if (result.length > 0) {
+                const face = result[0];
+                const leftEye = face.keypoints[faceLandmarksDetection.FACE_KEYPOINT.LEFT_EYE];
+                const rightEye = face.keypoints[faceLandmarksDetection.FACE_KEYPOINT.RIGHT_EYE];
+
+                const isClosed = () => {
+                    const eyeHeight = (leftEye[2].y - leftEye[0].y) + (rightEye[2].y - rightEye[0].y);
+                    return eyeHeight < 15;
+                };
+
+                if (isClosed()) {
+                    eyeClosedCounter++;
+                    if (eyeClosedCounter >= 3) {
+                        triggerAlert();
+                    }
+                } else {
+                    eyeClosedCounter = Math.max(0, eyeClosedCounter - 1);
+                }
+            }
+        }
+
+        function triggerAlert() {
+            document.getElementById("status").textContent = "¡Despierta! Vas a dormir";
+            document.getElementById("resetBtn").style.display = "inline-block";
+            if (!alarmPlaying) {
+                const audio = document.getElementById("alarmSound");
+                audio.currentTime = 0;
+                audio.play();
+                alarmPlaying = true;
+            }
+        }
+
+        function stopAlert() {
+            document.getElementById("status").textContent = "Detenido. Presiona 'Iniciar' para reanudar";
+            document.getElementById("resetBtn").style.display = "none";
+            document.getElementById("alarmSound").pause();
+            alarmPlaying = false;
+        }
+
+        async function startVideo() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (err) {
+                alert("Permiso de cámara denegado");
+                console.error(err);
+            }
+        }
+
+        async function toggleCamera() {
+            if (!detector) {
+                await loadModel();
+                await startVideo();
+                document.getElementById("status").textContent = "Detectando...";
+                document.querySelector("button").textContent = "Detener";
+            } else {
+                stopAlert();
+                video.srcObject.getTracks().forEach(track => track.stop());
+                detector = null;
+                document.getElementById("status").textContent = "Detenido. Presiona 'Iniciar' para reanudar";
+                document.querySelector("button").textContent = "Iniciar";
+            }
+        }
+
+        video = document.getElementById("video");
+    </script>
+</body>
+</html>
