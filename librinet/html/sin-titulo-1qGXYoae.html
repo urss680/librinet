@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dibuja el Círculo Perfecto</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        .canvas-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        #drawingCanvas {
+            background-color: white;
+            border-radius: 10px;
+            cursor: crosshair;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        #resetBtn {
+            background-color: #f44336;
+        }
+        
+        #resetBtn:hover {
+            background-color: #d32f2f;
+        }
+        
+        .score-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+            width: 100%;
+        }
+        
+        .score-display {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .score-label {
+            font-size: 1.2em;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+        
+        .feedback {
+            font-size: 1.5em;
+            margin-top: 10px;
+            text-align: center;
+            min-height: 40px;
+        }
+        
+        .instructions {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .perfect-circle {
+            position: absolute;
+            pointer-events: none;
+            border: 2px dashed rgba(0, 150, 255, 0.7);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        .show-perfect {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dibuja el Círculo Perfecto</h1>
+    <p class="subtitle">Tu objetivo es dibujar el círculo más perfecto posible</p>
+    
+    <div class="game-container">
+        <div class="controls">
+            <button id="startBtn">Comenzar a Dibujar</button>
+            <button id="evaluateBtn">Evaluar Círculo</button>
+            <button id="resetBtn">Reiniciar</button>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="drawingCanvas" width="500" height="500"></canvas>
+            <div id="perfectCircle" class="perfect-circle"></div>
+        </div>
+        
+        <div class="score-container">
+            <div class="score-label">Tu puntuación:</div>
+            <div id="scoreDisplay" class="score-display">0%</div>
+            <div id="feedback" class="feedback"></div>
+        </div>
+        
+        <div class="instructions">
+            <h3>Instrucciones:</h3>
+            <ul>
+                <li>Haz clic en "Comenzar a Dibujar"</li>
+                <li>Mantén presionado y arrastra para dibujar un círculo</li>
+                <li>Suelta el botón del mouse cuando hayas completado el círculo</li>
+                <li>Haz clic en "Evaluar Círculo" para obtener tu puntuación</li>
+                <li>¡Intenta conseguir el 100% de perfección!</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            const startBtn = document.getElementById('startBtn');
+            const evaluateBtn = document.getElementById('evaluateBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            const feedback = document.getElementById('feedback');
+            const perfectCircle = document.getElementById('perfectCircle');
+            
+            let isDrawing = false;
+            let points = [];
+            let score = 0;
+            
+            // Configuración inicial del canvas
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            
+            // Eventos de dibujo
+            startBtn.addEventListener('click', function() {
+                isDrawing = true;
+                points = [];
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                scoreDisplay.textContent = '0%';
+                feedback.textContent = '';
+                perfectCircle.classList.remove('show-perfect');
+                feedback.textContent = '¡Comienza a dibujar tu círculo!';
+            });
+            
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Para dispositivos táctiles
+            canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                startDrawing(e.touches[0]);
+            });
+            
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                draw(e.touches[0]);
+            });
+            
+            canvas.addEventListener('touchend', stopDrawing);
+            
+            function startDrawing(e) {
+                if (!isDrawing) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                points = [{x, y}];
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                points.push({x, y});
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+            
+            function stopDrawing() {
+                if (!isDrawing) return;
+                
+                isDrawing = false;
+                ctx.closePath();
+                feedback.textContent = '¡Bien! Ahora evalúa tu círculo.';
+            }
+            
+            // Evaluar el círculo dibujado
+            evaluateBtn.addEventListener('click', function() {
+                if (points.length < 10) {
+                    feedback.textContent = 'Dibuja un círculo más grande para evaluarlo.';
+                    return;
+                }
+                
+                // Calcular el centro y radio del círculo dibujado
+                const center = calculateCenter(points);
+                const radius = calculateAverageRadius(points, center);
+                
+                // Calcular la puntuación basada en la desviación del radio
+                score = calculateScore(points, center, radius);
+                
+                // Mostrar resultados
+                scoreDisplay.textContent = `${score}%`;
+                showFeedback(score);
+                
+                // Mostrar el círculo perfecto para comparación
+                showPerfectCircle(center, radius);
+            });
+            
+            // Reiniciar el juego
+            resetBtn.addEventListener('click', function() {
+                isDrawing = false;
+                points = [];
+                score = 0;
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                scoreDisplay.textContent = '0%';
+                feedback.textContent = '';
+                perfectCircle.classList.remove('show-perfect');
+            });
+            
+            // Funciones de cálculo
+            function calculateCenter(points) {
+                let sumX = 0;
+                let sumY = 0;
+                
+                for (const point of points) {
+                    sumX += point.x;
+                    sumY += point.y;
+                }
+                
+                return {
+                    x: sumX / points.length,
+                    y: sumY / points.length
+                };
+            }
+            
+            function calculateAverageRadius(points, center) {
+                let totalDistance = 0;
+                
+                for (const point of points) {
+                    const dx = point.x - center.x;
+                    const dy = point.y - center.y;
+                    totalDistance += Math.sqrt(dx * dx + dy * dy);
+                }
+                
+                return totalDistance / points.length;
+            }
+            
+            function calculateScore(points, center, radius) {
+                let totalDeviation = 0;
+                
+                for (const point of points) {
+                    const dx = point.x - center.x;
+                    const dy = point.y - center.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const deviation = Math.abs(distance - radius);
+                    totalDeviation += deviation;
+                }
+                
+                const avgDeviation = totalDeviation / points.length;
+                // Convertir la desviación en un porcentaje (menos desviación = mayor puntuación)
+                const maxAllowedDeviation = radius * 0.5; // 50% del radio como máximo
+                const score = Math.max(0, 100 - (avgDeviation / maxAllowedDeviation) * 100);
+                
+                return Math.round(score);
+            }
+            
+            function showFeedback(score) {
+                if (score >= 95) {
+                    feedback.textContent = '¡Increíble! Casi un círculo perfecto.';
+                } else if (score >= 85) {
+                    feedback.textContent = '¡Muy bien! Un círculo excelente.';
+                } else if (score >= 70) {
+                    feedback.textContent = 'Buen trabajo, pero puedes mejorar.';
+                } else if (score >= 50) {
+                    feedback.textContent = 'No está mal, pero practica más.';
+                } else {
+                    feedback.textContent = 'Sigue practicando, ¡tú puedes!';
+                }
+            }
+            
+            function showPerfectCircle(center, radius) {
+                perfectCircle.style.left = (center.x - radius) + 'px';
+                perfectCircle.style.top = (center.y - radius) + 'px';
+                perfectCircle.style.width = (radius * 2) + 'px';
+                perfectCircle.style.height = (radius * 2) + 'px';
+                perfectCircle.classList.add('show-perfect');
+            }
+        });
+    </script>
+</body>
+</html>
