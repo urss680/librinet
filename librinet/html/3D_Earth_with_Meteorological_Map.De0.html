@@ -1,0 +1,82 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Earth with Meteorological Map</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+
+<script>
+    // Scene setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Add ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    // Add directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(5, 3, 5);
+    scene.add(directionalLight);
+
+    // Meteorological Earth sphere
+    const earthRadius = 1;
+    const geometry = new THREE.SphereGeometry(earthRadius, 64, 64);
+    const texture = new THREE.TextureLoader().load('https://raw.githubusercontent.com/vilic/html5-earth/master/images/earthcloudmap.jpg');
+    const material = new THREE.MeshPhongMaterial({ 
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide
+    });
+    
+    const earth = new THREE.Mesh(geometry, material);
+    scene.add(earth);
+
+    // Add orbit controls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    camera.position.set(3, 3, 3);
+
+    // Cloud layer (optional but common in meteorological maps)
+    const cloudTexture = new THREE.TextureLoader().load('https://raw.githubusercontent.com/vilic/html5-earth/master/images/earthcloud.jpg');
+    const cloudMaterial = new THREE.MeshPhongMaterial({ 
+        map: cloudTexture,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide
+    });
+    
+    const clouds = new THREE.Mesh(geometry.clone().scale(1.01), cloudMaterial);
+    clouds.rotation.y = Math.PI / 2;
+    cloudMaterial.vertexColors = false;
+    scene.add(clouds);
+
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        earth.rotation.y += 0.001;
+        clouds.rotation.y += 0.0015;
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // Responsive resizing
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth/window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+</script>
+</body>
+</html>
+```
