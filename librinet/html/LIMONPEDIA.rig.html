@@ -1,0 +1,849 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIMONPEDIA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #e6e6e6;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin-top: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 3.5em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, #8f94fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 4px 15px rgba(143, 148, 251, 0.3);
+            letter-spacing: 2px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        #searchInput {
+            flex: 1;
+            padding: 15px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 50px;
+            outline: none;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        #searchInput::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        #searchInput:focus {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 25px rgba(0,0,0,0.3);
+        }
+
+        #searchButton {
+            padding: 15px 30px;
+            font-size: 16px;
+            background: linear-gradient(45deg, #4e54c8, #8f94fb);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            font-weight: 600;
+        }
+
+        #searchButton:hover {
+            background: linear-gradient(45deg, #4348b0, #7a80e5);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.3);
+        }
+
+        #searchButton:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .results {
+            display: grid;
+            gap: 20px;
+        }
+
+        .result-item {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            cursor: pointer;
+            display: flex;
+            gap: 20px;
+        }
+
+        .result-item:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .result-image {
+            width: 120px;
+            height: 120px;
+            flex-shrink: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .result-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .result-image .no-image {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .result-content {
+            flex: 1;
+        }
+
+        .result-title {
+            font-size: 20px;
+            color: #ffffff;
+            margin-bottom: 10px;
+            text-decoration: none;
+            display: block;
+            font-weight: 600;
+        }
+
+        .result-snippet {
+            color: #d0d0d0;
+            line-height: 1.6;
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .loading {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 18px;
+            margin: 40px 0;
+        }
+
+        .error {
+            background: rgba(255, 100, 100, 0.15);
+            color: #ff9e9e;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            border: 1px solid rgba(255, 100, 100, 0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        .no-results {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 18px;
+            margin: 40px 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: rgba(30, 30, 46, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            margin: 50px auto;
+            padding: 30px;
+            width: 90%;
+            max-width: 800px;
+            position: relative;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            color: #e6e6e6;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 30px;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 1001;
+        }
+
+        .close-modal:hover {
+            color: #ffffff;
+            transform: scale(1.1);
+        }
+
+        .article-content {
+            line-height: 1.8;
+            color: #e6e6e6;
+        }
+
+        .article-content h1, .article-content h2, .article-content h3 {
+            margin: 20px 0 15px 0;
+            color: #ffffff;
+        }
+
+        .article-content p {
+            margin-bottom: 15px;
+        }
+
+        .article-content img {
+            max-width: 100%;
+            height: auto;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .article-content a {
+            color: #8f94fb;
+            text-decoration: none;
+        }
+
+        .article-content a:hover {
+            text-decoration: underline;
+        }
+
+        .summary-top-container {
+            position: absolute;
+            top: 60px;
+            left: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 999;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .summary-top-container h3 {
+            color: #8f94fb;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .summary-top-container p {
+            color: #ffffff;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .summary-generating {
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .summary-char {
+            opacity: 0;
+            animation: fadeInChar 0.3s forwards;
+        }
+
+        @keyframes fadeInChar {
+            to {
+                opacity: 1;
+            }
+        }
+
+        .small-image-container {
+            display: block;
+            margin: 0 auto 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            max-width: 300px;
+        }
+
+        .small-image-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .small-image-container a {
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .small-image-container a:hover {
+            transform: scale(1.05);
+        }
+
+        .welcome-message {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .welcome-message h2 {
+            color: #8f94fb;
+            font-size: 24px;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .welcome-message p {
+            color: #ffffff;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .search-box {
+                flex-direction: column;
+            }
+
+            #searchButton {
+                width: 100%;
+            }
+
+            h1 {
+                font-size: 2.5em;
+            }
+
+            .modal-content {
+                margin: 20px auto;
+                padding: 20px;
+            }
+
+            .result-item {
+                flex-direction: column;
+            }
+
+            .result-image {
+                width: 100%;
+                height: 200px;
+            }
+
+            .summary-top-container {
+                position: relative;
+                top: auto;
+                left: auto;
+                right: auto;
+                margin: 10px 0;
+            }
+
+            .welcome-message {
+                padding: 20px;
+            }
+
+            .welcome-message h2 {
+                font-size: 20px;
+            }
+
+            .welcome-message p {
+                font-size: 14px;
+            }
+
+            .small-image-container {
+                max-width: 250px;
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LIMONPEDIA</h1>
+        
+        <!-- Contenedor de imagen pequeña -->
+        <div class="small-image-container">
+            <a id="dynamic-link"
+               href="#"
+               target="_blank">
+                <img id="dynamic-image"
+                     class="object-contain"
+                     alt="Imagen dinámica"
+                     onerror="this.parentNode.style.display='block'; this.style.minWidth='200px'; this.style.minHeight='200px'; this.alt='Error al cargar imagen';"
+                >
+            </a>
+        </div>
+
+        <div id="welcomeMessage" class="welcome-message">
+            <h2>¡Bienvenido a LIMONPEDIA!</h2>
+            <p>Hola, soy WIKI tu IA de LIMONPEDIA. Estoy aquí para ayudarte a descubrir el conocimiento ilimitado. ¡Comienza a explorar ahora!</p>
+        </div>
+        
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Buscar en Wikipedia..."
+                autocomplete="off"
+            >
+            <button id="searchButton">Buscar</button>
+        </div>
+        <div id="resultsContainer"></div>
+    </div>
+
+    <!-- Modal para mostrar el artículo completo -->
+    <div id="articleModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <div id="summaryTopContainer" class="summary-top-container" style="display: none;">
+                <h3>📋 Resumen del artículo:</h3>
+                <p id="summaryText" class="summary-generating">Generando...</p>
+            </div>
+            <div id="articleContent" class="article-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Código para la imagen pequeña
+        const ASSET_SOURCE_URL = 'https://raw.githubusercontent.com/LIBRINETURL/edunube/refs/heads/main/Librillaia%20images/ACTUAL.html';
+        const linkElement = document.getElementById('dynamic-link');
+        const imageElement = document.getElementById('dynamic-image');
+        
+        function sanitizeUrl(url) {
+            if (!url) return '';
+            return url.replace(/^['"]|['"]$/g, '').trim();
+        }
+
+        async function loadDynamicAsset() {
+            let finalImageUrl = null;
+            let finalClickUrl = null;
+
+            try {
+                const response = await fetch(ASSET_SOURCE_URL);
+
+                if (!response.ok) {
+                    imageElement.src = 'invalid-url';
+                    return;
+                }
+
+                const assetText = await response.text();
+                const trimmedAssetText = assetText.trim();
+                const match = trimmedAssetText.match(/^(.+?)\s*\((.+?)\)$/);
+
+                if (match && match.length === 3) {
+                    finalImageUrl = match[1].trim();
+                    finalClickUrl = sanitizeUrl(match[2]);
+                } else {
+                    finalImageUrl = trimmedAssetText;
+                }
+            } catch (error) {
+                imageElement.src = 'invalid-url';
+                return;
+            }
+
+            if (finalImageUrl) {
+                imageElement.src = finalImageUrl;
+                imageElement.onload = () => {
+                    linkElement.style.display = 'block';
+                };
+            } else {
+                imageElement.src = 'invalid-url';
+            }
+
+            if (finalClickUrl) {
+                linkElement.href = finalClickUrl;
+            }
+        }
+
+        // Cargar el mensaje de bienvenida y la imagen al iniciar
+        window.onload = function() {
+            loadDynamicAsset();
+        };
+
+        // Código del buscador de Wikipedia
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const articleModal = document.getElementById('articleModal');
+        const articleContent = document.getElementById('articleContent');
+        const summaryTopContainer = document.getElementById('summaryTopContainer');
+        const summaryText = document.getElementById('summaryText');
+        const closeModal = document.querySelector('.close-modal');
+        let currentArticleText = '';
+
+        async function searchWikipedia(query) {
+            if (!query.trim()) return;
+
+            searchButton.disabled = true;
+            resultsContainer.innerHTML = '<div class="loading">Buscando...</div>';
+
+            try {
+                const searchUrl = `https://es.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*&srlimit=10`;
+                
+                const response = await fetch(searchUrl);
+                const data = await response.json();
+                
+                if (data.query.search.length === 0) {
+                    resultsContainer.innerHTML = '<div class="no-results">No se encontraron resultados.</div>';
+                    return;
+                }
+
+                const pageIds = data.query.search.map(result => result.pageid).join('|');
+                const extractUrl = `https://es.wikipedia.org/w/api.php?action=query&pageids=${pageIds}&prop=extracts|pageimages|info&exintro&exlimit=max&piprop=original&inprop=url&format=json&origin=*`;
+                
+                const extractResponse = await fetch(extractUrl);
+                const extractData = await extractResponse.json();
+                
+                displayResults(data.query.search, extractData.query.pages);
+            } catch (error) {
+                resultsContainer.innerHTML = '<div class="error">Error al buscar. Por favor, intenta de nuevo.</div>';
+                console.error('Error:', error);
+            } finally {
+                searchButton.disabled = false;
+            }
+        }
+
+        function displayResults(searchResults, extractData) {
+            resultsContainer.innerHTML = '<div class="results"></div>';
+            const resultsDiv = resultsContainer.querySelector('.results');
+
+            searchResults.forEach(result => {
+                const pageId = result.pageid;
+                const pageData = extractData[pageId];
+                const extract = pageData?.extract || result.snippet + '...';
+                
+                let imageUrl = null;
+                if (pageData?.original?.source) {
+                    imageUrl = pageData.original.source;
+                } else if (pageData?.thumbnail?.source) {
+                    imageUrl = pageData.thumbnail.source;
+                }
+                
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                resultItem.onclick = () => loadFullArticle(result.title);
+                
+                resultItem.innerHTML = `
+                    <div class="result-image">
+                        ${imageUrl ? 
+                            `<img src="${imageUrl}" alt="${result.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">` : 
+                            '<div class="no-image">Sin imagen</div>'
+                        }
+                    </div>
+                    <div class="result-content">
+                        <div class="result-title">${result.title}</div>
+                        <div class="result-snippet">${extract}</div>
+                        <div style="color: #8f94fb; font-size: 14px; margin-top: 10px;">Clic para leer el artículo completo →</div>
+                    </div>
+                `;
+                
+                resultsDiv.appendChild(resultItem);
+            });
+        }
+
+        async function loadFullArticle(title) {
+            articleContent.innerHTML = '<div class="loading">Cargando artículo...</div>';
+            summaryTopContainer.style.display = 'none';
+            summaryText.innerHTML = '<span class="summary-generating">Generando...</span>';
+            articleModal.style.display = 'block';
+            
+            try {
+                const url = `https://es.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(title)}&format=json&origin=*&prop=text|images&imlimit=max`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.parse && data.parse.text) {
+                    let content = data.parse.text['*'];
+                    content = cleanArticleContent(content);
+                    currentArticleText = extractTextFromHTML(content);
+                    
+                    if (data.parse.images && data.parse.images.length > 0) {
+                        await processArticleImages(data.parse.images, title);
+                    }
+                    
+                    makeLinksClickable();
+                    
+                    // Mostrar el artículo primero
+                    articleContent.innerHTML = content;
+                    
+                    // Luego generar el resumen con efecto de escritura
+                    await generateSummaryWithTypingEffect();
+                } else {
+                    articleContent.innerHTML = '<div class="error">No se pudo cargar el artículo.</div>';
+                }
+            } catch (error) {
+                articleContent.innerHTML = '<div class="error">Error al cargar el artículo.</div>';
+                console.error('Error:', error);
+            }
+        }
+
+        async function generateSummaryWithTypingEffect() {
+            if (!currentArticleText) return;
+            
+            // DIVIDIR TEXTO EN GRUPOS DE 5000 PALABRAS
+            const words = currentArticleText.split(/\s+/);
+            const textChunks = [];
+            for (let i = 0; i < words.length; i += 5000) {
+                textChunks.push(words.slice(i, i + 5000).join(' '));
+            }
+            
+            // USAR PRIMER GRUPO DE 5000 PALABRAS
+            const firstChunk = textChunks[0];
+            
+            try {
+                const apiUrl = `https://text.pollinations.ai/${encodeURIComponent(firstChunk)}?stream=true&system=Genera resumen del texto`;
+                
+                const response = await fetch(apiUrl);
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                
+                summaryTopContainer.style.display = 'block';
+                summaryText.innerHTML = '<span class="summary-generating">Generando resumen...</span>';
+                
+                let summaryContent = '';
+                let isFirstChunk = true;
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    
+                    if (isFirstChunk) {
+                        summaryText.innerHTML = '';
+                        isFirstChunk = false;
+                    }
+                    
+                    summaryContent += chunk;
+                    
+                    // Mostrar caracteres individualmente con animación
+                    const chars = chunk.split('');
+                    chars.forEach((char, index) => {
+                        setTimeout(() => {
+                            const span = document.createElement('span');
+                            span.textContent = char;
+                            span.className = 'summary-char';
+                            summaryText.appendChild(span);
+                        }, index * 30); // 30ms entre caracteres
+                    });
+                }
+                
+                // Si no se recibió contenido, mostrar mensaje
+                if (!summaryContent.trim()) {
+                    summaryText.textContent = 'No se pudo generar un resumen para este artículo.';
+                }
+                
+            } catch (error) {
+                console.error('Error al generar el resumen:', error);
+                summaryText.textContent = 'Error al generar el resumen.';
+            }
+        }
+
+        function extractTextFromHTML(html) {
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            return temp.textContent || temp.innerText || '';
+        }
+
+        function cleanArticleContent(content) {
+            const temp = document.createElement('div');
+            temp.innerHTML = content;
+            
+            const unwanted = temp.querySelectorAll('.infobox, .navbox, .metadata, .dablink, .rellink, .catlinks, .magnify, .NavFrame, .noprint, .ambox, .reflist, .references');
+            unwanted.forEach(el => el.remove());
+            
+            const allElements = temp.querySelectorAll('*');
+            allElements.forEach(el => {
+                el.removeAttribute('style');
+                if (el.tagName !== 'IMG' && el.tagName !== 'A') {
+                    el.removeAttribute('class');
+                }
+            });
+            
+            const images = temp.querySelectorAll('img');
+            images.forEach(img => {
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+            });
+            
+            return temp.innerHTML;
+        }
+
+        function makeLinksClickable() {
+            const links = articleContent.querySelectorAll('a');
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && href.startsWith('/wiki/')) {
+                    link.onclick = (e) => {
+                        e.preventDefault();
+                        const pageName = decodeURIComponent(href.replace('/wiki/', ''));
+                        loadFullArticle(pageName);
+                    };
+                } else if (href && href.startsWith('#')) {
+                    link.onclick = (e) => {
+                        e.preventDefault();
+                        const target = document.querySelector(href);
+                        if (target) {
+                            target.scrollIntoView({ behavior: 'smooth' });
+                        }
+                    };
+                } else {
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                }
+            });
+        }
+
+        async function processArticleImages(images, articleTitle) {
+            const imageUrls = await getImageUrls(images, articleTitle);
+            const imgs = articleContent.querySelectorAll('img');
+            imgs.forEach((img, index) => {
+                if (imageUrls[index]) {
+                    img.src = imageUrls[index];
+                    img.style.display = 'block';
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    img.style.margin = '15px 0';
+                    img.style.borderRadius = '8px';
+                    img.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+                }
+            });
+        }
+
+        async function getImageUrls(images, articleTitle) {
+            const imageUrls = [];
+            
+            for (const imageName of images.slice(0, 10)) {
+                try {
+                    const url = `https://es.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&titles=${encodeURIComponent('File:' + imageName)}&format=json&origin=*`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    const pages = data.query.pages;
+                    const pageId = Object.keys(pages)[0];
+                    if (pages[pageId].imageinfo && pages[pageId].imageinfo[0].url) {
+                        imageUrls.push(pages[pageId].imageinfo[0].url);
+                    }
+                } catch (error) {
+                    console.error('Error al obtener URL de imagen:', error);
+                }
+            }
+            
+            return imageUrls;
+        }
+
+        closeModal.onclick = () => {
+            articleModal.style.display = 'none';
+            summaryTopContainer.style.display = 'none';
+        };
+
+        window.onclick = (event) => {
+            if (event.target == articleModal) {
+                articleModal.style.display = 'none';
+                summaryTopContainer.style.display = 'none';
+            }
+        };
+
+        searchButton.addEventListener('click', () => searchWikipedia(searchInput.value));
+        
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchWikipedia(searchInput.value);
+            }
+        });
+
+        searchInput.focus();
+    </script>
+</body>
+</html>
+```
