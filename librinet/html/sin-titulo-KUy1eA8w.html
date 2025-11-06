@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector de Hash de Ventana en Tiempo Real</title>
+    <!-- Carga de Tailwind CSS para estilos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilo para la fuente Inter y un fondo suave */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container bg-white shadow-xl rounded-2xl p-6 md:p-8 space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800 border-b-2 pb-3 mb-4">
+            🔍 Detector de Hash de URL
+        </h1>
+        <p class="text-gray-600 mb-6">
+            Esta utilidad (`WindowHasher`) monitorea el hash de la URL (la parte que comienza con `#`) en tiempo real usando el evento `hashchange`.
+        </p>
+
+        <!-- Sección de Visualización de Estado -->
+        <div class="bg-indigo-50 border border-indigo-200 p-4 rounded-xl">
+            <h2 class="text-xl font-semibold text-indigo-700 mb-2">
+                Hash Actual Detectado:
+            </h2>
+            <div id="current-hash-display" class="font-mono text-lg p-2 bg-white border border-indigo-300 rounded-lg break-words transition duration-300 ease-in-out">
+                (Esperando detección inicial...)
+            </div>
+            <p id="last-update" class="text-sm text-indigo-600 mt-2">
+                Última actualización: --
+            </p>
+        </div>
+
+        <!-- Sección de Control de Hash -->
+        <div class="space-y-4 pt-4">
+            <label for="hash-input" class="block text-sm font-medium text-gray-700">
+                Nuevo Hash (sin #):
+            </label>
+            <div class="flex space-x-3">
+                <input
+                    type="text"
+                    id="hash-input"
+                    placeholder="ej. seccion-uno/perfil"
+                    class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+                >
+                <button id="set-hash-btn"
+                    class="px-5 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ease-in-out active:scale-95 transform disabled:bg-gray-400"
+                >
+                    Establecer Hash
+                </button>
+            </div>
+        </div>
+
+        <!-- Sección de Registro de Eventos (Consola Visual) -->
+        <div class="space-y-3 pt-4">
+            <h2 class="text-xl font-semibold text-gray-800">
+                Registro de Eventos:
+            </h2>
+            <div id="event-log" class="h-40 overflow-y-auto bg-gray-900 text-green-400 text-sm p-3 rounded-lg font-mono">
+                <!-- Los eventos de detección aparecerán aquí -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Importante: El entorno de Canvas proporciona estas variables.
+        // const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Para esta aplicación local, no necesitamos Firebase, pero la estructura del código lo permite.
+
+        /**
+         * Clase WindowHasher
+         * Una utilidad para monitorear el hash de la URL en tiempo real.
+         */
+        class WindowHasher {
+            constructor() {
+                // Almacena las funciones callback a ejecutar en cada cambio de hash
+                this.listeners = [];
+                // Se asegura de que 'this' se refiere a la instancia de la clase en el manejador del evento
+                this.boundHandleHashChange = this.handleHashChange.bind(this);
+            }
+
+            /**
+             * Obtiene el hash actual de la URL sin el símbolo '#'.
+             * @returns {string} El hash actual.
+             */
+            getCurrentHash() {
+                // window.location.hash incluye el '#'. Lo removemos.
+                return window.location.hash.slice(1);
+            }
+
+            /**
+             * Establece un nuevo hash en la URL.
+             * Esto dispara el evento 'hashchange'.
+             * @param {string} newHash - El nuevo valor del hash (sin '#').
+             */
+            setHash(newHash) {
+                // Codifica el hash para manejar caracteres especiales
+                window.location.hash = encodeURIComponent(newHash);
+            }
+
+            /**
+             * Registra una función callback para ser ejecutada cuando el hash cambie.
+             * @param {function(string): void} callback - La función a ejecutar, recibe el nuevo hash.
+             */
+            addListener(callback) {
+                if (typeof callback === 'function') {
+                    this.listeners.push(callback);
+                }
+            }
+
+            /**
+             * Remueve una función callback registrada.
+             * @param {function} callback - La función previamente registrada.
+             */
+            removeListener(callback) {
+                this.listeners = this.listeners.filter(listener => listener !== callback);
+            }
+
+            /**
+             * Manejador central del evento 'hashchange'.
+             * Se ejecuta cada vez que el hash de la URL cambia (en tiempo real).
+             * @param {Event} event - El objeto de evento nativo (no usado aquí, pero disponible).
+             */
+            handleHashChange(event) {
+                const newHash = this.getCurrentHash();
+                
+                // 1. Notificar a todos los listeners registrados
+                this.listeners.forEach(listener => {
+                    try {
+                        listener(newHash);
+                    } catch (error) {
+                        console.error("Error al ejecutar listener de hash:", error);
+                    }
+                });
+            }
+
+            /**
+             * Inicia la detección en tiempo real adjuntando el listener.
+             */
+            start() {
+                window.addEventListener('hashchange', this.boundHandleHashChange);
+                // Ejecutar el manejador inmediatamente para cargar el estado inicial
+                this.handleHashChange();
+                console.log("WindowHasher: Detección iniciada.");
+            }
+
+            /**
+             * Detiene la detección en tiempo real removiendo el listener.
+             */
+            stop() {
+                window.removeEventListener('hashchange', this.boundHandleHashChange);
+                console.log("WindowHasher: Detección detenida.");
+            }
+        }
+
+        // --- Lógica de Inicialización y Demo ---
+
+        const hashDisplay = document.getElementById('current-hash-display');
+        const updateTimeDisplay = document.getElementById('last-update');
+        const eventLog = document.getElementById('event-log');
+        const hashInput = document.getElementById('hash-input');
+        const setHashBtn = document.getElementById('set-hash-btn');
+
+        // Función para registrar mensajes en la consola visual
+        function logEvent(message, type = 'info') {
+            const now = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            let colorClass = '';
+
+            switch (type) {
+                case 'success':
+                    colorClass = 'text-green-400';
+                    break;
+                case 'error':
+                    colorClass = 'text-red-400';
+                    break;
+                case 'warning':
+                    colorClass = 'text-yellow-400';
+                    break;
+                default:
+                    colorClass = 'text-gray-200';
+            }
+
+            logEntry.className = colorClass;
+            logEntry.innerHTML = `[${now}] ${message}`;
+            
+            // Agregar al inicio del log
+            eventLog.prepend(logEntry);
+
+            // Mantener el scroll al inicio (último evento)
+            if (eventLog.childElementCount > 100) {
+                eventLog.removeChild(eventLog.lastChild); // Limpieza básica
+            }
+        }
+
+        // 1. Crear la instancia del detector
+        const hasher = new WindowHasher();
+
+        // 2. Definir la función callback principal de la aplicación
+        const appCallback = (newHash) => {
+            const displayHash = newHash === '' ? '(Vacío)' : newHash;
+            hashDisplay.textContent = displayHash;
+            updateTimeDisplay.textContent = `Última actualización: ${new Date().toLocaleTimeString()}`;
+
+            // Actualizar la consola visual
+            logEvent(`Hash cambiado: ${displayHash}`, 'success');
+
+            // Aquí es donde se ejecutaría la lógica de tu aplicación (ej. cambiar una vista de React/Angular, cargar datos, etc.)
+            if (newHash.startsWith('admin')) {
+                logEvent("Alerta: Se detectó una ruta de administración.", 'warning');
+            }
+        };
+
+        // 3. Registrar el callback en el detector
+        hasher.addListener(appCallback);
+
+        // 4. Iniciar la detección en tiempo real
+        window.onload = () => {
+            hasher.start();
+        };
+
+        // 5. Configurar el botón para cambiar el hash
+        setHashBtn.addEventListener('click', () => {
+            const newHash = hashInput.value.trim();
+            if (newHash) {
+                // Usamos el método setHash de la clase para actualizar el hash.
+                // Esto disparará el evento 'hashchange' que WindowHasher está escuchando.
+                hasher.setHash(newHash);
+            } else {
+                // Si el campo está vacío, lo borramos (redirigimos a #)
+                hasher.setHash('');
+            }
+            hashInput.value = ''; // Limpiar el input después de la acción
+        });
+
+        // Permitir cambiar el hash con Enter en el input
+        hashInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                setHashBtn.click();
+            }
+        });
+
+    </script>
+</body>
+</html>
