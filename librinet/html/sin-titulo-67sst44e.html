@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lector de Libro Digital</title>
+    <!-- Tailwind CSS para un estilo rápido y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Estilo para el contenedor de la imagen dinámica en la pantalla inicial */
+        #dynamic-link {
+            display: none; /* Oculto inicialmente por JS hasta que se carga */
+            cursor: pointer;
+            text-decoration: none;
+            /* Centrado y tamaño fijo para la publicidad */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #pages-container {
+            /* Asegura que el contenedor de páginas use flex para centrar las imágenes */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-y: scroll;
+            max-height: 80vh;
+        }
+        
+        /* Estilos para la barra lateral OCR */
+        #ocr-sidebar {
+            /* Posición inicial: fuera de la pantalla (a la derecha) */
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        #ocr-sidebar.active {
+            /* Posición activa: visible */
+            transform: translateX(0);
+        }
+        
+        /* Spinner CSS */
+        .loader {
+            border-top-color: #4f46e5; /* indigo-600 */
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-purple-100 min-h-screen flex flex-col items-center justify-start p-4">
+
+    <!-- Contenedor inicial para la selección (PANTALLA DE INICIO) -->
+    <div id="initial-selection-container" class="flex flex-col items-center justify-center p-8 rounded-3xl shadow-2xl bg-white max-w-lg w-full mt-10 md:mt-20">
+        
+        <!-- Títulos solicitados -->
+        <h1 class="text-4xl font-extrabold text-indigo-800 mb-1">LIBROS INGLES</h1>
+        <p class="text-lg font-medium text-purple-600 mb-6">IMPULSADO POR LIBRILLAIA</p>
+
+        <!-- Dynamic Image/Link Structure (PEQUEÑO y CENTRADO) -->
+        <a id="dynamic-link" href="#" target="_blank"
+            class="mb-8 w-32 h-32 md:w-40 md:h-40 block rounded-xl shadow-lg transition-shadow duration-300 hover:shadow-2xl hover:scale-[1.02]">
+            <img id="dynamic-image"
+                  class="object-contain w-full h-full rounded-xl"
+                  alt="Publicidad dinámica. Fallo al cargar."
+                  onerror="this.parentNode.style.display='block'; this.parentNode.style.backgroundColor='#f87171'; this.style.opacity='0.5'; this.alt='Error de carga';"
+            >
+        </a>
+        <!-- End Dynamic Image/Link Structure -->
+
+        <h2 class="text-2xl font-semibold text-gray-700 text-center mb-6">Selecciona el tipo de libro:</h2>
+        
+        <!-- Botones de selección -->
+        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+            <button id="workbook-btn"
+                    class="bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg transform transition-transform duration-200 hover:scale-105 hover:bg-blue-700">
+                WORKBOOK
+            </button>
+            <button id="students-btn"
+                    class="bg-purple-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg transform transition-transform duration-200 hover:scale-105 hover:bg-purple-700">
+                STUDENTS
+            </button>
+        </div>
+    </div>
+
+    <!-- Contenedor del libro, oculto inicialmente -->
+    <div id="book-container" class="bg-white p-6 md:p-10 rounded-3xl shadow-2xl max-w-4xl w-full flex-col items-center hidden">
+        <!-- Controles de navegación -->
+        <div class="mb-4 w-full flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <!-- Botón para ir al inicio -->
+            <button id="title-btn" 
+                    class="bg-purple-600 text-white px-6 py-3 rounded-full font-bold shadow-lg transform transition-transform duration-200 hover:scale-105 hover:bg-purple-700">
+                Inicio
+            </button>
+
+            <!-- Botón OCR (NUEVO) -->
+            <button id="ocr-btn" 
+                    class="bg-pink-600 text-white px-6 py-3 rounded-full font-bold shadow-lg transform transition-transform duration-200 hover:scale-105 hover:bg-pink-700">
+                OCR
+            </button>
+
+            <!-- Menú desplegable para opciones predefinidas -->
+            <div class="flex space-x-2 items-center">
+                <select id="page-select"
+                        class="w-48 px-4 py-2 text-center border-2 border-gray-300 rounded-full focus:outline-none focus:border-purple-500 transition-colors duration-200">
+                    <!-- Las opciones se cargarán dinámicamente con JavaScript -->
+                </select>
+                <button id="go-select-btn"
+                        class="bg-green-600 text-white px-6 py-3 rounded-full font-bold shadow-lg transform transition-transform duration-200 hover:scale-105 hover:bg-green-700">
+                    Ir
+                </button>
+            </div>
+
+            <!-- Cuadro de número para ir a cualquier página -->
+            <div class="flex space-x-2 items-center">
+                <input type="number" id="page-input" placeholder="Página #" min="1"
+                        class="w-32 px-4 py-2 text-center border-2 border-gray-300 rounded-full focus:outline-none focus:border-purple-500 transition-colors duration-200"
+                />
+                <button id="go-input-btn"
+                        class="bg-green-600 text-white px-6 py-3 rounded-full font-bold shadow-lg transform transition-transform duration-200 hover:scale-105 hover:bg-green-700">
+                    Ir
+                </button>
+            </div>
+        </div>
+
+        <!-- Contenedor para el desplazamiento de las páginas -->
+        <div id="pages-container" class="w-full">
+            <p id="loading-message" class="text-xl font-semibold text-gray-500 text-center py-10">Cargando contenido...</p>
+        </div>
+    </div>
+
+    <!-- OCR Sidebar/Modal (ESTRUCTURA NUEVA PARA OCR) -->
+    <div id="ocr-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-gray-50 p-6 shadow-2xl z-50 transition-transform duration-300 overflow-y-auto">
+        <!-- Botón de Cerrar -->
+        <button id="close-ocr-btn" class="absolute top-4 right-4 text-gray-600 hover:text-red-600 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        <h3 class="text-2xl font-bold text-indigo-700 mb-4 border-b pb-2">OCR de la Página</h3>
+        
+        <div id="ocr-content">
+            <p class="text-gray-500 mb-4" id="ocr-instructions">
+                Pulse "Extraer Texto" para comenzar el reconocimiento óptico de caracteres de la página visible.
+            </p>
+            <button id="extract-ocr-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg w-full font-semibold hover:bg-blue-600 transition-colors">
+                Extraer Texto
+            </button>
+            
+            <!-- Contenedor del Spinner de Carga -->
+            <div id="ocr-loading" class="mt-6 hidden text-center">
+                <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4 mx-auto"></div>
+                <p class="text-indigo-600 font-medium">Procesando imagen (OCR)... Esto puede tardar unos segundos.</p>
+            </div>
+
+            <!-- Área de Resultados y Controles -->
+            <div id="ocr-result-area" class="mt-6 border-t pt-4 hidden">
+                <p class="font-semibold text-lg mb-2 text-gray-800">Texto Extraído:</p>
+                <div id="extracted-text-display" class="bg-white p-3 rounded-lg border border-gray-200 min-h-[100px] max-h-[40vh] overflow-y-auto text-gray-700 whitespace-pre-wrap">
+                    <!-- Texto del OCR aquí -->
+                </div>
+                
+                <div class="mt-4 space-y-3">
+                    <!-- Control de TTS -->
+                    <button id="tts-btn" class="bg-green-500 text-white px-4 py-2 rounded-lg w-full font-semibold hover:bg-green-600 transition-colors disabled:opacity-50" disabled>
+                        <span id="tts-icon">Escuchar Texto</span>
+                        <audio id="tts-audio" class="hidden" controls></audio>
+                    </button>
+                    
+                    <!-- Botón de Descarga -->
+                    <button id="download-txt-btn" class="bg-yellow-500 text-gray-800 px-4 py-2 rounded-lg w-full font-semibold hover:bg-yellow-600 transition-colors disabled:opacity-50" disabled>
+                        Descargar TXT
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // URL ÚNICA del archivo que contiene AMBAS URLs (imagen y enlace) en el formato: URL_IMAGEN(URL_ENLACE)
+        const ASSET_SOURCE_URL = 'https://raw.githubusercontent.com/LIBRINETURL/edunube/refs/heads/main/Librillaia%20images/ACTUAL.html';
+        const INVALID_URL = 'invalid-url-to-trigger-onerror'; 
+        
+        // --- UTILIDADES GENÉRICAS ---
+
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        /**
+         * Realiza una solicitud fetch con reintentos y retroceso exponencial.
+         */
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            let lastError = null;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+                    }
+                    return response;
+                } catch (error) {
+                    lastError = error;
+                    const waitTime = Math.pow(2, i) * 1000;
+                    console.warn(`Request failed (attempt ${i + 1}/${maxRetries}). Retrying in ${waitTime}ms. Error:`, error);
+                    if (i < maxRetries - 1) {
+                        await delay(waitTime);
+                    }
+                }
+            }
+            throw new Error('API call failed after all retries. Check console for details.');
+        }
+
+        /**
+         * Elimina las comillas iniciales y finales de una cadena.
+         */
+        function sanitizeUrl(url) {
+            if (!url) return '';
+            return url.replace(/^['"]|['"]$/g, '').trim();
+        }
+
+        // --- FUNCIONES DE TTS (PCM a WAV) ---
+
+        /**
+         * Convierte una cadena Base64 a ArrayBuffer.
+         */
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        /**
+         * Convierte datos PCM (raw audio) en un blob WAV reproducible.
+         */
+        function pcmToWav(int16Array, sampleRate) {
+            const numChannels = 1;
+            const bytesPerSample = 2; // 16-bit PCM
+
+            const buffer = new ArrayBuffer(44 + int16Array.byteLength);
+            const view = new DataView(buffer);
+
+            // RIFF identifier
+            writeString(view, 0, 'RIFF');
+            // file length
+            view.setUint32(4, 36 + int16Array.byteLength, true);
+            // RIFF type
+            writeString(view, 8, 'WAVE');
+            // format chunk identifier
+            writeString(view, 12, 'fmt ');
+            // format chunk length
+            view.setUint32(16, 16, true);
+            // sample format (1 for PCM)
+            view.setUint16(20, 1, true);
+            // number of channels
+            view.setUint16(22, numChannels, true);
+            // sample rate
+            view.setUint32(24, sampleRate, true);
+            // byte rate (sample rate * block align)
+            view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
+            // block align (num channels * bytes per sample)
+            view.setUint16(32, numChannels * bytesPerSample, true);
+            // bits per sample
+            view.setUint16(34, 16, true);
+            // data chunk identifier
+            writeString(view, 36, 'data');
+            // data chunk length
+            view.setUint32(40, int16Array.byteLength, true);
+
+            // Write the PCM data
+            let offset = 44;
+            for (let i = 0; i < int16Array.length; i++, offset += 2) {
+                view.setInt16(offset, int16Array[i], true);
+            }
+
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+
+        // --- FUNCIONES DE CARGA DE ASSETS Y PÁGINAS ---
+
+        async function loadDynamicAsset() {
+            const linkElement = document.getElementById('dynamic-link');
+            const imageElement = document.getElementById('dynamic-image');
+            let finalImageUrl = null;
+            let finalClickUrl = null;
+
+            try {
+                const response = await fetch(ASSET_SOURCE_URL);
+                if (!response.ok) {
+                    imageElement.src = INVALID_URL;
+                    return;
+                }
+                const assetText = await response.text();
+                const trimmedAssetText = assetText.trim();
+                const match = trimmedAssetText.match(/^(.+?)\s*\((.+?)\)$/);
+
+                if (match && match.length === 3) {
+                    finalImageUrl = match[1].trim();
+                    finalClickUrl = sanitizeUrl(match[2]);
+                } else {
+                    finalImageUrl = trimmedAssetText;
+                    console.warn('El formato esperado URL_IMAGEN(URL_ENLACE) no se encontró.');
+                }
+            } catch (error) {
+                console.error('Error durante la carga o el parsing del asset dinámico:', error);
+                imageElement.src = INVALID_URL;
+                return;
+            }
+
+            if (finalImageUrl) {
+                imageElement.src = finalImageUrl;
+                imageElement.onload = () => {
+                    linkElement.style.display = 'block';
+                };
+            } else {
+                imageElement.src = INVALID_URL;
+            }
+
+            if (finalClickUrl) {
+                linkElement.href = finalClickUrl;
+            }
+        }
+        
+        // --- FUNCIONES OCR Y TTS DE GEMINI ---
+
+        /**
+         * Encuentra la imagen de página más visible dentro del contenedor de desplazamiento.
+         * @returns {HTMLImageElement | null} La imagen más visible.
+         */
+        const getVisiblePageImage = () => {
+            const images = Array.from(pagesContainer.querySelectorAll('img[id^="page-"]'));
+            let bestMatch = null;
+            let maxVisibleArea = 0;
+            
+            // Obtener los límites visibles del contenedor de desplazamiento
+            const containerRect = pagesContainer.getBoundingClientRect();
+            
+            for (const img of images) {
+                const imgRect = img.getBoundingClientRect();
+
+                // Calcular la intersección vertical y horizontal
+                const visibleTop = Math.max(imgRect.top, containerRect.top);
+                const visibleBottom = Math.min(imgRect.bottom, containerRect.bottom);
+                const visibleLeft = Math.max(imgRect.left, containerRect.left);
+                const visibleRight = Math.min(imgRect.right, containerRect.right);
+
+                const visibleWidth = visibleRight - visibleLeft;
+                const visibleHeight = visibleBottom - visibleTop;
+
+                // Calcular el área visible
+                const visibleArea = visibleWidth * visibleHeight;
+                
+                // La imagen debe tener un área visible significativa
+                if (visibleArea > maxVisibleArea && visibleArea > 100) { // Mínimo de 100px^2 de área visible
+                    maxVisibleArea = visibleArea;
+                    bestMatch = img;
+                }
+            }
+            return bestMatch;
+        };
+        
+        /**
+         * Convierte una URL de imagen externa en una cadena Base64 JPEG.
+         */
+        const imageToDataURL = (url) => {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'Anonymous'; // Esencial para cargar imágenes de diferentes dominios
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+
+                    // Convertir a JPEG para reducir el tamaño del payload
+                    const dataURL = canvas.toDataURL('image/jpeg', 0.9); 
+                    const base64 = dataURL.split(',')[1];
+                    resolve(base64);
+                };
+                img.onerror = () => reject(new Error('Failed to load image for DataURL conversion.'));
+                img.src = url;
+            });
+        };
+
+        /**
+         * Llama a la API de Gemini para realizar OCR.
+         */
+        async function performOCR(base64Image) {
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const userPrompt = "Perform Optical Character Recognition (OCR) on this image. Extract all readable text accurately, including headings, paragraphs, and lists. Do not add any extra commentary or formatting beyond the raw text content.";
+
+            const payload = {
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { text: userPrompt },
+                            {
+                                inlineData: {
+                                    mimeType: "image/jpeg", 
+                                    data: base64Image
+                                }
+                            }
+                        ]
+                    }
+                ],
+                systemInstruction: {
+                    parts: [{ text: "You are an accurate OCR extraction service. Respond only with the extracted text." }]
+                }
+            };
+
+            const response = await fetchWithRetry(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo extraer el texto.';
+            return text;
+        }
+
+        /**
+         * Llama a la API de Gemini para generar audio (TTS).
+         */
+        async function performTTS(text) {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{
+                    parts: [{ text: text }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: "Kore" } 
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            const response = await fetchWithRetry(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
+
+            if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
+                const match = mimeType.match(/rate=(\d+)/);
+                const sampleRate = match ? parseInt(match[1], 10) : 16000;
+                
+                const pcmData = base64ToArrayBuffer(audioData);
+                const pcm16 = new Int16Array(pcmData);
+                const wavBlob = pcmToWav(pcm16, sampleRate);
+                return URL.createObjectURL(wavBlob);
+            }
+            
+            throw new Error("Respuesta de TTS inválida o faltante.");
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialSelectionContainer = document.getElementById('initial-selection-container');
+            const workbookBtn = document.getElementById('workbook-btn');
+            const studentsBtn = document.getElementById('students-btn');
+            const bookContainer = document.getElementById('book-container');
+
+            const pagesContainer = document.getElementById('pages-container');
+            const titleBtn = document.getElementById('title-btn');
+            const ocrBtn = document.getElementById('ocr-btn');
+            const pageSelect = document.getElementById('page-select');
+            const goSelectBtn = document.getElementById('go-select-btn');
+            const pageInput = document.getElementById('page-input');
+            const goInputBtn = document.getElementById('go-input-btn');
+            
+            // Elementos de la nueva barra lateral OCR
+            const ocrSidebar = document.getElementById('ocr-sidebar');
+            const closeOcrBtn = document.getElementById('close-ocr-btn');
+            const extractOcrBtn = document.getElementById('extract-ocr-btn');
+            const ocrInstructions = document.getElementById('ocr-instructions');
+            const ocrLoading = document.getElementById('ocr-loading');
+            const ocrResultArea = document.getElementById('ocr-result-area');
+            const extractedTextDisplay = document.getElementById('extracted-text-display');
+            const ttsBtn = document.getElementById('tts-btn');
+            const ttsIcon = document.getElementById('tts-icon');
+            const ttsAudio = document.getElementById('tts-audio');
+            const downloadTxtBtn = document.getElementById('download-txt-btn');
+
+
+            let totalPageCount = 0;
+            let imageBaseUrl = '';
+
+            // Carga el asset dinámico en la pantalla de inicio
+            loadDynamicAsset();
+
+            // Opciones de navegación
+            const studentsOptions = [
+                { value: "1", text: "Título (Página 1)" },
+                { value: "2", text: "Contenidos (Página 2)" },
+                { value: "4", text: "Unidad 0 (Página 4)" },
+                { value: "8", text: "Unidad 1 (Página 8)" },
+                { value: "20", text: "Tema 2 (Página 20)" },
+                { value: "32", text: "Tema 3 (Página 32)" },
+                { value: "44", text: "Tema 4 (Página 44)" },
+                { value: "56", text: "Tema 5 (Página 56)" },
+                { value: "66", text: "Tema 6 (Página 66)" },
+                { value: "80", text: "Tema 7 (Página 80)" },
+                { value: "92", text: "Vocabulario (Página 92)" },
+                { value: "106", text: "Writing (Página 106)" },
+                { value: "114", text: "Examen (Página 114)" },
+                { value: "128", text: "GRAMMAR (Página 128)" },
+                { value: "131", text: "PRONUNCIACION (PAG 131)" },
+                { value: "132", text: "PHRASAL (PAG 132)" },
+                { value: "134", text: "IRREGULAR VEBS (PAG 134)" },
+                { value: "136", text: "FIN (136)" }
+            ];
+
+            const workbookOptions = [
+                { value: "1", text: "TITULO (PAG 1)" },
+                { value: "3", text: "CONTENIDOS (PAG 3)" },
+                { value: "4", text: "UNIT 0 (PAG 4)" },
+                { value: "8", text: "UNIT 1 (PAG 8)" },
+                { value: "18", text: "UNIT 2 (PAG 18)" },
+                { value: "28", text: "UNIT 3 (PAG 28)" },
+                { value: "38", text: "UNIT 4 (PAG 38)" },
+                { value: "48", text: "UNIT 5 (PAG 48)" },
+                { value: "58", text: "UNIT 6 (PAG 58)" },
+                { value: "68", text: "UNIT 7 (PAG 68)" },
+                { value: "78", text: "GRAMMAR (PAG 78)" },
+                { value: "98", text: "EXAM (PAG 98)" },
+                { value: "115", text: "READING (PAG 115)" },
+                { value: "117", text: "LISTENING (PAG 117)" },
+                { value: "119", text: "SPEAKING (PAG 119)" },
+                { value: "127", text: "PHARSAL VERBS (PAG 127)" },
+                { value: "129", text: "WORD BUILDING (PAG 129)" },
+                { value: "131", text: "IRREGULAR VERBS (PAG 131)" },
+                { value: "133", text: "FALSE FRIENDS (PAG 133)" },
+                { value: "143", text: "IDIOMS (PAG 143)" },
+                { value: "135", text: "FIN (135)" }
+            ];
+
+            // Función para poblar el menú desplegable
+            const populateDropdown = (options) => {
+                pageSelect.innerHTML = '';
+                options.forEach(option => {
+                    const newOption = document.createElement('option');
+                    newOption.value = option.value;
+                    newOption.textContent = option.text;
+                    pageSelect.appendChild(newOption);
+                });
+            };
+
+            // Función para cargar una imagen de forma asíncrona y devolver una promesa
+            const loadImage = (pageNumber) => {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = () => reject();
+                    img.src = `${imageBaseUrl}${pageNumber}.png`;
+                });
+            };
+
+            // Función para encontrar el número total de páginas y cargarlas todas
+            const loadAllPages = async () => {
+                let pageCount = 1;
+                let loading = true;
+                
+                pagesContainer.innerHTML = ''; 
+
+                const loadingMessage = document.createElement('p');
+                loadingMessage.id = 'loading-message';
+                loadingMessage.className = 'text-xl font-semibold text-gray-500 text-center py-10';
+                loadingMessage.innerHTML = 'Cargando páginas... Por favor espere.';
+                pagesContainer.appendChild(loadingMessage);
+
+                while (loading) {
+                    try {
+                        const img = await loadImage(pageCount);
+                        img.className = 'w-full h-auto object-contain rounded-xl shadow-md';
+                        img.id = `page-${pageCount}`;
+                        pagesContainer.appendChild(img);
+                        pageCount++;
+                    } catch (error) {
+                        loading = false;
+                    }
+                }
+                
+                totalPageCount = pageCount - 1;
+
+                const currentLoadingMessage = document.getElementById('loading-message');
+                if (totalPageCount > 0 && currentLoadingMessage) {
+                    currentLoadingMessage.remove();
+                } else if (currentLoadingMessage) {
+                    currentLoadingMessage.textContent = 'No se encontraron páginas para este libro.';
+                }
+            };
+
+            // Función para desplazar a una página
+            const goToPage = (pageNumber) => {
+                const targetImage = document.getElementById(`page-${pageNumber}`);
+                if (targetImage) {
+                    targetImage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            };
+
+            // --- MANEJADORES DE EVENTOS ---
+
+            // Manejador del botón "Inicio"
+            titleBtn.addEventListener('click', () => {
+                pagesContainer.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+            
+            // Manejador del botón "OCR"
+            ocrBtn.addEventListener('click', () => {
+                // 1. Ocultar el botón "Inicio" (Como se solicitó)
+                titleBtn.classList.add('hidden');
+                
+                // 2. Mostrar la barra lateral
+                ocrSidebar.classList.add('active');
+                
+                // 3. Resetear el estado de la barra lateral
+                ocrInstructions.textContent = "Pulse 'Extraer Texto' para comenzar el reconocimiento óptico de caracteres de la página visible.";
+                ocrInstructions.classList.remove('hidden');
+                extractOcrBtn.classList.remove('hidden');
+                extractedTextDisplay.textContent = '...';
+                ocrResultArea.classList.add('hidden');
+                ocrLoading.classList.add('hidden');
+                ttsBtn.disabled = true;
+                downloadTxtBtn.disabled = true;
+
+                // Detener audio si se está reproduciendo
+                if (ttsAudio.src) {
+                    ttsAudio.pause();
+                    ttsAudio.src = '';
+                    ttsIcon.textContent = "Escuchar Texto";
+                }
+            });
+
+            // Manejador del botón "Cerrar OCR"
+            closeOcrBtn.addEventListener('click', () => {
+                ocrSidebar.classList.remove('active');
+                titleBtn.classList.remove('hidden'); // Mostrar "Inicio" de nuevo
+                
+                // Detener audio si se está reproduciendo
+                if (ttsAudio.src) {
+                    ttsAudio.pause();
+                    ttsAudio.src = '';
+                    ttsIcon.textContent = "Escuchar Texto";
+                }
+            });
+
+            // Manejador del botón "Extraer Texto"
+            extractOcrBtn.addEventListener('click', async () => {
+                const visibleImage = getVisiblePageImage();
+                
+                if (!visibleImage) {
+                    // Usar un modal temporal para mostrar mensajes al usuario
+                    const message = document.createElement('div');
+                    message.textContent = "Error: Desplácese a una página para realizar OCR.";
+                    message.className = "fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-600 text-white p-4 rounded-lg shadow-2xl z-50 text-center font-bold";
+                    document.body.appendChild(message);
+                    setTimeout(() => message.remove(), 2000);
+                    
+                    ocrInstructions.textContent = "Error: No hay ninguna página visible. Desplácese a una página y vuelva a intentarlo.";
+                    return;
+                }
+
+                // Estado de carga ON
+                ocrLoading.classList.remove('hidden');
+                ocrInstructions.classList.add('hidden');
+                extractOcrBtn.classList.add('hidden');
+                ocrResultArea.classList.add('hidden');
+                extractedTextDisplay.textContent = '';
+                ttsBtn.disabled = true;
+                downloadTxtBtn.disabled = true;
+                
+                try {
+                    // 1. Convertir imagen a Base64
+                    const base64Image = await imageToDataURL(visibleImage.src);
+
+                    // 2. Realizar OCR
+                    const extractedText = await performOCR(base64Image);
+                    
+                    // 3. Mostrar resultados
+                    extractedTextDisplay.textContent = extractedText;
+                    ocrResultArea.classList.remove('hidden');
+                    ttsBtn.disabled = extractedText.length < 5; // Deshabilitar TTS si el texto es muy corto
+                    downloadTxtBtn.disabled = extractedText.length < 5;
+                    
+                    // 4. Actualizar estado
+                    ocrInstructions.textContent = `Texto extraído con éxito de la página ${visibleImage.id.split('-')[1]}.`;
+
+                } catch (error) {
+                    console.error("Error durante el proceso de OCR:", error);
+                    extractedTextDisplay.textContent = `Error al extraer el texto: ${error.message}. Asegúrese de que las imágenes tienen CORS habilitado.`;
+                    ocrInstructions.textContent = "Ha ocurrido un error durante la extracción del texto. Por favor, revise la consola.";
+                    ocrResultArea.classList.remove('hidden');
+                    ttsBtn.disabled = true;
+                    downloadTxtBtn.disabled = true;
+                } finally {
+                    // Estado de carga OFF
+                    ocrLoading.classList.add('hidden');
+                    extractOcrBtn.classList.remove('hidden');
+                    ocrInstructions.classList.remove('hidden');
+                }
+            });
+
+            // Manejador del botón "Escuchar Texto" (TTS)
+            ttsBtn.addEventListener('click', async () => {
+                const textToSpeak = extractedTextDisplay.textContent.trim();
+                if (!textToSpeak || ttsBtn.disabled) return;
+                
+                // Si ya hay un audio cargado, simplemente alternar play/pause
+                if (ttsAudio.src && !ttsAudio.paused) {
+                    ttsAudio.pause();
+                    ttsIcon.textContent = "Continuar Audio";
+                    return;
+                } else if (ttsAudio.src && ttsAudio.paused) {
+                    ttsAudio.play();
+                    ttsIcon.textContent = "Pausar Audio";
+                    return;
+                }
+
+                ttsIcon.textContent = "Generando Audio...";
+                ttsBtn.disabled = true;
+                
+                try {
+                    const audioUrl = await performTTS(textToSpeak);
+                    ttsAudio.src = audioUrl;
+                    ttsAudio.play();
+                    
+                    ttsIcon.textContent = "Pausar Audio";
+                    
+                    // Manejar el final de la reproducción
+                    ttsAudio.onended = () => {
+                        ttsIcon.textContent = "Escuchar Texto";
+                        ttsAudio.src = '';
+                    };
+                    
+                } catch (error) {
+                    console.error("Error durante la generación de TTS:", error);
+                    ttsIcon.textContent = "Error TTS";
+                } finally {
+                    // Solo habilitamos el botón si el audio se ha cargado o si el texto es muy corto (ya lo maneja el OCR)
+                    if (!ttsAudio.src) {
+                        ttsBtn.disabled = false;
+                    }
+                }
+            });
+            
+            // Manejador del botón "Descargar TXT"
+            downloadTxtBtn.addEventListener('click', () => {
+                const textContent = extractedTextDisplay.textContent;
+                if (!textContent) return;
+                
+                const visibleImage = getVisiblePageImage();
+                const pageId = visibleImage ? visibleImage.id.replace('page-', 'Pagina_') : 'OCR_Resultado';
+                const filename = `${pageId}.txt`;
+                
+                const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            // Manejador del botón "Ir" del menú desplegable
+            goSelectBtn.addEventListener('click', () => {
+                const pageNumber = pageSelect.value;
+                goToPage(pageNumber);
+            });
+
+            // Manejador del botón "Ir" del cuadro de número
+            goInputBtn.addEventListener('click', () => {
+                const pageNumber = parseInt(pageInput.value, 10);
+                
+                if (isNaN(pageNumber) || pageNumber < 1 || pageNumber > totalPageCount) {
+                    pageInput.value = ''; // Limpia el input
+                    pageInput.placeholder = `Inválido (1-${totalPageCount})`;
+                    setTimeout(() => {
+                        pageInput.placeholder = `Página #`;
+                    }, 2000); // Restaura el placeholder
+                    return;
+                }
+                
+                goToPage(pageNumber);
+            });
+
+            // Manejadores para los nuevos botones de selección
+            workbookBtn.addEventListener('click', () => {
+                initialSelectionContainer.classList.add('hidden');
+                bookContainer.classList.remove('hidden');
+                populateDropdown(workbookOptions);
+                imageBaseUrl = 'https://limonero7743-design.github.io/TIERRA-DE-CABRAS/WORKBOOK/';
+                loadAllPages();
+            });
+
+            studentsBtn.addEventListener('click', () => {
+                initialSelectionContainer.classList.add('hidden');
+                bookContainer.classList.remove('hidden');
+                populateDropdown(studentsOptions);
+                imageBaseUrl = 'https://limonero7743-design.github.io/TIERRA-DE-CABRAS/STUDENTS/';
+                loadAllPages();
+            });
+        });
+    </script>
+</body>
+</html>
