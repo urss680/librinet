@@ -1,0 +1,417 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TALSE - Tu Match Falso</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* Pantalla de tutorial */
+        #pantallaTutorial {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff6b6b 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .tutorial-contenido {
+            text-align: center;
+            max-width: 350px;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .instrucciones {
+            margin-bottom: 30px;
+        }
+
+        .instruccion {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .instruccion-icono {
+            font-size: 2rem;
+            margin-right: 15px;
+        }
+
+        .comenzar-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            background: white;
+            color: #764ba2;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+
+        .comenzar-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Pantalla principal con deslizar */
+        #pantallaPrincipal {
+            display: none;
+            min-height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tarjeta-usuario {
+            min-height: 100vh;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        .contenedor-tarjeta {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+
+        .foto-perfil {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin-bottom: 20px;
+            border: 4px solid #ff6b6b;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            object-fit: cover;
+        }
+
+        .info-usuario {
+            text-align: center;
+        }
+
+        .nombre {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .ubicacion {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .gustos {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .acciones {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .btn-accion {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-accion:hover {
+            transform: scale(1.1);
+        }
+
+        .btn-no-match {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-match {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .indicador-deslizar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+            40% { transform: translateX(-50%) translateY(-20px); }
+            60% { transform: translateX(-50%) translateY(-10px); }
+        }
+
+        .match-animacion {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #4CAF50;
+            color: white;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+            z-index: 1000;
+            animation: matchPulse 0.6s ease-out;
+        }
+
+        @keyframes matchPulse {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .no-match-animacion {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ff6b6b;
+            color: white;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+            z-index: 1000;
+            animation: matchPulse 0.6s ease-out;
+        }
+    </style>
+    <script>
+        let usuarios = [];
+        let indiceActual = 0;
+
+        function iniciarApp() {
+            document.getElementById('pantallaTutorial').style.display = 'none';
+            document.getElementById('pantallaPrincipal').style.display = 'block';
+            generarUsuariosAleatorios();
+        }
+
+        function generarUsuariosAleatorios() {
+            const promesas = [];
+            for (let i = 0; i < 10; i++) {
+                promesas.push(
+                    fetch('https://randomuser.me/api/')
+                        .then(response => response.json())
+                        .then(data => {
+                            const usuario = data.results[0];
+                            return {
+                                nombre: `${usuario.name.first} ${usuario.name.last}`,
+                                ciudad: usuario.location.city,
+                                pais: usuario.location.country,
+                                foto: usuario.picture.large,
+                                gustos: generarGustosAleatorios()
+                            };
+                        })
+                );
+            }
+
+            Promise.all(promesas).then(resultados => {
+                usuarios = resultados;
+                mostrarUsuario(0);
+            });
+        }
+
+        function generarGustosAleatorios() {
+            const posiblesGustos = [
+                "Leer", "Viajar", "Música", "Cine", "Deportes", "Cocinar", "Fotografía", "Arte", "Tecnología", "Videojuegos",
+                "Senderismo", "Natación", "Bailar", "Jardinería", "Escribir", "Pintar", "Escuchar podcasts", "Ir de compras",
+                "Meditar", "Hacer yoga"
+            ];
+            const numeroDeGustos = Math.floor(Math.random() * 3) + 1;
+            const gustosAleatorios = [];
+
+            for (let i = 0; i < numeroDeGustos; i++) {
+                const indiceAleatorio = Math.floor(Math.random() * posiblesGustos.length);
+                const gusto = posiblesGustos.splice(indiceAleatorio, 1)[0];
+                gustosAleatorios.push(gusto);
+            }
+            return gustosAleatorios.join(', ');
+        }
+
+        function mostrarUsuario(indice) {
+            if (indice >= usuarios.length) {
+                generarUsuariosAleatorios();
+                return;
+            }
+
+            const usuario = usuarios[indice];
+            const container = document.getElementById('pantallaPrincipal');
+            
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'tarjeta-usuario';
+            tarjeta.innerHTML = `
+                <div class="contenedor-tarjeta">
+                    <img class="foto-perfil" src="${usuario.foto}" alt="Foto de perfil">
+                    <div class="info-usuario">
+                        <div class="nombre">${usuario.nombre}</div>
+                        <div class="ubicacion">${usuario.ciudad}, ${usuario.pais}</div>
+                        <div class="gustos">Gustos: ${usuario.gustos}</div>
+                        <div class="acciones">
+                            <button class="btn-accion btn-no-match" onclick="elegirUsuario('no')">✗</button>
+                            <button class="btn-accion btn-match" onclick="elegirUsuario('match')">✓</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="indicador-deslizar">
+                    <div>↓</div>
+                    <div>Desliza hacia abajo para el siguiente</div>
+                </div>
+            `;
+            
+            container.appendChild(tarjeta);
+        }
+
+        function elegirUsuario(opcion) {
+            if (opcion === 'match') {
+                const esMatch = Math.random() > 0.5;
+                if (esMatch) {
+                    mostrarMatch();
+                } else {
+                    mostrarNoMatch();
+                }
+            }
+            
+            // Desplazar al siguiente usuario
+            setTimeout(() => {
+                indiceActual++;
+                window.scrollBy(0, window.innerHeight);
+                if (indiceActual >= usuarios.length - 2) {
+                    generarUsuariosAleatorios();
+                }
+            }, 500);
+        }
+
+        function mostrarMatch() {
+            const matchDiv = document.createElement('div');
+            matchDiv.className = 'match-animacion';
+            matchDiv.textContent = '¡MATCH!';
+            document.body.appendChild(matchDiv);
+            matchDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                matchDiv.remove();
+            }, 2000);
+        }
+
+        function mostrarNoMatch() {
+            const noMatchDiv = document.createElement('div');
+            noMatchDiv.className = 'no-match-animacion';
+            noMatchDiv.textContent = 'No hay match';
+            document.body.appendChild(noMatchDiv);
+            noMatchDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                noMatchDiv.remove();
+            }, 2000);
+        }
+
+        // Detectar desplazamiento hacia abajo
+        let ultimoScrollTop = 0;
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            if (scrollTop > ultimoScrollTop && scrollTop > window.innerHeight * 0.5) {
+                // Desplazándose hacia abajo
+                if (indiceActual < usuarios.length - 1) {
+                    indiceActual++;
+                    if (indiceActual >= usuarios.length - 2) {
+                        generarUsuariosAleatorios();
+                    }
+                }
+            }
+            ultimoScrollTop = scrollTop;
+        });
+    </script>
+</head>
+<body>
+    <!-- Pantalla de tutorial -->
+    <div id="pantallaTutorial">
+        <div class="logo">TALSE</div>
+        <div class="tutorial-contenido">
+            <h2>¡Bienvenido a TALSE!</h2>
+            <p style="margin-bottom: 30px;">Encuentra a tu amor más falso que tu amor de Tinder</p>
+            
+            <div class="instrucciones">
+                <div class="instruccion">
+                    <span class="instruccion-icono">↓</span>
+                    <span>Desliza hacia abajo para ver el siguiente perfil</span>
+                </div>
+                <div class="instruccion">
+                    <span class="instruccion-icono">←</span>
+                    <span>Desliza a la izquierda o presiona ✗ para rechazar</span>
+                </div>
+                <div class="instruccion">
+                    <span class="instruccion-icono">→</span>
+                    <span>Desliza a la derecha o presiona ✓ para dar like</span>
+                </div>
+            </div>
+            
+            <button class="comenzar-btn" onclick="iniciarApp()">Comenzar</button>
+        </div>
+    </div>
+
+    <!-- Pantalla principal con deslizar -->
+    <div id="pantallaPrincipal"></div>
+</body>
+</html>
+```
