@@ -1,0 +1,745 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TALSE - Tu Match Falso</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* Pantalla de tutorial */
+        #pantallaTutorial {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff6b6b 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .tutorial-contenido {
+            text-align: center;
+            max-width: 350px;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .instrucciones {
+            margin-bottom: 30px;
+        }
+
+        .instruccion {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .instruccion-icono {
+            font-size: 2rem;
+            margin-right: 15px;
+        }
+
+        .comenzar-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            background: white;
+            color: #764ba2;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+
+        .comenzar-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Pantalla de perfil */
+        #pantallaPerfil {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff6b6b 0%, #764ba2 100%);
+            color: white;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+            padding: 20px;
+        }
+
+        .perfil-contenido {
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+        }
+
+        .perfil-titulo {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .campo-formulario {
+            margin-bottom: 20px;
+        }
+
+        .campo-formulario label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .campo-formulario input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            font-size: 16px;
+        }
+
+        .campo-formulario textarea {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .foto-preview {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+            margin: 10px auto;
+            border: 4px solid white;
+        }
+
+        .archivo-input {
+            display: none;
+        }
+
+        .archivo-label {
+            display: inline-block;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .archivo-label:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .continuar-btn {
+            width: 100%;
+            padding: 15px;
+            background: white;
+            color: #764ba2;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+            transition: transform 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .continuar-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Pantalla principal con swipe */
+        #pantallaPrincipal {
+            display: none;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+
+        .tarjeta-usuario {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        .contenedor-tarjeta {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+
+        .foto-perfil {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin-bottom: 20px;
+            border: 4px solid #ff6b6b;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            object-fit: cover;
+        }
+
+        .info-usuario {
+            text-align: center;
+        }
+
+        .nombre {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .ubicacion {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .gustos {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .acciones {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .btn-accion {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-accion:hover {
+            transform: scale(1.1);
+        }
+
+        .btn-no-match {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-match {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .match-animacion {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #4CAF50;
+            color: white;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+            z-index: 1000;
+            animation: matchPulse 0.6s ease-out;
+        }
+
+        @keyframes matchPulse {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .no-match-animacion {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ff6b6b;
+            color: white;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+            z-index: 1000;
+            animation: matchPulse 0.6s ease-out;
+        }
+
+        /* Panel lateral del chat */
+        #panelChat {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+            transition: right 0.3s ease;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #panelChat.activo {
+            right: 0;
+        }
+
+        .chat-cabecera {
+            background: #4CAF50;
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .chat-foto {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 15px;
+            object-fit: cover;
+        }
+
+        .chat-nombre {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .chat-cerrar {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .chat-mensajes {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f5f5f5;
+        }
+
+        .mensaje {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .mensaje-propio {
+            background: #4CAF50;
+            color: white;
+            margin-left: auto;
+        }
+
+        .mensaje-otro {
+            background: #e0e0e0;
+            color: #333;
+            margin-right: auto;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+        }
+
+        .chat-enviar {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+    <script>
+        let usuarios = [];
+        let perfilActual = 0;
+        let perfilUsuario = {};
+        let chatActual = null;
+        let matchActual = null;
+
+        function iniciarApp() {
+            document.getElementById('pantallaTutorial').style.display = 'none';
+            document.getElementById('pantallaPerfil').style.display = 'flex';
+        }
+
+        function procesarFoto(event) {
+            const archivo = event.target.files[0];
+            if (archivo) {
+                const lector = new FileReader();
+                lector.onload = function(e) {
+                    document.getElementById('fotoPreview').src = e.target.result;
+                    document.getElementById('fotoPreview').style.display = 'block';
+                };
+                lector.readAsDataURL(archivo);
+            }
+        }
+
+        function continuarPerfil() {
+            const nombre = document.getElementById('nombreInput').value;
+            const gustos = document.getElementById('gustosInput').value;
+            const fotoPreview = document.getElementById('fotoPreview').src;
+
+            if (!nombre || !gustos) {
+                alert('Por favor completa todos los campos');
+                return;
+            }
+
+            perfilUsuario = {
+                nombre: nombre,
+                gustos: gustos,
+                foto: fotoPreview
+            };
+
+            document.getElementById('pantallaPerfil').style.display = 'none';
+            document.getElementById('pantallaPrincipal').style.display = 'block';
+            generarUsuariosAleatorios();
+        }
+
+        function generarUsuariosAleatorios() {
+            const promesas = [];
+            for (let i = 0; i < 10; i++) {
+                promesas.push(
+                    fetch('https://randomuser.me/api/')
+                        .then(response => response.json())
+                        .then(data => {
+                            const usuario = data.results[0];
+                            return {
+                                nombre: `${usuario.name.first} ${usuario.name.last}`,
+                                ciudad: usuario.location.city,
+                                pais: usuario.location.country,
+                                foto: usuario.picture.large,
+                                gustos: generarGustosAleatorios()
+                            };
+                        })
+                );
+            }
+
+            Promise.all(promesas).then(resultados => {
+                usuarios = resultados;
+                mostrarUsuario(perfilActual);
+            });
+        }
+
+        function generarGustosAleatorios() {
+            const posiblesGustos = [
+                "Leer", "Viajar", "Música", "Cine", "Deportes", "Cocinar", "Fotografía", "Arte", "Tecnología", "Videojuegos",
+                "Senderismo", "Natación", "Bailar", "Jardinería", "Escribir", "Pintar", "Escuchar podcasts", "Ir de compras",
+                "Meditar", "Hacer yoga"
+            ];
+            const numeroDeGustos = Math.floor(Math.random() * 3) + 1;
+            const gustosAleatorios = [];
+
+            for (let i = 0; i < numeroDeGustos; i++) {
+                const indiceAleatorio = Math.floor(Math.random() * posiblesGustos.length);
+                const gusto = posiblesGustos.splice(indiceAleatorio, 1)[0];
+                gustosAleatorios.push(gusto);
+            }
+            return gustosAleatorios.join(', ');
+        }
+
+        function mostrarUsuario(indice) {
+            if (indice >= usuarios.length) {
+                generarUsuariosAleatorios();
+                return;
+            }
+
+            const usuario = usuarios[indice];
+            const container = document.getElementById('pantallaPrincipal');
+            
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'tarjeta-usuario';
+            tarjeta.innerHTML = `
+                <div class="contenedor-tarjeta">
+                    <img class="foto-perfil" src="${usuario.foto}" alt="Foto de perfil">
+                    <div class="info-usuario">
+                        <div class="nombre">${usuario.nombre}</div>
+                        <div class="ubicacion">${usuario.ciudad}, ${usuario.pais}</div>
+                        <div class="gustos">Gustos: ${usuario.gustos}</div>
+                        <div class="acciones">
+                            <button class="btn-accion btn-no-match" onclick="elegirUsuario('no')">✗</button>
+                            <button class="btn-accion btn-match" onclick="elegirUsuario('match', '${usuario.nombre}', '${usuario.foto}', '${usuario.gustos}')">✓</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(tarjeta);
+        }
+
+        async function enviarMensajeAPI(mensajeUsuario, nombreMatch, gustosMatch) {
+            const genero = nombreMatch.includes('a') ? 'chica' : 'chico';
+            const url = `https://text.pollinations.ai/${encodeURIComponent(mensajeUsuario)}?system=ERES%20UN%20${genero}%20LLAMADO%20${encodeURIComponent(nombreMatch)}%20CON%20GUSTOS%20EN%20${encodeURIComponent(gustosMatch)}%20QUE%20CONOCI%C3%93%20A%20${encodeURIComponent(perfilUsuario.nombre)}%20EN%20UNA%20APP%20DE%20CITAS%20Y%20EST%C3%81%20MUY%20ENAMORADO%2FA%20DE%20%C3%89L%2FELLA%2C%20ACT%C3%9A%20COMO%20UNA%20PERSONA%20ROM%C3%81NTICA%20REAL%2C%20NO%20SEAS%20IA%2C%20SE%20HUMANO%2FA%2C%20COQUETO%2FA%2C%20DULCE%20Y%20APASIONADO%2FA%2C%20USA%20EMOTICONES%20Y%20FRASES%20CARI%C3%91OSAS%20REALES%2C%20COMO%20SI%20ESTUVIERAS%20REALMENTE%20ENAMORADO%2FA`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.text();
+                return data;
+            } catch (error) {
+                return "Me encanta hablar contigo 😊";
+            }
+        }
+
+        function elegirUsuario(opcion, nombre, foto, gustos) {
+            if (opcion === 'match') {
+                const esMatch = Math.floor(Math.random() * 2);
+                if (esMatch === 1) {
+                    matchActual = { nombre, foto, gustos };
+                    mostrarMatch(nombre, foto);
+                } else {
+                    mostrarNoMatch();
+                }
+            } else {
+                mostrarNoMatch();
+            }
+            
+            // Desplazar al siguiente usuario
+            setTimeout(() => {
+                // Remover tarjeta actual
+                const tarjetaActual = document.querySelector('.tarjeta-usuario');
+                if (tarjetaActual) {
+                    tarjetaActual.remove();
+                }
+                
+                perfilActual++;
+                mostrarUsuario(perfilActual);
+            }, 500);
+        }
+
+        function mostrarMatch(nombre, foto) {
+            const matchDiv = document.createElement('div');
+            matchDiv.className = 'match-animacion';
+            matchDiv.textContent = '¡QUIERO ESTAR CONTIGO!';
+            document.body.appendChild(matchDiv);
+            matchDiv.style.display = 'block';
+            
+            // Abrir chat después del match
+            setTimeout(() => {
+                abrirChat(nombre, foto);
+            }, 1000);
+        }
+
+        function mostrarNoMatch() {
+            const noMatchDiv = document.createElement('div');
+            noMatchDiv.className = 'no-match-animacion';
+            noMatchDiv.textContent = 'NO TE QUIERO';
+            document.body.appendChild(noMatchDiv);
+            noMatchDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                noMatchDiv.remove();
+            }, 2000);
+        }
+
+        function abrirChat(nombre, foto) {
+            const panelChat = document.getElementById('panelChat');
+            const chatNombre = document.getElementById('chatNombre');
+            const chatFoto = document.getElementById('chatFoto');
+            
+            chatNombre.textContent = nombre;
+            chatFoto.src = foto;
+            panelChat.classList.add('activo');
+            
+            // Agregar mensaje inicial
+            const chatMensajes = document.getElementById('chatMensajes');
+            chatMensajes.innerHTML = `
+                <div class="mensaje mensaje-otro">¡Hola! Me alegra que quieras estar conmigo 😊</div>
+            `;
+            
+            // Hacer scroll al final del chat
+            chatMensajes.scrollTop = chatMensajes.scrollHeight;
+        }
+
+        function cerrarChat() {
+            document.getElementById('panelChat').classList.remove('activo');
+        }
+
+        async function enviarMensaje() {
+            const input = document.getElementById('chatInput');
+            const mensaje = input.value.trim();
+            
+            if (mensaje === '') return;
+            
+            const chatMensajes = document.getElementById('chatMensajes');
+            
+            // Agregar mensaje del usuario
+            const mensajePropio = document.createElement('div');
+            mensajePropio.className = 'mensaje mensaje-propio';
+            mensajePropio.textContent = mensaje;
+            chatMensajes.appendChild(mensajePropio);
+            
+            // Limpiar input
+            input.value = '';
+            
+            // Hacer scroll al final
+            chatMensajes.scrollTop = chatMensajes.scrollHeight;
+            
+            // Obtener respuesta de la API
+            if (matchActual) {
+                const respuesta = await enviarMensajeAPI(mensaje, matchActual.nombre, matchActual.gustos);
+                
+                const mensajeRespuesta = document.createElement('div');
+                mensajeRespuesta.className = 'mensaje mensaje-otro';
+                mensajeRespuesta.textContent = respuesta;
+                chatMensajes.appendChild(mensajeRespuesta);
+                
+                // Hacer scroll al final
+                chatMensajes.scrollTop = chatMensajes.scrollHeight;
+            }
+        }
+
+        // Permitir enviar mensaje con Enter
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && document.getElementById('panelChat').classList.contains('activo')) {
+                enviarMensaje();
+            }
+        });
+    </script>
+</head>
+<body>
+    <!-- Pantalla de tutorial -->
+    <div id="pantallaTutorial">
+        <div class="tutorial-contenido">
+            <div class="logo">TALSE</div>
+            <h2>¡Bienvenido a TALSE!</h2>
+            <p style="margin-bottom: 30px;">Encuentra a tu amor más falso que tu amor de Tinder</p>
+            
+            <div class="instrucciones">
+                <div class="instruccion">
+                    <span class="instruccion-icono">✗</span>
+                    <span>Presiona ✗ para rechazar</span>
+                </div>
+                <div class="instruccion">
+                    <span class="instruccion-icono">✓</span>
+                    <span>Presiona ✓ para dar like</span>
+                </div>
+            </div>
+            
+            <button class="comenzar-btn" onclick="iniciarApp()">Comenzar</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de perfil -->
+    <div id="pantallaPerfil">
+        <div class="perfil-contenido">
+            <h2 class="perfil-titulo">Crea tu perfil</h2>
+            
+            <div class="campo-formulario">
+                <label>Foto de perfil:</label>
+                <input type="file" id="fotoInput" class="archivo-input" accept="image/*" onchange="procesarFoto(event)">
+                <label for="fotoInput" class="archivo-label">Seleccionar foto</label>
+                <img id="fotoPreview" class="foto-preview" style="display: none;">
+            </div>
+            
+            <div class="campo-formulario">
+                <label>Nombre:</label>
+                <input type="text" id="nombreInput" placeholder="Tu nombre completo">
+            </div>
+            
+            <div class="campo-formulario">
+                <label>¿Qué te gusta?:</label>
+                <textarea id="gustosInput" placeholder="Describe tus gustos e intereses..."></textarea>
+            </div>
+            
+            <button class="continuar-btn" onclick="continuarPerfil()">Continuar</button>
+        </div>
+    </div>
+
+    <!-- Pantalla principal con swipe -->
+    <div id="pantallaPrincipal"></div>
+
+    <!-- Panel lateral del chat -->
+    <div id="panelChat">
+        <div class="chat-cabecera">
+            <img id="chatFoto" class="chat-foto" src="" alt="Foto">
+            <span id="chatNombre" class="chat-nombre"></span>
+            <button class="chat-cerrar" onclick="cerrarChat()">✕</button>
+        </div>
+        <div id="chatMensajes" class="chat-mensajes"></div>
+        <div class="chat-input-container">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Escribe un mensaje...">
+            <button class="chat-enviar" onclick="enviarMensaje()">➤</button>
+        </div>
+    </div>
+</body>
+</html>
+```
