@@ -59,11 +59,17 @@
                     class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
                 >
                 <button id="set-hash-btn"
-                    class="px-5 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ease-in-out active:scale-95 transform disabled:bg-gray-400"
+                    class="px-5 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ease-in-out active:scale-95 transform disabled:bg-gray-400 min-w-[120px]"
                 >
                     Establecer Hash
                 </button>
             </div>
+            <!-- Nuevo botón para recomprobar el hash manualmente -->
+            <button id="refresh-hash-btn"
+                class="w-full mt-3 px-5 py-3 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition duration-150 ease-in-out active:scale-95 transform disabled:bg-gray-400"
+            >
+                🔄 Recomprobar Hash Actual (Manual)
+            </button>
         </div>
 
         <!-- Sección de Registro de Eventos (Consola Visual) -->
@@ -136,8 +142,8 @@
 
             /**
              * Manejador central del evento 'hashchange'.
-             * Se ejecuta cada vez que el hash de la URL cambia (en tiempo real).
-             * @param {Event} event - El objeto de evento nativo (no usado aquí, pero disponible).
+             * Se ejecuta cada vez que el hash de la URL cambia (en tiempo real) o se llama manualmente.
+             * @param {Event} event - El objeto de evento nativo (opcional).
              */
             handleHashChange(event) {
                 const newHash = this.getCurrentHash();
@@ -178,6 +184,7 @@
         const eventLog = document.getElementById('event-log');
         const hashInput = document.getElementById('hash-input');
         const setHashBtn = document.getElementById('set-hash-btn');
+        const refreshHashBtn = document.getElementById('refresh-hash-btn'); // Nuevo botón
 
         // Función para registrar mensajes en la consola visual
         function logEvent(message, type = 'info') {
@@ -221,7 +228,7 @@
             updateTimeDisplay.textContent = `Última actualización: ${new Date().toLocaleTimeString()}`;
 
             // Actualizar la consola visual
-            logEvent(`Hash cambiado: ${displayHash}`, 'success');
+            logEvent(`Hash procesado: ${displayHash}`, 'success');
 
             // Aquí es donde se ejecutaría la lógica de tu aplicación (ej. cambiar una vista de React/Angular, cargar datos, etc.)
             if (newHash.startsWith('admin')) {
@@ -242,7 +249,6 @@
             const newHash = hashInput.value.trim();
             if (newHash) {
                 // Usamos el método setHash de la clase para actualizar el hash.
-                // Esto disparará el evento 'hashchange' que WindowHasher está escuchando.
                 hasher.setHash(newHash);
             } else {
                 // Si el campo está vacío, lo borramos (redirigimos a #)
@@ -251,7 +257,14 @@
             hashInput.value = ''; // Limpiar el input después de la acción
         });
 
-        // Permitir cambiar el hash con Enter en el input
+        // 6. Configurar el botón para recomprobar el hash
+        refreshHashBtn.addEventListener('click', () => {
+            // Llamamos directamente al manejador para forzar la lectura del hash actual
+            hasher.handleHashChange(); 
+            logEvent("Hash recomprobado manualmente.", 'info');
+        });
+
+        // 7. Permitir cambiar el hash con Enter en el input
         hashInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 setHashBtn.click();
