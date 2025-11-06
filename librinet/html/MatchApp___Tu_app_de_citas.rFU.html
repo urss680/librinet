@@ -1,0 +1,440 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MatchApp - Tu app de citas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 400px;
+            height: 700px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .cards-container {
+            position: relative;
+            height: calc(100% - 140px);
+            overflow: hidden;
+        }
+
+        .card {
+            position: absolute;
+            width: 90%;
+            height: 450px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            cursor: grab;
+            transition: transform 0.3s ease;
+        }
+
+        .card.dragging {
+            cursor: grabbing;
+            transition: none;
+        }
+
+        .card-image {
+            width: 100%;
+            height: 70%;
+            border-radius: 20px 20px 0 0;
+            object-fit: cover;
+        }
+
+        .card-info {
+            padding: 20px;
+        }
+
+        .card-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .card-age {
+            color: #666;
+            font-size: 18px;
+        }
+
+        .card-bio {
+            color: #777;
+            font-size: 14px;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+
+        .actions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+        }
+
+        .action-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            transition: transform 0.2s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .dislike-btn {
+            background: #ff4757;
+            color: white;
+        }
+
+        .like-btn {
+            background: #2ed573;
+            color: white;
+        }
+
+        .superlike-btn {
+            background: #3742fa;
+            color: white;
+        }
+
+        .match-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .match-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            animation: matchAnimation 0.5s ease;
+        }
+
+        @keyframes matchAnimation {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .match-title {
+            font-size: 32px;
+            color: #2ed573;
+            margin-bottom: 20px;
+        }
+
+        .match-text {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .match-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .match-btn:hover {
+            background: #764ba2;
+        }
+
+        .no-more {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+
+        .no-more h2 {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>MatchApp</h1>
+            <p>Desliza para encontrar tu match</p>
+        </div>
+
+        <div class="cards-container" id="cardsContainer">
+            <!-- Las cartas se generarán dinámicamente -->
+        </div>
+
+        <div class="actions">
+            <button class="action-btn dislike-btn" onclick="dislike()">✖</button>
+            <button class="action-btn superlike-btn" onclick="superlike()">⭐</button>
+            <button class="action-btn like-btn" onclick="like()">❤</button>
+        </div>
+
+        <div class="match-modal" id="matchModal">
+            <div class="match-content">
+                <h2 class="match-title">¡Es un match!</h2>
+                <p class="match-text">A ambos les gustan</p>
+                <button class="match-btn" onclick="closeMatch()">Continuar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const profiles = [
+            {
+                name: "María",
+                age: 25,
+                bio: "Amante de los viajes y la buena comida. Buscando a alguien para compartir aventuras.",
+                image: "https://images.unsplash.com/photo-1494790108755-2616b612b5bc?w=400&h=600&fit=crop"
+            },
+            {
+                name: "Carlos",
+                age: 28,
+                bio: "Desarrollador de software y entusiasta del fitness. Siempre listo para nuevos retos.",
+                image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop"
+            },
+            {
+                name: "Ana",
+                age: 23,
+                bio: "Artista y diseñadora. Me encanta la creatividad y las personas con buen sentido del humor.",
+                image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop"
+            },
+            {
+                name: "Luis",
+                age: 30,
+                bio: "Chef profesional. Disfruto cocinando para los demás y explorando nuevos sabores.",
+                image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop"
+            },
+            {
+                name: "Sofía",
+                age: 26,
+                bio: "Profesora de yoga y amante de la naturaleza. Siempre buscando el equilibrio perfecto.",
+                image: "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=400&h=600&fit=crop"
+            }
+        ];
+
+        let currentIndex = 0;
+        let isDragging = false;
+        let startX = 0;
+        let currentCard = null;
+
+        function createCard(profile, index) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.zIndex = profiles.length - index;
+            
+            card.innerHTML = `
+                <img src="${profile.image}" alt="${profile.name}" class="card-image">
+                <div class="card-info">
+                    <div class="card-name">${profile.name}, <span class="card-age">${profile.age}</span></div>
+                    <div class="card-bio">${profile.bio}</div>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function loadCards() {
+            const container = document.getElementById('cardsContainer');
+            container.innerHTML = '';
+            
+            if (currentIndex >= profiles.length) {
+                container.innerHTML = `
+                    <div class="no-more">
+                        <h2>¡No hay más perfiles!</h2>
+                        <p>Vuelve más tarde para ver nuevas personas</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Mostrar las próximas 3 cartas
+            for (let i = currentIndex; i < Math.min(currentIndex + 3, profiles.length); i++) {
+                const card = createCard(profiles[i], i);
+                
+                if (i === currentIndex) {
+                    currentCard = card;
+                    setupDragEvents(card);
+                }
+                
+                container.appendChild(card);
+            }
+        }
+
+        function setupDragEvents(card) {
+            card.addEventListener('mousedown', handleStart);
+            card.addEventListener('touchstart', handleStart);
+            card.addEventListener('mousemove', handleMove);
+            card.addEventListener('touchmove', handleMove);
+            card.addEventListener('mouseup', handleEnd);
+            card.addEventListener('touchend', handleEnd);
+            card.addEventListener('mouseleave', handleEnd);
+        }
+
+        function handleStart(e) {
+            isDragging = true;
+            startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            currentCard.classList.add('dragging');
+        }
+
+        function handleMove(e) {
+            if (!isDragging || !currentCard) return;
+            
+            e.preventDefault();
+            const currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            const diffX = currentX - startX;
+            const rotation = diffX * 0.1;
+            
+            currentCard.style.transform = `translate(calc(-50% + ${diffX}px), -50%) rotate(${rotation}deg)`;
+            
+            // Cambiar opacidad basado en la dirección
+            if (diffX > 100) {
+                currentCard.style.opacity = '0.8';
+            } else if (diffX < -100) {
+                currentCard.style.opacity = '0.8';
+            } else {
+                currentCard.style.opacity = '1';
+            }
+        }
+
+        function handleEnd(e) {
+            if (!isDragging || !currentCard) return;
+            
+            isDragging = false;
+            currentCard.classList.remove('dragging');
+            
+            const endX = e.type.includes('mouse') ? e.clientX : e.changedTouches[0].clientX;
+            const diffX = endX - startX;
+            
+            if (Math.abs(diffX) > 100) {
+                if (diffX > 0) {
+                    like();
+                } else {
+                    dislike();
+                }
+            } else {
+                currentCard.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+                currentCard.style.opacity = '1';
+            }
+        }
+
+        function dislike() {
+            if (!currentCard) return;
+            
+            currentCard.style.transform = 'translate(-150%, -50%) rotate(-30deg)';
+            currentCard.style.opacity = '0';
+            
+            setTimeout(() => {
+                currentIndex++;
+                loadCards();
+            }, 300);
+        }
+
+        function like() {
+            if (!currentCard) return;
+            
+            currentCard.style.transform = 'translate(50%, -50%) rotate(30deg)';
+            currentCard.style.opacity = '0';
+            
+            // Simular match aleatorio
+            if (Math.random() > 0.5) {
+                setTimeout(() => {
+                    document.getElementById('matchModal').style.display = 'flex';
+                }, 300);
+            }
+            
+            setTimeout(() => {
+                currentIndex++;
+                loadCards();
+            }, 600);
+        }
+
+        function superlike() {
+            if (!currentCard) return;
+            
+            currentCard.style.transform = 'scale(1.1)';
+            currentCard.style.opacity = '0';
+            
+            // Mayor probabilidad de match con superlike
+            if (Math.random() > 0.3) {
+                setTimeout(() => {
+                    document.getElementById('matchModal').style.display = 'flex';
+                }, 300);
+            }
+            
+            setTimeout(() => {
+                currentIndex++;
+                loadCards();
+            }, 600);
+        }
+
+        function closeMatch() {
+            document.getElementById('matchModal').style.display = 'none';
+        }
+
+        // Cargar las primeras cartas
+        loadCards();
+    </script>
+</body>
+</html>
+```
