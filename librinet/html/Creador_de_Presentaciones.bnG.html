@@ -1,0 +1,187 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Creador de Presentaciones</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif}
+    body{background:#111;color:#eee;display:flex;height:100vh;overflow:hidden}
+    #sidebar{width:260px;background:#1c1c1c;padding:20px;overflow-y:auto;border-right:2px solid #333}
+    #sidebar h2{margin-bottom:10px;font-size:18px}
+    #slideList{list-style:none}
+    .slideItem{background:#222;margin-bottom:8px;padding:10px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+    .slideItem.active{background:#0af}
+    .slideItem span{flex:1}
+    .slideItem button{background:#c00;border:none;color:#fff;padding:4px 8px;border-radius:4px;cursor:pointer}
+    #main{flex:1;display:flex;flex-direction:column}
+    #topBar{background:#1c1c1c;padding:10px 20px;display:flex;gap:12px;align-items:center}
+    button{background:#0af;border:none;color:#111;padding:8px 14px;border-radius:6px;font-weight:bold;cursor:pointer}
+    button:hover{opacity:.9}
+    #canvasContainer{flex:1;display:flex;justify-content:center;align-items:center;background:#000}
+    #canvas{background:#fff;width:800px;height:450px;position:relative;box-shadow:0 0 20px rgba(0,0,0,.6)}
+    .textEl{position:absolute;border:2px dashed transparent;cursor:move;padding:4px;min-width:50px;min-height:30px}
+    .textEl.selected{border-color:#0af}
+    #propPanel{position:absolute;right:20px;top:80px;background:#1c1c1c;padding:12px;border-radius:8px;width:220px}
+    #propPanel label{display:block;margin:6px 0 4px;font-size:13px}
+    #propPanel input,#propPanel select{width:100%;padding:4px;border-radius:4px;border:none}
+    #propPanel button{background:#c00;margin-top:8px}
+  </style>
+</head>
+<body>
+  <aside id="sidebar">
+    <h2>Diapositivas</h2>
+    <ul id="slideList"></ul>
+    <button onclick="addSlide()">+ Nueva diapositiva</button>
+  </aside>
+
+  <main id="main">
+    <header id="topBar">
+      <button onclick="addText()">Agregar texto</button>
+      <button onclick="addImage()">Agregar imagen</button>
+      <button onclick="changeBg()">Cambiar fondo</button>
+      <button onclick="present()">Presentar</button>
+      <button onclick="exportHTML()">Exportar HTML</button>
+    </header>
+    <div id="canvasContainer">
+      <div id="canvas"></div>
+    </div>
+  </main>
+
+  <aside id="propPanel" hidden>
+    <label>Texto</label>
+    <input id="textInput" type="text">
+    <label>Tamaño</label>
+    <input id="sizeInput" type="range" min="12" max="120" value="32">
+    <label>Color</label>
+    <input id="colorInput" type="color" value="#000000">
+    <label>Fuente</label>
+    <select id="fontInput">
+      <option>Arial</option>
+      <option>Georgia</option>
+      <option>Courier New</option>
+    </select>
+    <button onclick="deleteEl()">Eliminar</button>
+  </aside>
+
+  <script>
+    let slides = [];
+    let currentSlide = 0;
+    let selectedEl = null;
+    let isDragging = false, dragOffset = {x:0,y:0};
+
+    function $(q){return document.querySelector(q)}
+    function addSlide(){
+      slides.push({bg:'#ffffff',elements:[]});
+      currentSlide = slides.length-1;
+      renderSlides();
+      loadSlide(currentSlide);
+    }
+    function renderSlides(){
+      const list = $('#slideList');
+      list.innerHTML = '';
+      slides.forEach((s,i)=>{
+        const li = document.createElement('li');
+        li.className = 'slideItem' + (i===currentSlide?' active':'');
+        li.innerHTML = `<span>Diapositiva ${i+1}</span><button onclick="deleteSlide(${i})">✖</button>`;
+        li.onclick = (e)=>{if(e.target.tagName!=='BUTTON'){currentSlide=i;loadSlide(i);renderSlides();}};
+        list.appendChild(li);
+      });
+    }
+    function loadSlide(i){
+      const s = slides[i];
+      const canvas = $('#canvas');
+      canvas.style.background = s.bg;
+      canvas.innerHTML = '';
+      s.elements.forEach(el=>{
+        const div = document.createElement('div');
+        div.className='textEl';
+        div.style.left=el.x+'px';
+        div.style.top=el.y+'px';
+        div.style.fontSize=el.size+'px';
+        div.style.color=el.color;
+        div.style.fontFamily=el.font;
+        div.contentEditable=true;
+        div.textContent=el.text;
+        div.onmousedown=(e)=>selectEl(e,div,el);
+        div.onblur=()=>{el.text=div.textContent;};
+        canvas.appendChild(div);
+      });
+    }
+    function selectEl(e,div,el){
+      e.stopPropagation();
+      document.querySelectorAll('.textEl').forEach(x=>x.classList.remove('selected'));
+      div.classList.add('selected');
+      selectedEl={div,el};
+      $('#propPanel').hidden=false;
+      $('#textInput').value=el.text;
+      $('#sizeInput').value=el.size;
+      $('#colorInput').value=el.color;
+      $('#fontInput').value=el.font;
+    }
+    $('#textInput').oninput=(e)=>{if(selectedEl){selectedEl.el.text=e.target.value;selectedEl.div.textContent=e.target.value;}};
+    $('#sizeInput').oninput=(e)=>{if(selectedEl){selectedEl.el.size=e.target.value;selectedEl.div.style.fontSize=e.target.value+'px';}};
+    $('#colorInput').oninput=(e)=>{if(selectedEl){selectedEl.el.color=e.target.value;selectedEl.div.style.color=e.target.value;}};
+    $('#fontInput').onchange=(e)=>{if(selectedEl){selectedEl.el.font=e.target.value;selectedEl.div.style.fontFamily=e.target.value;}};
+
+    function deleteEl(){
+      if(!selectedEl)return;
+      const idx = slides[currentSlide].elements.indexOf(selectedEl.el);
+      slides[currentSlide].elements.splice(idx,1);
+      selectedEl.div.remove();
+      selectedEl=null;
+      $('#propPanel').hidden=true;
+    }
+    function deleteSlide(i){
+      if(slides.length===1)return;
+      slides.splice(i,1);
+      currentSlide=Math.min(i,slides.length-1);
+      renderSlides();
+      loadSlide(currentSlide);
+    }
+    function addText(){
+      const el = {x:100,y:100,text:'Nuevo texto',size:32,color:'#000000',font:'Arial'};
+      slides[currentSlide].elements.push(el);
+      loadSlide(currentSlide);
+      renderSlides();
+    }
+    function addImage(){
+      const url = prompt('URL de imagen:');
+      if(!url)return;
+      const el = {x:100,y:100,text:'',size:0,color:'',font:''};
+      slides[currentSlide].elements.push(el);
+      const img = document.createElement('img');
+      img.src=url;
+      img.style.position='absolute';
+      img.style.left='100px';
+      img.style.top='100px';
+      img.style.maxWidth='600px';
+      img.style.maxHeight='400px';
+      img.style.border='2px dashed transparent';
+      img.onclick=()=>{document.querySelectorAll('#canvas *').forEach(x=>x.style.border='2px dashed transparent');img.style.border='2px dashed #0af';};
+      $('#canvas').appendChild(img);
+    }
+    function changeBg(){
+      const c = prompt('Color o imagen URL:');
+      if(!c)return;
+      slides[currentSlide].bg=c;
+      $('#canvas').style.background=c;
+    }
+    function present(){
+      const win = window.open('','presentacion','width=1024,height=768');
+      win.document.write('<html><head><style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#000}#slide{width:80vw;height:45vw;background:#fff;position:relative}</style></head><body><div id="slide"></div><script>let s='+JSON.stringify(slides)+',i=0;function load(){const d=s[i];const sl=window.document.getElementById("slide");sl.style.background=d.bg;sl.innerHTML="";d.elements.forEach(e=>{if(e.text){const dv=window.document.createElement("div");dv.style.position="absolute";dv.style.left=e.x+"px";dv.style.top=e.y+"px";dv.style.fontSize=e.size+"px";dv.style.color=e.color;dv.style.fontFamily=e.font;dv.textContent=e.text;sl.appendChild(dv)}})}window.document.onkeydown=(e)=>{if(e.key==="ArrowRight"&&i<s.length-1){i++;load()}if(e.key==="ArrowLeft"&&i>0){i--;load()}};load();</script></body></html>');
+      win.document.close();
+    }
+    function exportHTML(){
+      const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Mi presentación</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#000}#slide{width:80vw;height:45vw;background:#fff;position:relative}</style></head><body><div id="slide"></div><script>let s=${JSON.stringify(slides)};let i=0;function load(){const d=s[i];const sl=document.getElementById("slide");sl.style.background=d.bg;sl.innerHTML="";d.elements.forEach(e=>{if(e.text){const dv=document.createElement("div");dv.style.position="absolute";dv.style.left=e.x+"px";dv.style.top=e.y+"px";dv.style.fontSize=e.size+"px";dv.style.color=e.color;dv.style.fontFamily=e.font;dv.textContent=e.text;sl.appendChild(dv)}})}document.onkeydown=(e)=>{if(e.key==="ArrowRight"&&i<s.length-1){i++;load()}if(e.key==="ArrowLeft"&&i>0){i--;load()}};load();</script></body></html>`;
+      const blob = new Blob([html],{type:'text/html'});
+      const a = document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='presentacion.html';
+      a.click();
+    }
+    addSlide();
+  </script>
+</body>
+</html>
+```
