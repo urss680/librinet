@@ -1,0 +1,87 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Detector de color mayoritario</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 40px;
+            background: #f5f5f5;
+        }
+        #canvas {
+            display: none;
+        }
+        #resultado {
+            margin-top: 20px;
+            font-size: 1.5em;
+        }
+        #colorBox {
+            width: 100px;
+            height: 100px;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Detector de color mayoritario</h2>
+<input type="file" id="input" accept="image/*">
+<div id="resultado"></div>
+<div id="colorBox"></div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const input = document.getElementById('input');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const resultado = document.getElementById('resultado');
+const colorBox = document.getElementById('colorBox');
+
+input.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        const colorMap = {};
+
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const rgb = `${r},${g},${b}`;
+            colorMap[rgb] = (colorMap[rgb] || 0) + 1;
+        }
+
+        let max = 0;
+        let dominant = '0,0,0';
+        for (const c in colorMap) {
+            if (colorMap[c] > max) {
+                max = colorMap[c];
+                dominant = c;
+            }
+        }
+
+        const [r, g, b] = dominant.split(',').map(Number);
+        const hex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+
+        resultado.textContent = `Color mayoritario: ${hex}`;
+        colorBox.style.backgroundColor = hex;
+    };
+});
+</script>
+
+</body>
+</html>
+```
