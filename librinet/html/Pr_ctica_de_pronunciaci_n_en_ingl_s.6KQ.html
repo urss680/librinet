@@ -1,0 +1,71 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Práctica de pronunciación en inglés</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; margin: 0; padding: 2rem; }
+    h1 { color: #333; }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,.1);
+    }
+    button {
+      background: #0077cc;
+      color: #fff;
+      border: none;
+      padding: .6rem 1.2rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    button:hover { background: #005fa3; }
+    .ipa { font-size: 1.4rem; color: #555; margin-top: .5rem; }
+    .record { background: #28a745; }
+    .record:hover { background: #218838; }
+  </style>
+</head>
+<body>
+
+  <h1>Práctica de pronunciación en inglés</h1>
+
+  <div class="card">
+    <p><strong>Palabra:</strong> <span id="word">through</span></p>
+    <p class="ipa" id="ipa">/θruː/</p>
+    <button onclick="playAudio()">🔊 Escuchar</button>
+    <button class="record" onclick="startRecording()">🎤 Grabar y comparar</button>
+  </div>
+
+  <div class="card">
+    <p><strong>Palabra:</strong> <span id="word2">thought</span></p>
+    <p class="ipa" id="ipa2">/θɔːt/</p>
+    <button onclick="playAudio2()">🔊 Escuchar</button>
+    <button class="record" onclick="startRecording2()">🎤 Grabar y comparar</button>
+  </div>
+
+  <script>
+    function playAudio() {
+      const utter = new SpeechSynthesisUtterance('through');
+      utter.lang = 'en-US';
+      speechSynthesis.speak(utter);
+    }
+    function playAudio2() {
+      const utter = new SpeechSynthesisUtterance('thought');
+      utter.lang = 'en-US';
+      speechSynthesis.speak(utter);
+    }
+    function startRecording() {
+      alert('Función de grabación: en un entorno real se activaría el micrófono y se compararía la pronunciación.');
+    }
+    function startRecording2() {
+      alert('Función de grabación: en un entorno real se activaría el micrófono y se compararía la pronunciación.');
+    }
+  </script>
+
+</body>
+</html>
+```
