@@ -1,0 +1,75 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Respuesta con IA</title>
+    <style>
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        .box {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+        }
+        .respuesta {
+            background: #f0f0f0;
+            margin-top: 10px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="box">
+            <h3>Pregunta</h3>
+            <textarea id="pregunta" placeholder="Escribe tu pregunta..."></textarea>
+        </div>
+
+        <div class="box">
+            <h3>Texto de contexto</h3>
+            <textarea id="contexto" placeholder="Escribe el texto para la IA..."></textarea>
+        </div>
+
+        <button onclick="obtenerRespuesta()">Obtener respuesta</button>
+
+        <div class="box respuesta">
+            <h3>Respuesta de la IA</h3>
+            <div id="respuesta"></div>
+        </div>
+    </div>
+
+    <script>
+        function obtenerRespuesta() {
+            const pregunta = document.getElementById('pregunta').value;
+            const contexto = document.getElementById('contexto').value;
+            const respuestaArea = document.getElementById('respuesta');
+            
+            // Aquí conectarías con una API de IA real, como por ejemplo:
+            // fetch('https://api.ai/service', { method: 'POST', body: JSON.stringify({contexto, pregunta}) })
+            //     .then(res => res.json())
+            //     .then(datos => respuestaArea.textContent = datos.respuesta)
+            //     .catch(err => respuestaArea.textContent = 'Error: No se pudo obtener la respuesta.');
+            
+            // Ejemplo de placeholder de respuesta
+            respuestaArea.textContent = `Respuesta generada por IA para: "${pregunta}" basada en el contexto proporcionado.`;
+        }
+    </script>
+</body>
+</html>
+```
