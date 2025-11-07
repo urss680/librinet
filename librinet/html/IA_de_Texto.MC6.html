@@ -1,0 +1,74 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>IA de Texto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f5f5f5;
+        }
+        textarea, #response {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #response {
+            background-color: #fff;
+            color: #333;
+        }
+        button {
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h2>Generador de Respuesta IA</h2>
+    <textarea id="inputText" rows="6" placeholder="Escribe tu texto aquí..."></textarea>
+    <button onclick="generateResponse()">Generar Respuesta</button>
+    <div id="response">
+        <h3>Respuesta generada:</h3>
+        <!-- Aquí se mostrará la respuesta -->
+    </div>
+
+    <script>
+        function generateResponse() {
+            const input = document.getElementById('inputText').value.trim();
+            const responseDiv = document.getElementById('response').querySelector('p');
+            
+            if (!input) {
+                responseDiv.textContent = "Por favor, escribe un texto para procesar.";
+                return;
+            }
+            
+            // Simulación de respuesta IA
+            let simulatedResponse = "IA: Me has dado este texto: " + input;
+            simulatedResponse += "\nAnalizando... Aquí voy a generar una respuesta basada en tu entrada";
+            
+            if (responseDiv) {
+                responseDiv.textContent = simulatedResponse;
+            } else {
+                const newResponse = document.createElement('p');
+                newResponse.textContent = simulatedResponse;
+                document.getElementById('response').appendChild(newResponse);
+            }
+        }
+    </script>
+</body>
+</html>
+```
