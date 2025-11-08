@@ -1,0 +1,184 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Creador de Juegos 3D</title>
+  <style>
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#111;color:#eee;overflow:hidden}
+    #header{position:absolute;top:0;left:0;right:0;height:48px;background:#222;border-bottom:2px solid #444;display:flex;align-items:center;padding:0 12px;z-index:10}
+    #header button{margin-right:8px;padding:6px 12px;background:#444;border:none;color:#eee;border-radius:4px;cursor:pointer}
+    #header button:hover{background:#555}
+    #props{position:absolute;top:52px;left:0;bottom:0;width:220px;background:#1c1c1c;border-right:2px solid #333;padding:12px;overflow-y:auto;z-index:10}
+    #props h3{margin-top:0}
+    #props label{display:block;margin:8px 0 4px;font-size:13px}
+    #props input[type=range],#props input[type=color],#props select{width:100%}
+    #canvas-container{position:absolute;top:48px;left:224px;right:0;bottom:0}
+    #overlay{position:absolute;top:60px;left:236px;background:rgba(0,0,0,.6);padding:8px 12px;border-radius:4px;font-size:13px;pointer-events:none}
+  </style>
+</head>
+<body>
+  <div id="header">
+    <button id="btnPlay">▶ Play</button>
+    <button id="btnStop">⏹ Stop</button>
+    <button id="btnAddCube">Añadir Cubo</button>
+    <button id="btnAddSphere">Añadir Esfera</button>
+    <button id="btnDelete">Borrar Objeto</button>
+  </div>
+
+  <div id="props">
+    <h3>Propiedades</h3>
+    <label>Color</label>
+    <input type="color" id="inpColor" value="#00ff00">
+    <label>Gravedad</label>
+    <input type="range" id="inpGravity" min="0" max="20" value="9.8" step="0.1">
+    <label>Velocidad Inicial Z</label>
+    <input type="range" id="inpVelZ" min="-10" max="10" value="0" step="0.1">
+    <label>Velocidad Inicial Y</label>
+    <input type="range" id="inpVelY" min="0" max="20" value="0" step="0.1">
+    <label>Material</label>
+    <select id="selMat">
+      <option value="standard">Standard</option>
+      <option value="basic">Basic</option>
+      <option value="normal">Normal</option>
+    </select>
+  </div>
+
+  <div id="canvas-container"></div>
+  <div id="overlay">Click en objeto para seleccionar</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+  <script>
+    // Escena, cámara, render
+    const scene=new THREE.Scene();
+    scene.background=new THREE.Color(0x222222);
+    const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
+    camera.position.set(5,5,10);
+    const renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(innerWidth,innerHeight);
+    renderer.shadowMap.enabled=true;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    // Luces
+    const amb=new THREE.AmbientLight(0xffffff,0.4);scene.add(amb);
+    const dir=new THREE.DirectionalLight(0xffffff,0.8);
+    dir.position.set(5,10,5);dir.castShadow=true;
+    scene.add(dir);
+
+    // Suelo
+    const floorGeo=new THREE.PlaneGeometry(50,50);
+    const floorMat=new THREE.MeshStandardMaterial({color:0x444444});
+    const floor=new THREE.Mesh(floorGeo,floorMat);
+    floor.rotation.x=-Math.PI/2;
+    floor.receiveShadow=true;
+    scene.add(floor);
+
+    // Controles
+    let isPlaying=false;
+    let selected=null;
+    const objects=[];
+    const gravity=new THREE.Vector3(0,-9.8,0);
+    const velocities=new Map();
+
+    // Raycaster
+    const raycaster=new THREE.Raycaster();
+    const mouse=new THREE.Vector2();
+
+    // Funciones
+    function addCube(){
+      const geo=new THREE.BoxGeometry(1,1,1);
+      const mat=new THREE.MeshStandardMaterial({color:0x00ff00});
+      const mesh=new THREE.Mesh(geo,mat);
+      mesh.position.y=5;
+      mesh.castShadow=true;
+      scene.add(mesh);
+      objects.push(mesh);
+      select(mesh);
+    }
+    function addSphere(){
+      const geo=new THREE.SphereGeometry(0.5,32,32);
+      const mat=new THREE.MeshStandardMaterial({color:0x00ff00});
+      const mesh=new THREE.Mesh(geo,mat);
+      mesh.position.y=5;
+      mesh.castShadow=true;
+      scene.add(mesh);
+      objects.push(mesh);
+      select(mesh);
+    }
+    function select(obj){
+      selected=obj;
+      document.getElementById('inpColor').value='#'+obj.material.color.getHexString();
+    }
+    function deleteSelected(){
+      if(selected){
+        scene.remove(selected);
+        objects.splice(objects.indexOf(selected),1);
+        velocities.delete(selected);
+        selected=null;
+      }
+    }
+    function updateMaterial(){
+      if(!selected)return;
+      const color=document.getElementById('inpColor').value;
+      const type=document.getElementById('selMat').value;
+      let mat;
+      switch(type){
+        case 'basic':mat=new THREE.MeshBasicMaterial({color});break;
+        case 'normal':mat=new THREE.MeshNormalMaterial();break;
+        default:mat=new THREE.MeshStandardMaterial({color});
+      }
+      selected.material=mat;
+    }
+    function applyVelocities(){
+      if(!selected)return;
+      const vz=parseFloat(document.getElementById('inpVelZ').value);
+      const vy=parseFloat(document.getElementById('inpVelY').value);
+      velocities.set(selected,new THREE.Vector3(0,vy,vz));
+    }
+
+    // Eventos
+    document.getElementById('btnPlay').onclick=()=>{isPlaying=true;applyVelocities();};
+    document.getElementById('btnStop').onclick=()=>{isPlaying=false;velocities.clear();objects.forEach(o=>{o.position.y=5;o.rotation.set(0,0,0);});};
+    document.getElementById('btnAddCube').onclick=addCube;
+    document.getElementById('btnAddSphere').onclick=addSphere;
+    document.getElementById('btnDelete').onclick=deleteSelected;
+    document.getElementById('inpColor').onchange=updateMaterial;
+    document.getElementById('selMat').onchange=updateMaterial;
+    document.getElementById('inpGravity').oninput=e=>{gravity.y=-parseFloat(e.target.value);};
+
+    renderer.domElement.addEventListener('click',e=>{
+      const rect=renderer.domElement.getBoundingClientRect();
+      mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
+      mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+      raycaster.setFromCamera(mouse,camera);
+      const intersects=raycaster.intersectObjects(objects);
+      if(intersects.length>0)select(intersects[0].object);
+    });
+
+    // Loop
+    const clock=new THREE.Clock();
+    function animate(){
+      requestAnimationFrame(animate);
+      const dt=clock.getDelta();
+      if(isPlaying){
+        velocities.forEach((vel,obj)=>{
+          vel.add(gravity.clone().multiplyScalar(dt));
+          obj.position.add(vel.clone().multiplyScalar(dt));
+          if(obj.position.y<0.5){obj.position.y=0.5;vel.y=-vel.y*0.8;}
+        });
+      }
+      renderer.render(scene,camera);
+    }
+    animate();
+
+    // Resize
+    window.addEventListener('resize',()=>{
+      camera.aspect=innerWidth/innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth-224,innerHeight-48);
+    });
+    window.dispatchEvent(new Event('resize'));
+  </script>
+</body>
+</html>
+```
