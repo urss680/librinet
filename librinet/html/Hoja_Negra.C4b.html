@@ -1,0 +1,53 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hoja Negra</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            background-color: #000000;
+            -webkit-print-color-adjust: exact; /* Forzar color en impresión */
+            aspect-ratio: 1/1.414; /* Relación de aspecto A4 */
+        }
+
+        .print-btn {
+            color: white;
+            background-color: black;
+            border: 2px solid white;
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            margin: 20px;
+            transition: background 0.3s;
+        }
+
+        .print-btn:hover {
+            background-color: white;
+            color: black;
+        }
+
+        @media print {
+            body {
+                height: 100vh;
+                width: 100vw;
+                background-color: #000000;
+                -webkit-print-color-adjust: exact;
+                color: #000000;
+            }
+            .print-btn {
+                display: none; /* Ocultar botón en impresión */
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">Imprimir Hoja Negra</button>
+</body>
+</html>
+```
