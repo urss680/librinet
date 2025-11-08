@@ -1,0 +1,92 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Exportar PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .input-section {
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            font-size: 14px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        .container {
+            border: 2px solid #000;
+            padding: 20px;
+            margin-top: 20px;
+            background-color: #f9f9f9;
+        }
+        .export-btn {
+            margin-top: 20px;
+            padding: 12px 24px;
+            font-size: 18px;
+        }
+        .warning {
+            color: #c00;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="input-section">
+        <h2>Ingrese su HTML</h2>
+        <textarea id="htmlInput" placeholder="Ejemplo: &lt;h2&gt;Título&lt;/h2&gt;&lt;p&gt;Texto&lt;/p&gt;">
+            &lt;h2&gt;Título&lt;/h2&gt;&lt;p&gt;Texto&lt;/p&gt;
+        </textarea>
+        <button onclick="applyHTML()">Aplicar HTML</button>
+        <p class="warning">⚠️ No use &lt;script&gt; para evitar riesgos de seguridad</p>
+    </div>
+
+    <div class="container" id="contentContainer">
+        <h2>Contenido predeterminado</h2>
+        <p>Este contenido será reemplazado por su HTML</p>
+    </div>
+
+    <button class="export-btn" onclick="generatePDF()">Descargar como PDF</button>
+
+    <script>
+        // Función para reemplazar el contenido del contenedor con el HTML del usuario
+        function applyHTML() {
+            const userInput = document.getElementById('htmlInput').value;
+            document.getElementById('contentContainer').innerHTML = userInput;
+        }
+
+        // Función para generar PDF (mantiene el funcionamiento original)
+        function generatePDF() {
+            const element = document.getElementById('contentContainer');
+            html2canvas(element).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jspdf.jsPDF();
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save('contenido_usuario.pdf');
+            });
+        }
+    </script>
+</body>
+</html>
+```
+
+**Actualizaciones clave:**
+1. **Input personalizado:** Se añadió un textarea para que el usuario ingrese o pegue su propio HTML.
+2. **Aplicación dinámica:** Al hacer clic en "Aplicar HTML", reemplaza el contenido del contenedor con el HTML especificado.
+3. **Seguridad:** Advertencia sobre evitar el uso de scripts para prevenir XSS.
+4. **Flexibilidad:** El contenedor ahora acepta cualquier estructura HTML válida (encabezados, listas, estilos personalizados, etc.).
+5. **Claridad visual:** Diseño ajustado para mejor organización y legibilidad del contenido.
