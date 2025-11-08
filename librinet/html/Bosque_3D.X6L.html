@@ -1,0 +1,434 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bosque 3D</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #000;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 250px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        #info h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+            font-size: 16px;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Cargando bosque...</div>
+    <div id="info" style="display: none;">
+        <h3>🌲 Bosque 3D</h3>
+        <strong>Controles:</strong><br>
+        WASD - Moverte<br>
+        Mouse - Mirar alrededor<br>
+        Shift - Correr<br>
+        Espacio - Saltar<br>
+        Click - Bloquear puntero
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Escena, cámara y renderizador
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x87CEEB, 50, 300);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 20);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setClearColor(0x87CEEB);
+        document.body.appendChild(renderer.domElement);
+        
+        // Iluminación ambiental y direccional
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(100, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.left = -100;
+        directionalLight.shadow.camera.right = 100;
+        directionalLight.shadow.camera.top = 100;
+        directionalLight.shadow.camera.bottom = -100;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 500;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+        
+        // Suelo con textura procedural
+        const groundGeometry = new THREE.PlaneGeometry(400, 400, 50, 50);
+        const groundMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x3a5f3a,
+            transparent: true,
+            opacity: 0.9
+        });
+        
+        // Añadir variación al terreno
+        const groundVertices = groundGeometry.attributes.position.array;
+        for (let i = 2; i < groundVertices.length; i += 3) {
+            groundVertices[i] += Math.random() * 2 - 1; // Altura aleatoria
+        }
+        groundGeometry.attributes.position.needsUpdate = true;
+        groundGeometry.computeVertexNormals();
+        
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // Función para crear un árbol más detallado
+        function createTree(x, z, scale = 1) {
+            const tree = new THREE.Group();
+            
+            // Tronco con textura más realista
+            const trunkGeometry = new THREE.CylinderGeometry(0.4 * scale, 0.6 * scale, 5 * scale, 8);
+            const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x4a3c28 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 2.5 * scale;
+            trunk.castShadow = true;
+            tree.add(trunk);
+            
+            // Copa del árbol en capas para más realismo
+            const leafColors = [0x228B22, 0x32CD32, 0x006400];
+            
+            for (let i = 0; i < 3; i++) {
+                const leavesGeometry = new THREE.ConeGeometry(2.5 * scale - i * 0.3, 4 * scale, 8);
+                const leavesMaterial = new THREE.MeshLambertMaterial({ 
+                    color: leafColors[Math.floor(Math.random() * leafColors.length)]
+                });
+                const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                leaves.position.y = (5.5 + i * 1.5) * scale;
+                leaves.castShadow = true;
+                leaves.receiveShadow = true;
+                tree.add(leaves);
+            }
+            
+            // Añadir algunas ramas visibles
+            for (let i = 0; i < 3; i++) {
+                const branchGeometry = new THREE.CylinderGeometry(0.1 * scale, 0.15 * scale, 2 * scale);
+                const branchMaterial = new THREE.MeshLambertMaterial({ color: 0x4a3c28 });
+                const branch = new THREE.Mesh(branchGeometry, branchMaterial);
+                branch.position.set(
+                    (Math.random() - 0.5) * 2 * scale,
+                    4 * scale + Math.random() * 2 * scale,
+                    (Math.random() - 0.5) * 2 * scale
+                );
+                branch.rotation.z = (Math.random() - 0.5) * Math.PI / 3;
+                branch.rotation.x = (Math.random() - 0.5) * Math.PI / 6;
+                branch.castShadow = true;
+                tree.add(branch);
+            }
+            
+            tree.position.set(x, 0, z);
+            tree.scale.set(scale, scale, scale);
+            return tree;
+        }
+        
+        // Función para crear arbustos
+        function createBush(x, z) {
+            const bush = new THREE.Group();
+            
+            const bushGeometry = new THREE.SphereGeometry(1, 8, 6);
+            const bushMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const bushMesh = new THREE.Mesh(bushGeometry, bushMaterial);
+            bushMesh.position.y = 0.5;
+            bushMesh.castShadow = true;
+            bushMesh.receiveShadow = true;
+            bush.add(bushMesh);
+            
+            bush.position.set(x, 0, z);
+            return bush;
+        }
+        
+        // Función para crear flores
+        function createFlower(x, z) {
+            const flower = new THREE.Group();
+            
+            // Tallo
+            const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.8);
+            const stemMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+            stem.position.y = 0.4;
+            flower.add(stem);
+            
+            // Flor
+            const flowerGeometry = new THREE.SphereGeometry(0.2, 8, 6);
+            const flowerColors = [0xFF69B4, 0xFF1493, 0xFFB6C1, 0xFFA500, 0xFFFF00];
+            const flowerMaterial = new THREE.MeshLambertMaterial({ 
+                color: flowerColors[Math.floor(Math.random() * flowerColors.length)]
+            });
+            const flowerMesh = new THREE.Mesh(flowerGeometry, flowerMaterial);
+            flowerMesh.position.y = 0.8;
+            flower.add(flowerMesh);
+            
+            flower.position.set(x, 0, z);
+            return flower;
+        }
+        
+        // Generar bosque con variedad
+        const forestArea = 150;
+        const treeCount = 80;
+        const bushCount = 40;
+        const flowerCount = 60;
+        
+        // Árboles principales
+        for (let i = 0; i < treeCount; i++) {
+            const x = (Math.random() - 0.5) * forestArea;
+            const z = (Math.random() - 0.5) * forestArea;
+            const scale = 0.7 + Math.random() * 0.8; // Tamaño variable
+            scene.add(createTree(x, z, scale));
+        }
+        
+        // Arbustos
+        for (let i = 0; i < bushCount; i++) {
+            const x = (Math.random() - 0.5) * forestArea;
+            const z = (Math.random() - 0.5) * forestArea;
+            scene.add(createBush(x, z));
+        }
+        
+        // Flores
+        for (let i = 0; i < flowerCount; i++) {
+            const x = (Math.random() - 0.5) * forestArea;
+            const z = (Math.random() - 0.5) * forestArea;
+            scene.add(createFlower(x, z));
+        }
+        
+        // Agregar algunas rocas
+        for (let i = 0; i < 20; i++) {
+            const rockGeometry = new THREE.DodecahedronGeometry(Math.random() * 1 + 0.5);
+            const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+            const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+            rock.position.set(
+                (Math.random() - 0.5) * forestArea,
+                0.3,
+                (Math.random() - 0.5) * forestArea
+            );
+            rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+            rock.castShadow = true;
+            rock.receiveShadow = true;
+            scene.add(rock);
+        }
+        
+        // Cielo con gradiente
+        const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+        const skyMaterial = new THREE.MeshBasicMaterial({
+            color: 0x87CEEB,
+            side: THREE.BackSide
+        });
+        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+        scene.add(sky);
+        
+        // Nubes
+        function createCloud(x, y, z) {
+            const cloud = new THREE.Group();
+            
+            for (let i = 0; i < 5; i++) {
+                const cloudGeometry = new THREE.SphereGeometry(3 + Math.random() * 3, 8, 6);
+                const cloudMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const cloudPart = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                cloudPart.position.set(
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 3,
+                    (Math.random() - 0.5) * 10
+                );
+                cloud.add(cloudPart);
+            }
+            
+            cloud.position.set(x, y, z);
+            return cloud;
+        }
+        
+        // Añadir nubes
+        for (let i = 0; i < 10; i++) {
+            const cloud = createCloud(
+                (Math.random() - 0.5) * 300,
+                50 + Math.random() * 30,
+                (Math.random() - 0.5) * 300
+            );
+            scene.add(cloud);
+        }
+        
+        // Controles de movimiento mejorados
+        const keys = {};
+        let isRunning = false;
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key === 'Shift') {
+                isRunning = true;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            if (e.key === 'Shift') {
+                isRunning = false;
+            }
+        });
+        
+        // Control de cámara con el ratón mejorado
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+        let isPointerLocked = false;
+        
+        renderer.domElement.addEventListener('click', () => {
+            renderer.domElement.requestPointerLock();
+        });
+        
+        document.addEventListener('pointerlockchange', () => {
+            isPointerLocked = document.pointerLockElement === renderer.domElement;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (isPointerLocked) {
+                targetRotationY -= e.movementX * 0.002;
+                targetRotationX -= e.movementY * 0.002;
+                targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+            } else {
+                mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+                mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+            }
+        });
+        
+        // Física de movimiento mejorada
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+        let verticalVelocity = 0;
+        const gravity = -30;
+        const jumpSpeed = 10;
+        
+        function updateMovement(delta) {
+            const speed = isRunning ? 25 : 12;
+            
+            direction.set(0, 0, 0);
+            
+            if (keys['w']) direction.z = -1;
+            if (keys['s']) direction.z = 1;
+            if (keys['a']) direction.x = -1;
+            if (keys['d']) direction.x = 1;
+            
+            direction.normalize();
+            direction.applyQuaternion(camera.quaternion);
+            direction.y = 0;
+            direction.normalize();
+            
+            velocity.x = direction.x * speed;
+            velocity.z = direction.z * speed;
+            
+            // Salto
+            if (keys[' '] && camera.position.y <= 5.1) {
+                verticalVelocity = jumpSpeed;
+            }
+            
+            // Aplicar gravedad
+            verticalVelocity += gravity * delta;
+            camera.position.y += verticalVelocity * delta;
+            
+            // Limitar altura mínima
+            if (camera.position.y < 5) {
+                camera.position.y = 5;
+                verticalVelocity = 0;
+            }
+            
+            // Movimiento horizontal
+            camera.position.x += velocity.x * delta;
+            camera.position.z += velocity.z * delta;
+            
+            // Limitar área de movimiento
+            const limit = forestArea / 2 - 10;
+            camera.position.x = Math.max(-limit, Math.min(limit, camera.position.x));
+            camera.position.z = Math.max(-limit, Math.min(limit, camera.position.z));
+        }
+        
+        // Animación
+        const clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+            
+            // Actualizar movimiento
+            updateMovement(delta);
+            
+            // Rotación suave de la cámara
+            camera.rotation.y += (targetRotationY - camera.rotation.y) * 0.1;
+            camera.rotation.x += (targetRotationX - camera.rotation.x) * 0.1;
+            
+            // Animar árboles (movimiento suave)
+            scene.traverse((child) => {
+                if (child instanceof THREE.Group && child.children.length > 2) {
+                    child.rotation.z = Math.sin(time * 0.5 + child.position.x) * 0.02;
+                }
+            });
+            
+            // Animar nubes
+            scene.traverse((child) => {
+                if (child instanceof THREE.Group && child.position.y > 40) {
+                    child.position.x += 0.02;
+                    if (child.position.x > 200) child.position.x = -200;
+                }
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Manejar cambio de tamaño de ventana
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Ocultar loading y mostrar controles
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('info').style.display = 'block';
+        }, 1000);
+        
+        // Iniciar animación
+        animate();
+    </script>
+</body>
+</html>
+```
