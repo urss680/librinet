@@ -1,0 +1,281 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bosque 3D con Personaje</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Usa las flechas del teclado para moverte por el bosque</div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Escena, cámara y renderizador
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x2c3e50, 20, 300);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setClearColor(0x1a1a2e);
+        document.body.appendChild(renderer.domElement);
+
+        // Iluminación ambiental y direccional
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.left = -150;
+        directionalLight.shadow.camera.right = 150;
+        directionalLight.shadow.camera.top = 150;
+        directionalLight.shadow.camera.bottom = -150;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 300;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        // Suelo del bosque
+        const groundGeometry = new THREE.PlaneGeometry(500, 500);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x2d5016 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Crear árboles más detallados
+        function createTree(x, z) {
+            const tree = new THREE.Group();
+            
+            // Tronco con textura más realista
+            const trunkGeometry = new THREE.CylinderGeometry(0.8, 1.2, 8, 8);
+            const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x4a3c28 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 4;
+            trunk.castShadow = true;
+            trunk.receiveShadow = true;
+            tree.add(trunk);
+            
+            // Copa del árbol con múltiples capas
+            const leavesGroup = new THREE.Group();
+            
+            // Capa inferior
+            const leaves1Geometry = new THREE.ConeGeometry(6, 8, 8);
+            const leaves1Material = new THREE.MeshLambertMaterial({ color: 0x1a4d1a });
+            const leaves1 = new THREE.Mesh(leaves1Geometry, leaves1Material);
+            leaves1.position.y = 10;
+            leaves1.castShadow = true;
+            leaves1.receiveShadow = true;
+            leavesGroup.add(leaves1);
+            
+            // Capa media
+            const leaves2Geometry = new THREE.ConeGeometry(5, 7, 8);
+            const leaves2Material = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const leaves2 = new THREE.Mesh(leaves2Geometry, leaves2Material);
+            leaves2.position.y = 13;
+            leaves2.castShadow = true;
+            leavesGroup.add(leaves2);
+            
+            // Capa superior
+            const leaves3Geometry = new THREE.ConeGeometry(4, 6, 8);
+            const leaves3Material = new THREE.MeshLambertMaterial({ color: 0x32CD32 });
+            const leaves3 = new THREE.Mesh(leaves3Geometry, leaves3Material);
+            leaves3.position.y = 16;
+            leaves3.castShadow = true;
+            leavesGroup.add(leaves3);
+            
+            tree.add(leavesGroup);
+            tree.position.set(x, 0, z);
+            
+            return tree;
+        }
+
+        // Crear arbustos
+        function createBush(x, z) {
+            const bush = new THREE.Group();
+            
+            const bushGeometry = new THREE.SphereGeometry(1.5, 8, 6);
+            const bushMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const bushMesh = new THREE.Mesh(bushGeometry, bushMaterial);
+            bushMesh.position.y = 0.75;
+            bushMesh.castShadow = true;
+            bushMesh.receiveShadow = true;
+            bush.add(bushMesh);
+            
+            bush.position.set(x, 0, z);
+            return bush;
+        }
+
+        // Agregar árboles distribuidos de forma más natural
+        for (let i = 0; i < 60; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 20 + Math.random() * 120;
+            const x = Math.cos(angle) * distance;
+            const z = Math.sin(angle) * distance;
+            scene.add(createTree(x, z));
+        }
+
+        // Agregar arbustos
+        for (let i = 0; i < 30; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 15 + Math.random() * 100;
+            const x = Math.cos(angle) * distance;
+            const z = Math.sin(angle) * distance;
+            scene.add(createBush(x, z));
+        }
+
+        // Crear personaje 3D detallado
+        const personaje = new THREE.Group();
+        
+        // Cuerpo principal
+        const bodyGeometry = new THREE.BoxGeometry(1.2, 2.5, 0.8);
+        const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x4169E1 });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 2.25;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        personaje.add(body);
+        
+        // Cabeza
+        const headGeometry = new THREE.SphereGeometry(0.6, 16, 16);
+        const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFDBAC });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 4.1;
+        head.castShadow = true;
+        personaje.add(head);
+        
+        // Ojos
+        const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(-0.2, 4.2, 0.5);
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        rightEye.position.set(0.2, 4.2, 0.5);
+        personaje.add(leftEye, rightEye);
+        
+        // Brazos
+        const armGeometry = new THREE.BoxGeometry(0.4, 1.8, 0.4);
+        const armMaterial = new THREE.MeshLambertMaterial({ color: 0xFFDBAC });
+        
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.position.set(-1, 2.5, 0);
+        leftArm.castShadow = true;
+        personaje.add(leftArm);
+        
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.position.set(1, 2.5, 0);
+        rightArm.castShadow = true;
+        personaje.add(rightArm);
+        
+        // Piernas
+        const legGeometry = new THREE.BoxGeometry(0.5, 2, 0.5);
+        const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2C1810 });
+        
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.4, 0.5, 0);
+        leftLeg.castShadow = true;
+        personaje.add(leftLeg);
+        
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(0.4, 0.5, 0);
+        rightLeg.castShadow = true;
+        personaje.add(rightLeg);
+        
+        // Posicionar personaje en el centro
+        personaje.position.set(0, 0, 0);
+        scene.add(personaje);
+
+        // Cámara en tercera persona
+        camera.position.set(0, 8, 15);
+        camera.lookAt(personaje.position);
+
+        // Control de teclas
+        const keys = {};
+        const moveSpeed = 0.4;
+        const rotationSpeed = 0.05;
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Movimiento del personaje
+            let moved = false;
+            if (keys['ArrowUp']) {
+                personaje.position.z -= moveSpeed;
+                moved = true;
+            }
+            if (keys['ArrowDown']) {
+                personaje.position.z += moveSpeed;
+                moved = true;
+            }
+            if (keys['ArrowLeft']) {
+                personaje.rotation.y += rotationSpeed;
+            }
+            if (keys['ArrowRight']) {
+                personaje.rotation.y -= rotationSpeed;
+            }
+            
+            // Animación de caminar
+            if (moved) {
+                const time = Date.now() * 0.01;
+                personaje.children[4].rotation.x = Math.sin(time) * 0.3; // Brazo izquierdo
+                personaje.children[5].rotation.x = -Math.sin(time) * 0.3; // Brazo derecho
+                personaje.children[6].rotation.x = -Math.sin(time) * 0.5; // Pierna izquierda
+                personaje.children[7].rotation.x = Math.sin(time) * 0.5; // Pierna derecha
+            }
+            
+            // Actualizar posición de la cámara para seguir al personaje
+            const cameraOffset = new THREE.Vector3(0, 8, 15);
+            cameraOffset.applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, personaje.rotation.y, 0)));
+            camera.position.lerp(personaje.position.clone().add(cameraOffset), 0.1);
+            camera.lookAt(personaje.position);
+            
+            renderer.render(scene, camera);
+        }
+
+        // Ajustar ventana
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
+```
