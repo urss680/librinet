@@ -1,0 +1,555 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bosque 3D - Enjambre de Cerdos</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 999;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0000;
+            font-size: 60px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            display: none;
+            z-index: 2000;
+            text-align: center;
+        }
+        #timer {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            z-index: 1000;
+        }
+        #pigSpawnAlert {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff69b4;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+            display: none;
+            z-index: 1500;
+            text-align: center;
+            animation: fadeInOut 4s ease-in-out;
+        }
+        #pigCount {
+            position: absolute;
+            top: 120px;
+            right: 20px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            z-index: 1000;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        Flechas: Moverse | Ratón: Girar cámara | Click: Bloquear ratón
+    </div>
+    <div id="crosshair"></div>
+    <div id="gameOver">
+        ¡GAME OVER!<br>
+        <span style="font-size: 24px;">El cerdo te atrapó</span>
+    </div>
+    <div id="timer">Tiempo: 0s</div>
+    <div id="pigSpawnAlert"></div>
+    <div id="pigCount">Cerdos: 0</div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Escena, cámara y renderizador
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x2c3e50, 20, 300);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setClearColor(0x1a1a2e);
+        document.body.appendChild(renderer.domElement);
+
+        // Iluminación
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.left = -150;
+        directionalLight.shadow.camera.right = 150;
+        directionalLight.shadow.camera.top = 150;
+        directionalLight.shadow.camera.bottom = -150;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 300;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        // Suelo
+        const groundGeometry = new THREE.PlaneGeometry(500, 500);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x2d5016 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Crear árboles
+        function createTree(x, z) {
+            const tree = new THREE.Group();
+            
+            const trunkGeometry = new THREE.CylinderGeometry(0.8, 1.2, 8, 8);
+            const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x4a3c28 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 4;
+            trunk.castShadow = true;
+            trunk.receiveShadow = true;
+            tree.add(trunk);
+            
+            const leavesGroup = new THREE.Group();
+            
+            const leaves1Geometry = new THREE.ConeGeometry(6, 8, 8);
+            const leaves1Material = new THREE.MeshLambertMaterial({ color: 0x1a4d1a });
+            const leaves1 = new THREE.Mesh(leaves1Geometry, leaves1Material);
+            leaves1.position.y = 10;
+            leaves1.castShadow = true;
+            leaves1.receiveShadow = true;
+            leavesGroup.add(leaves1);
+            
+            const leaves2Geometry = new THREE.ConeGeometry(5, 7, 8);
+            const leaves2Material = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const leaves2 = new THREE.Mesh(leaves2Geometry, leaves2Material);
+            leaves2.position.y = 13;
+            leaves2.castShadow = true;
+            leavesGroup.add(leaves2);
+            
+            const leaves3Geometry = new THREE.ConeGeometry(4, 6, 8);
+            const leaves3Material = new THREE.MeshLambertMaterial({ color: 0x32CD32 });
+            const leaves3 = new THREE.Mesh(leaves3Geometry, leaves3Material);
+            leaves3.position.y = 16;
+            leaves3.castShadow = true;
+            leavesGroup.add(leaves3);
+            
+            tree.add(leavesGroup);
+            tree.position.set(x, 0, z);
+            
+            return tree;
+        }
+
+        // Array para almacenar las posiciones de los árboles
+        const treePositions = [];
+
+        // Agregar árboles
+        for (let i = 0; i < 60; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 20 + Math.random() * 120;
+            const x = Math.cos(angle) * distance;
+            const z = Math.sin(angle) * distance;
+            scene.add(createTree(x, z));
+            // Guardar la posición del árbol (aproximadamente el centro del tronco)
+            treePositions.push({ x: x, z: z });
+        }
+
+        // CREAR ROCAS ROSAS
+        const rockPositions = [
+            { x: -100, z: -100 },
+            { x: 100, z: -100 },
+            { x: -100, z: 100 },
+            { x: 100, z: 100 }
+        ];
+
+        function createPinkRock(x, z) {
+            const rockGeometry = new THREE.DodecahedronGeometry(3, 0);
+            const rockMaterial = new THREE.MeshLambertMaterial({ color: 0xff69b4 });
+            const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+            rock.position.set(x, 1.5, z);
+            rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            rock.castShadow = true;
+            rock.receiveShadow = true;
+            return rock;
+        }
+
+        // Agregar las 4 rocas rosas
+        rockPositions.forEach(pos => {
+            scene.add(createPinkRock(pos.x, pos.z));
+        });
+
+        // CREAR ENEMIGO CERDO MEJORADO
+        function createPigEnemy() {
+            const pig = new THREE.Group();
+            
+            // Cuerpo principal con forma más orgánica
+            const bodyGeometry = new THREE.SphereGeometry(1.5, 12, 8);
+            bodyGeometry.scale(1.8, 1.2, 2.5);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xff69b4 });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 1.5;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            pig.add(body);
+            
+            // Cabeza
+            const headGeometry = new THREE.SphereGeometry(1.2, 12, 8);
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xff1493 });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.set(0, 2, 2.5);
+            head.castShadow = true;
+            pig.add(head);
+            
+            // Hocico
+            const snoutGeometry = new THREE.SphereGeometry(0.6, 8, 6);
+            const snoutMaterial = new THREE.MeshLambertMaterial({ color: 0xffb6c1 });
+            const snout = new THREE.Mesh(snoutGeometry, snoutMaterial);
+            snout.scale.set(1, 0.6, 1.2);
+            snout.position.set(0, 2, 3.5);
+            snout.castShadow = true;
+            pig.add(snout);
+            
+            // Agregar nariz al hocico
+            const noseGeometry = new THREE.SphereGeometry(0.2, 6, 6);
+            const noseMaterial = new THREE.MeshLambertMaterial({ color: 0xff69b4 });
+            const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+            nose.position.set(0, 2, 4);
+            pig.add(nose);
+            
+            // Ojos
+            const eyeGeometry = new THREE.SphereGeometry(0.25, 8, 8);
+            const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.5, 2.3, 3.2);
+            pig.add(leftEye);
+            
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.5, 2.3, 3.2);
+            pig.add(rightEye);
+            
+            // Orejas
+            const earGeometry = new THREE.ConeGeometry(0.4, 1, 6);
+            const earMaterial = new THREE.MeshLambertMaterial({ color: 0xff69b4 });
+            
+            const leftEar = new THREE.Mesh(earGeometry, earMaterial);
+            leftEar.position.set(-0.8, 3, 2.2);
+            leftEar.rotation.z = -0.3;
+            pig.add(leftEar);
+            
+            const rightEar = new THREE.Mesh(earGeometry, earMaterial);
+            rightEar.position.set(0.8, 3, 2.2);
+            rightEar.rotation.z = 0.3;
+            pig.add(rightEar);
+            
+            // Patas
+            const legGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.5, 8);
+            const legMaterial = new THREE.MeshLambertMaterial({ color: 0xff1493 });
+            
+            const positions = [
+                { x: -0.8, z: 1.5 }, { x: 0.8, z: 1.5 },
+                { x: -0.8, z: -1.5 }, { x: 0.8, z: -1.5 }
+            ];
+            
+            positions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeometry, legMaterial);
+                leg.position.set(pos.x, -0.25, pos.z);
+                leg.castShadow = true;
+                pig.add(leg);
+            });
+            
+            // Cola
+            const tailGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1.5, 6);
+            const tailMaterial = new THREE.MeshLambertMaterial({ color: 0xff1493 });
+            const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+            tail.position.set(0, 1.5, -2.5);
+            tail.rotation.x = Math.PI / 4;
+            pig.add(tail);
+            
+            return pig;
+        }
+
+        // Variables de control
+        let mouseX = 0, mouseY = 0;
+        let lat = 0, lon = 0;
+        let phi = 0, theta = 0;
+        let isPointerLocked = false;
+        const playerPosition = new THREE.Vector3(0, 1.8, 0);
+        let gameOver = false;
+        let startTime = Date.now();
+        let firstMove = false;
+        let pigSpawned = false;
+        let lastPigSpawn = 0;
+        let pigs = [];
+
+        // Solicitar bloqueo de puntero
+        renderer.domElement.addEventListener('click', () => {
+            if (!gameOver) {
+                renderer.domElement.requestPointerLock();
+            }
+        });
+
+        // Detectar cambio de estado del puntero
+        document.addEventListener('pointerlockchange', () => {
+            if (!gameOver) {
+                isPointerLocked = document.pointerLockElement === renderer.domElement;
+            }
+        });
+
+        // Movimiento del ratón
+        document.addEventListener('mousemove', (e) => {
+            if (isPointerLocked && !gameOver) {
+                lon -= e.movementX * 0.2;
+                lat += e.movementY * 0.2;
+                lat = Math.max(-85, Math.min(85, lat));
+            }
+        });
+
+        // Control de teclas
+        const keys = {};
+        const moveSpeed = 0.4;
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (!firstMove && !gameOver) {
+                firstMove = true;
+                // Programar aparición del primer cerdo en 20 segundos
+                setTimeout(() => {
+                    if (!gameOver) {
+                        spawnPig();
+                        pigSpawned = true;
+                        lastPigSpawn = Date.now();
+                        showPigSpawnAlert("¡APARECE EL PRIMER CERDO!");
+                    }
+                }, 20000);
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Función para verificar colisión con árboles
+        function checkTreeCollision(position) {
+            const playerRadius = 1.5; // Radio del jugador
+            for (let tree of treePositions) {
+                const distance = Math.sqrt(
+                    Math.pow(position.x - tree.x, 2) + 
+                    Math.pow(position.z - tree.z, 2)
+                );
+                if (distance < playerRadius + 3) { // 3 es el radio aproximado del árbol
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Función para verificar límites del terreno
+        function checkBoundaries(position) {
+            const boundary = 249; // Límite del terreno
+            if (position.x > boundary) position.x = boundary;
+            if (position.x < -boundary) position.x = -boundary;
+            if (position.z > boundary) position.z = boundary;
+            if (position.z < -boundary) position.z = -boundary;
+        }
+
+        // Función para mostrar alerta de aparición de cerdos
+        function showPigSpawnAlert(message) {
+            const alert = document.getElementById('pigSpawnAlert');
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 4000);
+        }
+
+        // Función para actualizar el contador de cerdos
+        function updatePigCount() {
+            document.getElementById('pigCount').textContent = `Cerdos: ${pigs.length}`;
+        }
+
+        // Función para generar cerdos desde las rocas rosas
+        function spawnPig() {
+            const pig = createPigEnemy();
+            
+            // Seleccionar una de las 4 rocas al azar
+            const rockIndex = Math.floor(Math.random() * 4);
+            const rockPos = rockPositions[rockIndex];
+            
+            // Posicionar el cerdo en la roca con un pequeño desplazamiento aleatorio
+            pig.position.set(
+                rockPos.x + (Math.random() - 0.5) * 6,
+                0,
+                rockPos.z + (Math.random() - 0.5) * 6
+            );
+            
+            scene.add(pig);
+            pigs.push(pig);
+            updatePigCount();
+        }
+
+        // Función para verificar colisión con cerdos
+        function checkPigCollision() {
+            for (let pig of pigs) {
+                const distance = playerPosition.distanceTo(pig.position);
+                if (distance < 2.5) { // Si el cerdo está muy cerca
+                    gameOver = true;
+                    document.getElementById('gameOver').style.display = 'block';
+                    document.exitPointerLock();
+                    break;
+                }
+            }
+        }
+
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (gameOver) return;
+            
+            // Calcular rotación de la cámara
+            phi = THREE.MathUtils.degToRad(90 - lat);
+            theta = THREE.MathUtils.degToRad(lon);
+            
+            // Movimiento del jugador basado en la orientación de la cámara
+            const forward = new THREE.Vector3(
+                Math.sin(theta) * Math.cos(phi),
+                0,
+                Math.cos(theta) * Math.cos(phi)
+            );
+            const right = new THREE.Vector3(
+                Math.cos(theta),
+                0,
+                -Math.sin(theta)
+            );
+            
+            // Guardar posición anterior
+            const oldPosition = playerPosition.clone();
+            
+            if (keys['ArrowUp']) {
+                playerPosition.addScaledVector(forward, moveSpeed);
+            }
+            if (keys['ArrowDown']) {
+                playerPosition.addScaledVector(forward, -moveSpeed);
+            }
+            if (keys['ArrowLeft']) {
+                playerPosition.addScaledVector(right, moveSpeed);
+            }
+            if (keys['ArrowRight']) {
+                playerPosition.addScaledVector(right, -moveSpeed);
+            }
+            
+            // Verificar colisiones
+            if (checkTreeCollision(playerPosition)) {
+                // Si hay colisión, restaurar posición anterior
+                playerPosition.copy(oldPosition);
+            }
+            
+            // Verificar límites del terreno
+            checkBoundaries(playerPosition);
+            
+            // Actualizar posición de la cámara
+            camera.position.copy(playerPosition);
+            
+            // La cámara mira hacia donde está el ratón
+            const lookDirection = new THREE.Vector3(
+                Math.sin(theta) * Math.cos(phi),
+                Math.sin(phi),
+                Math.cos(theta) * Math.cos(phi)
+            );
+            camera.lookAt(camera.position.clone().add(lookDirection));
+            
+            // Mover cerdos hacia el jugador
+            for (let pig of pigs) {
+                const direction = new THREE.Vector3();
+                direction.subVectors(playerPosition, pig.position);
+                direction.y = 0; // Mantener en el plano horizontal
+                direction.normalize();
+                
+                const pigSpeed = 0.025; // Velocidad del cerdo
+                pig.position.x += direction.x * pigSpeed;
+                pig.position.z += direction.z * pigSpeed;
+                
+                // Rotar el cerdo para que mire al jugador
+                pig.lookAt(playerPosition.x, pig.position.y, playerPosition.z);
+            }
+            
+            // Verificar colisión con cerdos
+            checkPigCollision();
+            
+            // Generar nuevos cerdos cada 30 segundos
+            if (pigSpawned && Date.now() - lastPigSpawn >= 30000) {
+                spawnPig();
+                showPigSpawnAlert(`¡SE HA UNIDO OTRO CERDO! (${pigs.length} cerdos)`);
+                lastPigSpawn = Date.now();
+            }
+            
+            // Actualizar timer
+            document.getElementById('timer').textContent = `Tiempo: ${Math.floor((Date.now() - startTime) / 1000)}s`;
+            
+            renderer.render(scene, camera);
+        }
+
+        // Ajustar ventana
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
+```
