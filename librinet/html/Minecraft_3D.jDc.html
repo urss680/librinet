@@ -1,0 +1,341 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft 3D</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #87CEEB;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+            border-radius: 50%;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        #hotbar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+            z-index: 100;
+        }
+        
+        .slot {
+            width: 60px;
+            height: 60px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .slot.active {
+            border-color: white;
+            background: rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <div>Click para bloquear el mouse</div>
+        <div>FLECHAS o WASD - Moverse</div>
+        <div>ESPACIO - Saltar</div>
+        <div>SHIFT - Agacharse</div>
+        <div>Clic izquierdo - Romper bloque</div>
+        <div>Clic derecho - Colocar bloque</div>
+        <div>1-4 - Cambiar bloque</div>
+    </div>
+    
+    <div id="crosshair"></div>
+    
+    <div id="hotbar">
+        <div class="slot active" data-block="grass">Pasto</div>
+        <div class="slot" data-block="dirt">Tierra</div>
+        <div class="slot" data-block="stone">Piedra</div>
+        <div class="slot" data-block="wood">Madera</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Escena
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
+
+        // Cámara
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 10, 10);
+
+        // Renderizador
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Luz
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.left = -100;
+        directionalLight.shadow.camera.right = 100;
+        directionalLight.shadow.camera.top = 100;
+        directionalLight.shadow.camera.bottom = -100;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 200;
+        scene.add(directionalLight);
+
+        // Texturas simples
+        const textureLoader = new THREE.TextureLoader();
+        
+        // Crear materiales con colores
+        const materials = {
+            grass: new THREE.MeshLambertMaterial({ color: 0x7CFC00 }),
+            dirt: new THREE.MeshLambertMaterial({ color: 0x8B4513 }),
+            stone: new THREE.MeshLambertMaterial({ color: 0x808080 }),
+            wood: new THREE.MeshLambertMaterial({ color: 0x8B4513 }),
+            leaves: new THREE.MeshLambertMaterial({ color: 0x228B22 })
+        };
+
+        // Mundo de bloques
+        const worldSize = 50;
+        const blockSize = 1;
+        const blocks = {};
+        const blockGeometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+
+        function createWorld() {
+            // Crear terreno
+            for (let x = -worldSize/2; x < worldSize/2; x++) {
+                for (let z = -worldSize/2; z < worldSize/2; z++) {
+                    const height = Math.floor(Math.random() * 3) + 1;
+                    
+                    for (let y = 0; y < height; y++) {
+                        const blockType = y === height - 1 ? 'grass' : 'dirt';
+                        createBlock(x, y, z, blockType);
+                    }
+                    
+                    // Agregar algunos árboles
+                    if (Math.random() < 0.05 && height > 1) {
+                        // Tronco
+                        for (let i = 0; i < 3; i++) {
+                            createBlock(x, height + i, z, 'wood');
+                        }
+                        // Hojas
+                        for (let dx = -1; dx <= 1; dx++) {
+                            for (let dz = -1; dz <= 1; dz++) {
+                                for (let dy = 0; dy < 2; dy++) {
+                                    if (Math.random() < 0.7) {
+                                        createBlock(x + dx, height + 2 + dy, z + dz, 'leaves');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function createBlock(x, y, z, type) {
+            const key = `${x},${y},${z}`;
+            if (blocks[key]) return;
+
+            const material = materials[type] || materials.grass;
+            const mesh = new THREE.Mesh(blockGeometry, material.clone());
+            mesh.position.set(x * blockSize, y * blockSize, z * blockSize);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = { type, position: { x, y, z } };
+            
+            scene.add(mesh);
+            blocks[key] = mesh;
+        }
+
+        function removeBlock(x, y, z) {
+            const key = `${Math.round(x)},${Math.round(y)},${Math.round(z)}`;
+            const block = blocks[key];
+            if (block) {
+                scene.remove(block);
+                delete blocks[key];
+            }
+        }
+
+        // Controles del jugador
+        const keys = {};
+        let mouseX = 0, mouseY = 0;
+        let velocity = new THREE.Vector3();
+        let canJump = false;
+        let selectedBlockType = 'grass';
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            
+            // Capturar flechas
+            if(e.key.startsWith('Arrow')) keys[e.key] = true;
+            
+            // Cambiar tipo de bloque
+            if (e.key >= '1' && e.key <= '4') {
+                const types = ['grass', 'dirt', 'stone', 'wood'];
+                selectedBlockType = types[parseInt(e.key) - 1];
+                updateHotbar();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if(e.key.startsWith('Arrow')) keys[e.key] = false;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === renderer.domElement) {
+                mouseX -= e.movementX * 0.002;
+                mouseY -= e.movementY * 0.002;
+                mouseY = Math.max(-Math.PI/2, Math.min(Math.PI/2, mouseY));
+            }
+        });
+
+        renderer.domElement.addEventListener('click', () => {
+            renderer.domElement.requestPointerLock();
+        });
+
+        // Raycaster para interactuar con bloques
+        const raycaster = new THREE.Raycaster();
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            if (document.pointerLockElement !== renderer.domElement) return;
+            
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(Object.values(blocks));
+            
+            if (intersects.length > 0) {
+                const block = intersects[0].object;
+                const pos = block.userData.position;
+                
+                if (e.button === 0) { // Clic izquierdo - romper
+                    removeBlock(pos.x, pos.y, pos.z);
+                } else if (e.button === 2) { // Clic derecho - colocar
+                    const normal = intersects[0].face.normal;
+                    const newX = pos.x + normal.x;
+                    const newY = pos.y + normal.y;
+                    const newZ = pos.z + normal.z;
+                    createBlock(newX, newY, newZ, selectedBlockType);
+                }
+            }
+        });
+
+        renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        function updateHotbar() {
+            document.querySelectorAll('.slot').forEach(slot => {
+                slot.classList.remove('active');
+                if (slot.dataset.block === selectedBlockType) {
+                    slot.classList.add('active');
+                }
+            });
+        }
+
+        // Actualizar posición de la cámara
+        function updateCamera() {
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = mouseX;
+            camera.rotation.x = mouseY;
+            
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            
+            const right = new THREE.Vector3();
+            right.crossVectors(direction, camera.up).normalize();
+            
+            const speed = 0.15;
+            const jumpSpeed = 0.2;
+            const gravity = 0.01;
+            
+            // Movimiento horizontal
+            if (keys['w'] || keys['ArrowUp']) velocity.add(direction.clone().multiplyScalar(speed));
+            if (keys['s'] || keys['ArrowDown']) velocity.add(direction.clone().multiplyScalar(-speed));
+            if (keys['a'] || keys['ArrowLeft']) velocity.add(right.clone().multiplyScalar(-speed));
+            if (keys['d'] || keys['ArrowRight']) velocity.add(right.clone().multiplyScalar(speed));
+            
+            // Salto
+            if (keys[' '] && canJump) {
+                velocity.y = jumpSpeed;
+                canJump = false;
+            }
+            
+            // Agacharse
+            if (keys['shift']) {
+                camera.position.y -= 0.5;
+            }
+            
+            // Aplicar gravedad
+            velocity.y -= gravity;
+            
+            // Actualizar posición
+            camera.position.add(velocity);
+            
+            // Verificar si está en el suelo
+            if (camera.position.y <= 5) {
+                camera.position.y = 5;
+                velocity.y = 0;
+                canJump = true;
+            }
+            
+            // Frenar movimiento horizontal
+            velocity.x *= 0.9;
+            velocity.z *= 0.9;
+        }
+
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+            updateCamera();
+            renderer.render(scene, camera);
+        }
+
+        // Ajustar tamaño de la ventana
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Inicializar
+        createWorld();
+        animate();
+    </script>
+</body>
+</html>
+```
