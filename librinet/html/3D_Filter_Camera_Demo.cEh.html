@@ -1,0 +1,158 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Filter Camera Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #111;
+            font-family: sans-serif;
+        }
+
+        .camera-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            perspective: 800px;
+            background: url('https://images.unsplash.com/photo-1607763536896-d5f27d6a2e80?auto=format&fit=crop&w=1950&q=80') center/cover no-repeat;
+        }
+
+        .filter-cube {
+            width: 300px;
+            height: 300px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-style: preserve-3d;
+            transform: rotateX(0deg) rotateY(0deg) translate(-50%, -50%);
+            transition: transform 0.2s ease-out;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+        }
+
+        .filter-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://images.unsplash.com/photo-1502602740408-54b7f9e155d2?auto=format&fit=crop&w=1950&q=80');
+            background-size: cover;
+            border-radius: 15px;
+        }
+
+        .face-x {
+            transform: translateZ(150px);
+            filter: sepia(0.7) hue-rotate(-20deg);
+        }
+
+        .face-y {
+            transform: rotateY(90deg) translateZ(150px);
+            filter: saturate(2) contrast(1.3);
+        }
+
+        .face-z {
+            transform: rotateX(90deg) translateZ(150px);
+            filter: grayscale(0.6) blur(2px);
+        }
+
+        .camera-ui {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .camera-ui button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .camera-ui button:hover {
+            background: rgba(255,255,255,0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="camera-container" id="camera">
+        <div class="filter-cube" id="cube">
+            <div class="filter-face face-x"></div>
+            <div class="filter-face face-y"></div>
+            <div class="filter-face face-z"></div>
+        </div>
+        <div class="camera-ui">
+            <button onclick="takeSnapshot()">📷 Tomar Foto</button>
+            <button onclick="toggleFilter()">🎨 Cambiar Filtros</button>
+        </div>
+    </div>
+
+    <script>
+        const cube = document.getElementById('cube');
+        const camera = document.getElementById('camera');
+        let isDragging = false;
+        let startX, startY, currentX = 0, currentY = 0;
+        let filterIndex = 0;
+
+        const filters = [
+            { sepia: 0.7, hue: -20 },
+            { saturate: 2, contrast: 1.3 },
+            { grayscale: 0.6, blur: 2 }
+        ];
+
+        camera.addEventListener('mousedown', e => {
+            isDragging = true;
+            startX = e.clientX - currentX;
+            startY = e.clientY - currentY;
+        });
+
+        window.addEventListener('mouseup', () => isDragging = false);
+
+        window.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            currentX = e.clientX - startX;
+            currentY = e.clientY - startY;
+            applyRotation(currentX, currentY);
+        });
+
+        function applyRotation(x, y) {
+            cube.style.transform = `rotateX(-${y / 10}deg) rotateY(${x / 10}deg) translate(-50%, -50%)`;
+        }
+
+        function toggleFilter() {
+            filterIndex = (filterIndex + 1) % filters.length;
+            const activeFilter = filters[filterIndex];
+            cube.querySelectorAll('.filter-face').forEach(face => {
+                face.style.filter = 
+                    `sepia(${activeFilter.sepia || 0}) ` +
+                    `hue-rotate(${activeFilter.hue || 0}deg) ` +
+                    `saturate(${activeFilter.saturate || 1}) ` +
+                    `contrast(${activeFilter.contrast || 1}) ` +
+                    `grayscale(${activeFilter.grayscale || 0}) ` +
+                    `blur(${activeFilter.blur || 0}px)`;
+            });
+        }
+
+        function takeSnapshot() {
+            const domtoimage = require('dom-to-image');
+            const canvas = document.createElement('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            canvas.getContext('2d').drawImage(canvas, 0, 0);
+            domtoimage.toPng(camera).then(dataUrl => {
+                const link = document.createElement('a');
+                link.download = 'snapshot.png';
+                link.href = dataUrl;
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>
+```
