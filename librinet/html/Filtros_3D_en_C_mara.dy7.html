@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Filtros 3D en Cámara</title>
+    <style>
+        body, html {
+            margin:0;
+            padding:0;
+            overflow:hidden;
+            background:#000;
+            font-family:Arial,Helvetica,sans-serif;
+        }
+        #wrapper {
+            width:100vw;
+            height:100vh;
+            perspective:1000px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+        video {
+            width:100%;
+            height:100%;
+            object-fit:cover;
+            transform-style:preserve-3d;
+            transition:transform .2s;
+        }
+        .controls {
+            position:absolute;
+            top:10px;
+            left:10px;
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+        }
+        .controls button {
+            padding:6px 10px;
+            background:rgba(255,255,255,0.2);
+            color:#fff;
+            border:none;
+            cursor:pointer;
+            font-size:14px;
+        }
+        .controls button.active {
+            background:rgba(0,150,255,0.6);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button id="filter-none" class="active">Normal</button>
+        <button id="filter-rotate">Rotar</button>
+        <button id="filter-tilt">Inclinar</button>
+        <button id="filter-cube">Cubo</button>
+        <button id="filter-wave">Onda</button>
+    </div>
+    <div id="wrapper">
+        <video id="cam" autoplay playsinline></video>
+    </div>
+
+    <script>
+        // --- Acceso a la cámara ---
+        const video = document.getElementById('cam');
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => console.error('Error al acceder a la cámara:', err));
+
+        // --- Estado del filtro ---
+        const filters = {
+            none:   e => '',
+            rotate: (x,y) => `rotateY(${x*30}deg) rotateX(${y*30}deg)`,
+            tilt:   (x,y) => `rotateX(${y*30}deg)`,
+            cube:   (x,y) => `rotateY(${x*30}deg) rotateX(${y*30}deg) scale(${1+Math.abs(x)+Math.abs(y)})`,
+            wave:   (x,y) => `rotateY(${Math.sin(x*Math.PI*2)*15}deg) rotateX(${Math.cos(y*Math.PI*2)*15}deg)`
+        };
+        let currentFilter = 'none';
+
+        // --- Botones de filtro ---
+        const btns = {
+            none:   document.getElementById('filter-none'),
+            rotate: document.getElementById('filter-rotate'),
+            tilt:   document.getElementById('filter-tilt'),
+            cube:   document.getElementById('filter-cube'),
+            wave:   document.getElementById('filter-wave')
+        };
+        Object.entries(btns).forEach(([key, btn]) => {
+            btn.addEventListener('click', () => {
+                currentFilter = key;
+                // actualizar estilos de botones
+                document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('active'));
+                btn.classList.add('active');
+                // reset al cambiar a "none"
+                if (key === 'none') video.style.transform = '';
+            });
+        });
+
+        // --- Aplicar efecto según movimiento del mouse ---
+        const wrapper = document.getElementById('wrapper');
+        wrapper.addEventListener('mousemove', e => {
+            if (currentFilter === 'none') return;
+            const rect = wrapper.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) - 0.5; // -0.5 .. 0.5
+            const y = ((e.clientY - rect.top) / rect.height) - 0.5;
+            video.style.transform = filters[currentFilter](x, y);
+        });
+
+        // Reset al salir del área
+        wrapper.addEventListener('mouseleave', () => {
+            if (currentFilter !== 'none') video.style.transform = '';
+        });
+    </script>
+</body>
+</html>
