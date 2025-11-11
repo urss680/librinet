@@ -1,0 +1,416 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cámara con Filtros AR de Animales</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #e0f7fa, #bbdefb);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #videoContainer {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 120px);
+            overflow: hidden;
+            background: #000;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        #controls {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .filter-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.3);
+            color: #333;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .filter-btn.active {
+            background: rgba(255, 235, 59, 0.7);
+            color: #333;
+            font-weight: bold;
+        }
+
+        #captureBtn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            backdrop-filter: blur(5px);
+        }
+
+        #captureBtn:hover {
+            background: rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+
+        #captureBtn:active {
+            transform: scale(0.95);
+        }
+
+        #startBtn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            font-size: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            color: #333;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            font-weight: bold;
+        }
+
+        #startBtn:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .filter-icon {
+            font-size: 24px;
+            margin-right: 8px;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #333;
+            font-size: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 15px 30px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="videoContainer">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+        <button id="startBtn">Iniciar Cámara</button>
+        <div id="loading" class="hidden">Cargando...</div>
+    </div>
+
+    <div id="controls" class="hidden">
+        <button class="filter-btn active" data-filter="none">
+            <span class="filter-icon">📷</span>Sin Filtro
+        </button>
+        <button class="filter-btn" data-filter="dog">
+            <span class="filter-icon">🐕</span>Perro
+        </button>
+        <button class="filter-btn" data-filter="cat">
+            <span class="filter-icon">🐱</span>Gato
+        </button>
+        <button class="filter-btn" data-filter="rabbit">
+            <span class="filter-icon">🐰</span>Conejo
+        </button>
+        <button class="filter-btn" data-filter="panda">
+            <span class="filter-icon">🐼</span>Panda
+        </button>
+        <button id="captureBtn"></button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js"></script>
+    
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const controls = document.getElementById('controls');
+        const loading = document.getElementById('loading');
+        const captureBtn = document.getElementById('captureBtn');
+        
+        let currentFilter = 'none';
+        let faceMesh = null;
+        let camera = null;
+
+        // Partes del filtro de animal
+        const animalFeatures = {
+            dog: {
+                ears: { width: 120, height: 80, yOffset: -60 },
+                nose: { width: 40, height: 30, yOffset: 20 },
+                spots: true
+            },
+            cat: {
+                ears: { width: 100, height: 100, yOffset: -70 },
+                nose: { width: 30, height: 25, yOffset: 15 },
+                whiskers: true
+            },
+            rabbit: {
+                ears: { width: 60, height: 150, yOffset: -100 },
+                nose: { width: 35, height: 25, yOffset: 10 }
+            },
+            panda: {
+                ears: { width: 90, height: 90, yOffset: -50 },
+                eyes: { width: 70, height: 50, yOffset: -10 },
+                nose: { width: 35, height: 30, yOffset: 25 }
+            }
+        };
+
+        startBtn.addEventListener('click', startCamera);
+
+        async function startCamera() {
+            startBtn.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' } 
+                });
+                video.srcObject = stream;
+
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    loading.classList.add('hidden');
+                    controls.classList.remove('hidden');
+                    initFaceMesh();
+                };
+            } catch (err) {
+                console.error('Error al acceder a la cámara:', err);
+                loading.textContent = 'Error al acceder a la cámara';
+            }
+        }
+
+        function initFaceMesh() {
+            faceMesh = new FaceMesh({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`;
+                }
+            });
+
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            faceMesh.onResults(onResults);
+
+            camera = new Camera(video, {
+                onFrame: async () => {
+                    await faceMesh.send({ image: video });
+                },
+                width: 640,
+                height: 480
+            });
+
+            camera.start();
+        }
+
+        function onResults(results) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.scale(-1, 1);
+            ctx.translate(-canvas.width, 0);
+            
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
+                
+                if (currentFilter !== 'none') {
+                    drawAnimalFilter(landmarks, currentFilter);
+                }
+            }
+            
+            ctx.restore();
+        }
+
+        function drawAnimalFilter(landmarks, animal) {
+            const features = animalFeatures[animal];
+            
+            // Obtener puntos clave del rostro
+            const leftEye = landmarks[33];
+            const rightEye = landmarks[263];
+            const nose = landmarks[1];
+            const leftCheek = landmarks[234];
+            const rightCheek = landmarks[454];
+            
+            // Calcular el centro y el ancho del rostro
+            const faceCenterX = (leftEye.x + rightEye.x) / 2 * canvas.width;
+            const faceCenterY = (leftEye.y + rightEye.y) / 2 * canvas.height;
+            const faceWidth = Math.abs((rightCheek.x - leftCheek.x) * canvas.width);
+            
+            ctx.fillStyle = animal === 'panda' ? '#000000' : '#8B4513';
+            ctx.strokeStyle = animal === 'panda' ? '#000000' : '#654321';
+            ctx.lineWidth = 2;
+
+            // Dibujar orejas
+            if (features.ears) {
+                const earWidth = features.ears.width * (faceWidth / 200);
+                const earHeight = features.ears.height * (faceWidth / 200);
+                const earY = faceCenterY + features.ears.yOffset * (faceWidth / 200);
+                
+                // Oreja izquierda
+                ctx.beginPath();
+                if (animal === 'rabbit') {
+                    // Orejas largas de conejo
+                    ctx.ellipse(faceCenterX - faceWidth/3, earY, earWidth/2, earHeight/2, 0, 0, Math.PI * 2);
+                } else {
+                    ctx.ellipse(faceCenterX - faceWidth/2.5, earY, earWidth/2, earHeight/2, 0, 0, Math.PI * 2);
+                }
+                ctx.fill();
+                if (animal === 'panda') ctx.stroke();
+                
+                // Oreja derecha
+                ctx.beginPath();
+                if (animal === 'rabbit') {
+                    ctx.ellipse(faceCenterX + faceWidth/3, earY, earWidth/2, earHeight/2, 0, 0, Math.PI * 2);
+                } else {
+                    ctx.ellipse(faceCenterX + faceWidth/2.5, earY, earWidth/2, earHeight/2, 0, 0, Math.PI * 2);
+                }
+                ctx.fill();
+                if (animal === 'panda') ctx.stroke();
+            }
+
+            // Dibujar ojos de panda
+            if (features.eyes && animal === 'panda') {
+                const eyeWidth = features.eyes.width * (faceWidth / 200);
+                const eyeHeight = features.eyes.height * (faceWidth / 200);
+                const eyeY = faceCenterY + features.eyes.yOffset * (faceWidth / 200);
+                
+                ctx.fillStyle = '#000000';
+                // Ojo izquierdo
+                ctx.beginPath();
+                ctx.ellipse(faceCenterX - faceWidth/6, eyeY, eyeWidth/2, eyeHeight/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Ojo derecho
+                ctx.beginPath();
+                ctx.ellipse(faceCenterX + faceWidth/6, eyeY, eyeWidth/2, eyeHeight/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Dibujar nariz
+            if (features.nose) {
+                const noseWidth = features.nose.width * (faceWidth / 200);
+                const noseHeight = features.nose.height * (faceWidth / 200);
+                const noseY = faceCenterY + features.nose.yOffset * (faceWidth / 200);
+                
+                ctx.fillStyle = animal === 'panda' ? '#000000' : '#654321';
+                ctx.beginPath();
+                ctx.ellipse(faceCenterX, noseY, noseWidth/2, noseHeight/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Dibujar bigotes de gato
+            if (features.whiskers && animal === 'cat') {
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                
+                // Bigotes del lado izquierdo
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(faceCenterX - faceWidth/6, faceCenterY + i * 10);
+                    ctx.lineTo(faceCenterX - faceWidth/2.5, faceCenterY + i * 10 - 5);
+                    ctx.stroke();
+                }
+                
+                // Bigotes del lado derecho
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(faceCenterX + faceWidth/6, faceCenterY + i * 10);
+                    ctx.lineTo(faceCenterX + faceWidth/2.5, faceCenterY + i * 10 - 5);
+                    ctx.stroke();
+                }
+            }
+
+            // Dibujar manchas de perro
+            if (features.spots && animal === 'dog') {
+                ctx.fillStyle = '#654321';
+                ctx.beginPath();
+                ctx.ellipse(faceCenterX - faceWidth/4, faceCenterY + 20, 15, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.ellipse(faceCenterX + faceWidth/4, faceCenterY + 30, 12, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Cambiar filtros
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+            });
+        });
+
+        // Botón de captura
+        captureBtn.addEventListener('click', function() {
+            const link = document.createElement('a');
+            link.download = 'captura-filtro-animal.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    </script>
+</body>
+</html>
+```
