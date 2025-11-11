@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Filtros 3D en Cámara</title>
+    <style>
+        body, html { margin:0; padding:0; overflow:hidden; background:#000; }
+        #overlay {
+            position: absolute; top:10px; left:10px; z-index:10;
+            background:rgba(0,0,0,0.5); padding:5px; border-radius:5px;
+        }
+        #overlay select {
+            font-size:14px; padding:2px 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="overlay">
+        <label for="filterSelect" style="color:#fff;">Filtro:</label>
+        <select id="filterSelect">
+            <option value="none">Ninguno</option>
+            <option value="cat">Gato</option>
+            <option value="dog">Perro</option>
+            <option value="hat">Sombrero</option>
+            <option value="glasses">Gafas</option>
+        </select>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js"></script>
+    <script>
+        let scene, camera, renderer, video, videoTexture, model;
+        const loader = new THREE.GLTFLoader();
+        const models = {
+            cat: 'https://models.babylonjs.com/Cat/Cat.gltf',
+            dog: 'https://models.babylonjs.com/Duck/Duck.gltf', // placeholder dog
+            hat: 'https://models.babylonjs.com/Avocado/Avocado.gltf', // placeholder hat
+            glasses: 'https://models.babylonjs.com/Robot/Robot.gltf' // placeholder glasses
+        };
+
+        init();
+        animate();
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+
+            // Camera (mirrored for webcam)
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
+            camera.position.z = 2;
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Video element (webcam)
+            video = document.createElement('video');
+            video.autoplay = true;
+            video.playsInline = true;
+            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    videoTexture = new THREE.VideoTexture(video);
+                    const geometry = new THREE.PlaneGeometry(4, 4 * (video.videoHeight / video.videoWidth));
+                    const material = new THREE.MeshBasicMaterial({ map: videoTexture });
+                    const plane = new THREE.Mesh(geometry, material);
+                    plane.position.z = -0.5;
+                    scene.add(plane);
+                };
+            });
+
+            // Light for 3D models
+            const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
+            scene.add(light);
+
+            // UI handling
+            document.getElementById('filterSelect').addEventListener('change', loadFilter);
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function loadFilter() {
+            const choice = this.value;
+            // Remove previous model
+            if (model) {
+                scene.remove(model);
+                model.traverse(child => {
+                    if (child.isMesh) child.geometry.dispose();
+                });
+                model = null;
+            }
+            if (choice === 'none') return;
+            const url = models[choice];
+            loader.load(url, gltf => {
+                model = gltf.scene;
+                // Scale & position for visibility
+                model.scale.set(0.5,0.5,0.5);
+                model.position.set(0, -0.5, 0);
+                scene.add(model);
+            }, undefined, err => {
+                console.error('Error loading model:', err);
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (model) model.rotation.y += 0.005; // simple spin
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
