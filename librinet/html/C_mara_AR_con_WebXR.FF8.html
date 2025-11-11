@@ -1,0 +1,278 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cámara AR con WebXR</title>
+<style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial, sans-serif;background:#000;overflow:hidden;position:relative}
+    #arCanvas{width:100%;height:100vh;display:block}
+    .controls{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;background:rgba(0,0,0,.7);padding:15px;border-radius:50px;backdrop-filter:blur(10px);flex-wrap:wrap;max-width:90vw;justify-content:center}
+    .filter-btn{width:50px;height:50px;border:none;border-radius:50%;cursor:pointer;font-size:25px;background:rgba(255,255,255,.2);transition:all .3s ease;display:flex;align-items:center;justify-content:center}
+    .filter-btn:hover{transform:scale(1.1);background:rgba(255,255,255,.3)}
+    .filter-btn.active{background:rgba(255,255,255,.5);box-shadow:0 0 20px rgba(255,255,255,.5)}
+    .capture-btn{width:60px;height:60px;border:3px solid #fff;border-radius:50%;background:#fff;cursor:pointer;transition:all .3s ease}
+    .capture-btn:active{transform:scale(.9)}
+    .flash{position:absolute;top:0;left:0;width:100%;height:100%;background:white;opacity:0;pointer-events:none}
+    @keyframes flashAnimation{0%{opacity:0}50%{opacity:.8}100%{opacity:0}}
+    .permission-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:1000}
+    .permission-content{text-align:center;color:white;padding:40px;max-width:400px}
+    .permission-icon{font-size:80px;margin-bottom:20px}
+    .permission-title{font-size:24px;margin-bottom:15px;font-weight:bold}
+    .permission-text{font-size:16px;margin-bottom:30px;opacity:.9;line-height:1.5}
+    .permission-btn{background:white;color:#667eea;border:none;padding:15px 30px;border-radius:25px;font-size:16px;font-weight:bold;cursor:pointer;transition:all .3s ease}
+    .permission-btn:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(0,0,0,.2)}
+    .loading-spinner{display:none;width:40px;height:40px;border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;animation:spin 1s linear infinite;margin:20px auto}
+    @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+    .hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<div class="permission-screen" id="permissionScreen">
+    <div class="permission-content">
+        <div class="permission-icon">📷</div>
+        <h2 class="permission-title">Permitir acceso a la cámara</h2>
+        <p class="permission-text">Para poder usar los filtros de realidad aumentada, necesitamos acceso a tu cámara.</p>
+        <button class="permission-btn" id="permissionBtn" onclick="requestARPermission()">Activar AR</button>
+        <div class="loading-spinner" id="loadingSpinner"></div>
+    </div>
+</div>
+
+<canvas id="arCanvas"></canvas>
+<div class="flash" id="flash"></div>
+
+<div class="controls">
+    <button class="filter-btn active" data-filter="none" onclick="setFilter('none')">😊</button>
+    <button class="filter-btn" data-filter="dog" onclick="setFilter('dog')">🐶</button>
+    <button class="filter-btn" data-filter="cat" onclick="setFilter('cat')">🐱</button>
+    <button class="filter-btn" data-filter="panda" onclick="setFilter('panda')">🐼</button>
+    <button class="filter-btn" data-filter="fox" onclick="setFilter('fox')">🦊</button>
+    <button class="filter-btn" data-filter="glasses" onclick="setFilter('glasses')">🕶️</button>
+    <button class="filter-btn" data-filter="crown" onclick="setFilter('crown')">👑</button>
+    <button class="filter-btn" data-filter="mustache" onclick="setFilter('mustache')">👨</button>
+    <button class="capture-btn" onclick="capture()"></button>
+</div>
+
+<script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.module.js';
+    import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/webxr/ARButton.js';
+    
+    const permissionScreen = document.getElementById('permissionScreen');
+    const permissionBtn = document.getElementById('permissionBtn');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const arCanvas = document.getElementById('arCanvas');
+    let scene, camera, renderer, xrSession;
+    let currentFilter = 'none';
+    let faceMeshes = [];
+    
+    async function requestARPermission() {
+        permissionBtn.disabled = true;
+        loadingSpinner.style.display = 'block';
+        permissionBtn.textContent = 'Activando AR...';
+        
+        if (!navigator.xr) {
+            alert('WebXR no es soportado en este navegador');
+            return;
+        }
+        
+        try {
+            const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
+            if (!isARSupported) {
+                alert('Realidad Aumentada no soportada en este dispositivo');
+                return;
+            }
+            
+            await initWebXR();
+            permissionScreen.classList.add('hidden');
+        } catch (err) {
+            console.error('Error al iniciar WebXR:', err);
+            permissionBtn.disabled = false;
+            loadingSpinner.style.display = 'none';
+            permissionBtn.textContent = 'Reintentar';
+            alert('Error al acceder a WebXR: ' + err.message);
+        }
+    }
+    
+    async function initWebXR() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        renderer = new THREE.WebGLRenderer({ canvas: arCanvas, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.xr.enabled = true;
+        
+        document.body.appendChild(ARButton.createButton(renderer, {
+            requiredFeatures: ['hit-test', 'dom-overlay'],
+            domOverlay: { root: document.querySelector('.controls') }
+        }));
+        
+        const light = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(light);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        
+        renderer.setAnimationLoop(render);
+        
+        if (navigator.xr) {
+            navigator.xr.requestSession('immersive-ar', {
+                requiredFeatures: ['dom-overlay', 'hit-test'],
+                domOverlay: { root: document.querySelector('.controls') }
+            }).then(session => {
+                xrSession = session;
+                setupFaceTracking();
+            });
+        }
+    }
+    
+    function setupFaceTracking() {
+        if (navigator.xr && navigator.xr.requestSession) {
+            navigator.xr.requestSession('immersive-ar', {
+                requiredFeatures: ['dom-overlay', 'hit-test'],
+                domOverlay: { root: document.querySelector('.controls') }
+            }).then(session => {
+                session.requestReferenceSpace('local').then(refSpace => {
+                    const faceDetector = setInterval(async () => {
+                        if (session) {
+                            const frame = session.requestAnimationFrame((time, xrFrame) => {
+                                const pose = xrFrame.getViewerPose(refSpace);
+                                if (pose) {
+                                    updateFaceFilters(pose);
+                                }
+                            });
+                        }
+                    }, 1000 / 30);
+                });
+            });
+        }
+    }
+    
+    function updateFaceFilters(pose) {
+        clearFaceMeshes();
+        
+        if (currentFilter === 'dog') {
+            const dogEars = createDogEars();
+            faceMeshes.push(dogEars);
+            scene.add(dogEars);
+        } else if (currentFilter === 'cat') {
+            const catEars = createCatEars();
+            faceMeshes.push(catEars);
+            scene.add(catEars);
+        } else if (currentFilter === 'glasses') {
+            const glasses = createGlasses();
+            faceMeshes.push(glasses);
+            scene.add(glasses);
+        } else if (currentFilter === 'crown') {
+            const crown = createCrown();
+            faceMeshes.push(crown);
+            scene.add(crown);
+        }
+    }
+    
+    function createDogEars() {
+        const group = new THREE.Group();
+        const earGeometry = new THREE.ConeGeometry(0.3, 0.8, 8);
+        const earMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+        
+        const leftEar = new THREE.Mesh(earGeometry, earMaterial);
+        leftEar.position.set(-0.4, 0.8, 0);
+        leftEar.rotation.z = -0.3;
+        
+        const rightEar = new THREE.Mesh(earGeometry, earMaterial);
+        rightEar.position.set(0.4, 0.8, 0);
+        rightEar.rotation.z = 0.3;
+        
+        group.add(leftEar);
+        group.add(rightEar);
+        
+        return group;
+    }
+    
+    function createCatEars() {
+        const group = new THREE.Group();
+        const earGeometry = new THREE.ConeGeometry(0.25, 0.7, 4);
+        const earMaterial = new THREE.MeshPhongMaterial({ color: 0xFF69B4 });
+        
+        const leftEar = new THREE.Mesh(earGeometry, earMaterial);
+        leftEar.position.set(-0.35, 0.8, 0);
+        leftEar.rotation.z = -0.2;
+        
+        const rightEar = new THREE.Mesh(earGeometry, earMaterial);
+        rightEar.position.set(0.35, 0.8, 0);
+        rightEar.rotation.z = 0.2;
+        
+        group.add(leftEar);
+        group.add(rightEar);
+        
+        return group;
+    }
+    
+    function createGlasses() {
+        const group = new THREE.Group();
+        const frameGeometry = new THREE.TorusGeometry(0.4, 0.05, 8, 16);
+        const frameMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+        
+        const leftFrame = new THREE.Mesh(frameGeometry, frameMaterial);
+        leftFrame.position.set(-0.4, 0, 0.5);
+        
+        const rightFrame = new THREE.Mesh(frameGeometry, frameMaterial);
+        rightFrame.position.set(0.4, 0, 0.5);
+        
+        const bridgeGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3);
+        const bridge = new THREE.Mesh(bridgeGeometry, frameMaterial);
+        bridge.rotation.z = Math.PI / 2;
+        bridge.position.set(0, 0, 0.5);
+        
+        group.add(leftFrame);
+        group.add(rightFrame);
+        group.add(bridge);
+        
+        return group;
+    }
+    
+    function createCrown() {
+        const crownGeometry = new THREE.ConeGeometry(0.6, 0.4, 8);
+        const crownMaterial = new THREE.MeshPhongMaterial({ color: 0xFFD700 });
+        const crown = new THREE.Mesh(crownGeometry, crownMaterial);
+        crown.position.set(0, 1.2, 0);
+        
+        return crown;
+    }
+    
+    function clearFaceMeshes() {
+        faceMeshes.forEach(mesh => {
+            scene.remove(mesh);
+        });
+        faceMeshes = [];
+    }
+    
+    function render() {
+        renderer.render(scene, camera);
+    }
+    
+    window.setFilter = function(filter) {
+        currentFilter = filter;
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.filter === filter) {
+                btn.classList.add('active');
+            }
+        });
+    }
+    
+    window.capture = function() {
+        const flash = document.getElementById('flash');
+        flash.style.animation = 'flashAnimation 0.3s';
+        setTimeout(() => flash.style.animation = 'none', 300);
+        
+        console.log('Foto capturada con filtro:', currentFilter);
+    }
+    
+    setFilter('none');
+</script>
+</body>
+</html>
+```
