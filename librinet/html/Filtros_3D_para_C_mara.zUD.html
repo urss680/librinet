@@ -1,0 +1,636 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filtros 3D para Cámara</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        #video, #canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+            transform: scaleX(-1);
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .filter-btn {
+            background: #f0f0f0;
+            color: #333;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✨ Filtros 3D para Cámara ✨</h1>
+        
+        <div id="status" class="status warning">Presiona "Iniciar Cámara" para comenzar</div>
+        
+        <div class="video-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button id="startCamera">Iniciar Cámara</button>
+            <button id="stopCamera">Detener Cámara</button>
+            <button id="takePhoto">Tomar Foto</button>
+            <button id="switchCamera">Cambiar Cámara</button>
+        </div>
+        
+        <div class="filter-buttons">
+            <button class="filter-btn active" data-filter="none">Sin Filtro</button>
+            <button class="filter-btn" data-filter="glasses">Gafas 3D</button>
+            <button class="filter-btn" data-filter="hat">Sombrero</button>
+            <button class="filter-btn" data-filter="mustache">Bigote</button>
+            <button class="filter-btn" data-filter="crown">Corona</button>
+            <button class="filter-btn" data-filter="hearts">Corazones</button>
+            <button class="filter-btn" data-filter="rainbow">Arcoiris</button>
+            <button class="filter-btn" data-filter="stars">Estrellas</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script>
+        let video = document.getElementById('video');
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        let currentFilter = 'none';
+        let stream = null;
+        let currentDeviceIndex = 0;
+        let videoDevices = [];
+        let animationId = null;
+
+        // Inicializar FaceAPI
+        async function loadModels() {
+            try {
+                await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+                await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+                updateStatus('Modelos cargados correctamente', 'success');
+            } catch (error) {
+                updateStatus('Error al cargar modelos: ' + error.message, 'error');
+            }
+        }
+
+        // Actualizar estado
+        function updateStatus(message, type = 'warning') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+
+        // Obtener dispositivos de video
+        async function getVideoDevices() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                videoDevices = devices.filter(device => device.kind === 'videoinput');
+                return videoDevices.length > 0;
+            } catch (error) {
+                updateStatus('Error al obtener dispositivos: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        // Iniciar cámara
+        async function startCamera() {
+            if (!await getVideoDevices()) {
+                updateStatus('No se encontraron cámaras disponibles', 'error');
+                return;
+            }
+
+            try {
+                const constraints = {
+                    video: {
+                        deviceId: videoDevices[currentDeviceIndex].deviceId,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    updateStatus('Cámara iniciada correctamente', 'success');
+                    detectFaces();
+                };
+            } catch (error) {
+                updateStatus('Error al iniciar cámara: ' + error.message, 'error');
+            }
+        }
+
+        // Detener cámara
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                updateStatus('Cámara detenida', 'warning');
+            }
+        }
+
+        // Cambiar entre cámaras
+        async function switchCamera() {
+            if (videoDevices.length > 1) {
+                currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
+                stopCamera();
+                await startCamera();
+            } else {
+                updateStatus('Solo hay una cámara disponible', 'warning');
+            }
+        }
+
+        // Tomar foto
+        function takePhoto() {
+            if (!stream) {
+                updateStatus('La cámara no está activa', 'error');
+                return;
+            }
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = video.videoWidth;
+            tempCanvas.height = video.videoHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            tempCtx.drawImage(video, 0, 0);
+            tempCtx.drawImage(canvas, 0, 0);
+            
+            const link = document.createElement('a');
+            link.download = 'foto-con-filtro-3d.png';
+            link.href = tempCanvas.toDataURL();
+            link.click();
+            
+            updateStatus('Foto guardada correctamente', 'success');
+        }
+
+        // Aplicar filtro 3D
+        function apply3DFilter(ctx, landmarks, filterType) {
+            const leftEye = landmarks.getLeftEye();
+            const rightEye = landmarks.getRightEye();
+            const nose = landmarks.getNose();
+            const jaw = landmarks.getJawOutline();
+            const mouth = landmarks.getMouth();
+
+            switch(filterType) {
+                case 'glasses':
+                    drawGlasses(ctx, leftEye, rightEye);
+                    break;
+                case 'hat':
+                    drawHat(ctx, jaw, landmarks.positions);
+                    break;
+                case 'mustache':
+                    drawMustache(ctx, nose, mouth);
+                    break;
+                case 'crown':
+                    drawCrown(ctx, jaw, landmarks.positions);
+                    break;
+                case 'hearts':
+                    drawFloatingHearts(ctx, landmarks.positions);
+                    break;
+                case 'rainbow':
+                    drawRainbow(ctx, jaw);
+                    break;
+                case 'stars':
+                    drawStars(ctx, landmarks.positions);
+                    break;
+            }
+        }
+
+        // Dibujar gafas 3D
+        function drawGlasses(ctx, leftEye, rightEye) {
+            const leftCenter = {
+                x: leftEye.reduce((sum, p) => sum + p.x, 0) / leftEye.length,
+                y: leftEye.reduce((sum, p) => sum + p.y, 0) / leftEye.length
+            };
+            const rightCenter = {
+                x: rightEye.reduce((sum, p) => sum + p.x, 0) / rightEye.length,
+                y: rightEye.reduce((sum, p) => sum + p.y, 0) / rightEye.length
+            };
+
+            const eyeWidth = Math.abs(rightCenter.x - leftCenter.x) * 0.6;
+            const eyeHeight = eyeWidth * 0.5;
+
+            // Lentes
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+
+            // Lente izquierdo
+            ctx.beginPath();
+            ctx.ellipse(leftCenter.x, leftCenter.y, eyeWidth, eyeHeight, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Lente derecho
+            ctx.beginPath();
+            ctx.ellipse(rightCenter.x, rightCenter.y, eyeWidth, eyeHeight, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Puente
+            ctx.beginPath();
+            ctx.moveTo(leftCenter.x + eyeWidth * 0.8, leftCenter.y);
+            ctx.lineTo(rightCenter.x - eyeWidth * 0.8, rightCenter.y);
+            ctx.stroke();
+
+            // Reflejo 3D
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.ellipse(leftCenter.x - eyeWidth * 0.3, leftCenter.y - eyeHeight * 0.3, 
+                       eyeWidth * 0.3, eyeHeight * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.ellipse(rightCenter.x - eyeWidth * 0.3, rightCenter.y - eyeHeight * 0.3, 
+                       eyeWidth * 0.3, eyeHeight * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Dibujar sombrero
+        function drawHat(ctx, jaw, positions) {
+            const topPoint = positions[27]; // Punto entre los ojos
+            const headWidth = Math.abs(positions[0].x - positions[16].x);
+            
+            const hatWidth = headWidth * 1.2;
+            const hatHeight = hatWidth * 0.8;
+            const hatY = topPoint.y - hatHeight;
+
+            // Sombra 3D
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(topPoint.x + 5, hatY + 5, hatWidth / 2, hatHeight / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cuerpo del sombrero
+            const gradient = ctx.createLinearGradient(topPoint.x, hatY, topPoint.x, hatY + hatHeight);
+            gradient.addColorStop(0, '#4a4a4a');
+            gradient.addColorStop(1, '#2a2a2a');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.ellipse(topPoint.x, hatY, hatWidth / 2, hatHeight / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ala del sombrero
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.ellipse(topPoint.x, hatY + hatHeight * 0.3, hatWidth * 0.8, hatWidth * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Resaltado 3D
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(topPoint.x - hatWidth * 0.2, hatY - hatHeight * 0.2, 
+                       hatWidth * 0.3, hatHeight * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Dibujar bigote
+        function drawMustache(ctx, nose, mouth) {
+            const noseTip = nose[6];
+            const mouthCenter = {
+                x: mouth.reduce((sum, p) => sum + p.x, 0) / mouth.length,
+                y: mouth.reduce((sum, p) => sum + p.y, 0) / mouth.length
+            };
+
+            const mustacheY = (noseTip.y + mouthCenter.y) / 2;
+            const mustacheWidth = Math.abs(mouth[6].x - mouth[0].x) * 1.2;
+
+            // Sombra
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(noseTip.x + 3, mustacheY + 3, mustacheWidth / 2, mustacheWidth / 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Bigote
+            const gradient = ctx.createLinearGradient(noseTip.x - mustacheWidth/2, mustacheY, 
+                                                     noseTip.x + mustacheWidth/2, mustacheY);
+            gradient.addColorStop(0, '#4a4a4a');
+            gradient.addColorStop(0.5, '#6a6a6a');
+            gradient.addColorStop(1, '#4a4a4a');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.ellipse(noseTip.x, mustacheY, mustacheWidth / 2, mustacheWidth / 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Detalles del bigote
+            ctx.strokeStyle = '#3a3a3a';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(noseTip.x - mustacheWidth * 0.4, mustacheY);
+            ctx.quadraticCurveTo(noseTip.x, mustacheY - mustacheWidth * 0.1, 
+                               noseTip.x + mustacheWidth * 0.4, mustacheY);
+            ctx.stroke();
+        }
+
+        // Dibujar corona
+        function drawCrown(ctx, jaw, positions) {
+            const topPoint = positions[27];
+            const headWidth = Math.abs(positions[0].x - positions[16].x);
+            
+            const crownWidth = headWidth * 1.1;
+            const crownHeight = crownWidth * 0.6;
+            const crownY = topPoint.y - crownHeight;
+
+            // Sombra
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.rect(topPoint.x - crownWidth/2 + 5, crownY + 5, crownWidth, crownHeight);
+            ctx.fill();
+
+            // Base de la corona
+            const gradient = ctx.createLinearGradient(topPoint.x, crownY, topPoint.x, crownY + crownHeight);
+            gradient.addColorStop(0, '#FFD700');
+            gradient.addColorStop(0.5, '#FFA500');
+            gradient.addColorStop(1, '#FFD700');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.rect(topPoint.x - crownWidth/2, crownY, crownWidth, crownHeight);
+            ctx.fill();
+
+            // Picos de la corona
+            ctx.beginPath();
+            ctx.moveTo(topPoint.x - crownWidth/2, crownY + crownHeight);
+            for (let i = 0; i <= 5; i++) {
+                const x = topPoint.x - crownWidth/2 + (crownWidth / 5) * i;
+                const y = crownY + (i % 2 === 0 ? crownHeight * 0.3 : crownHeight);
+                ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // Joyas
+            for (let i = 0; i < 4; i++) {
+                const jewelX = topPoint.x - crownWidth/2 + (crownWidth / 5) * (i + 0.5);
+                const jewelY = crownY + crownHeight * 0.4;
+                
+                ctx.fillStyle = '#FF0000';
+                ctx.beginPath();
+                ctx.ellipse(jewelX, jewelY, 8, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Brillo
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.beginPath();
+                ctx.ellipse(jewelX - 3, jewelY - 3, 3, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Dibujar corazones flotantes
+        function drawFloatingHearts(ctx, positions) {
+            const centerX = positions[33].x; // Punto de la nariz
+            const centerY = positions[33].y;
+            const time = Date.now() / 1000;
+
+            for (let i = 0; i < 5; i++) {
+                const angle = (time + i * Math.PI * 2 / 5) % (Math.PI * 2);
+                const radius = 50 + Math.sin(time + i) * 20;
+                const x = centerX + Math.cos(angle) * radius;
+                const y = centerY + Math.sin(angle) * radius - 30;
+
+                const heartSize = 15 + Math.sin(time * 2 + i) * 5;
+                drawHeart(ctx, x, y, heartSize, 'rgba(255, 0, 0, 0.8)');
+            }
+        }
+
+        // Dibujar arcoíris
+        function drawRainbow(ctx, jaw) {
+            const centerX = (jaw[0].x + jaw[jaw.length - 1].x) / 2;
+            const centerY = jaw[8].y;
+            const radius = Math.abs(jaw[16].x - jaw[0].x) * 0.8;
+
+            const colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3'];
+            const arcWidth = 15;
+
+            for (let i = 0; i < colors.length; i++) {
+                ctx.strokeStyle = colors[i];
+                ctx.lineWidth = arcWidth;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY + radius, radius - i * arcWidth, Math.PI, 0);
+                ctx.stroke();
+            }
+        }
+
+        // Dibujar estrellas
+        function drawStars(ctx, positions) {
+            const centerX = positions[33].x;
+            const centerY = positions[33].y;
+            const time = Date.now() / 1000;
+
+            for (let i = 0; i < 8; i++) {
+                const angle = (time * 0.5 + i * Math.PI * 2 / 8) % (Math.PI * 2);
+                const radius = 40 + Math.sin(time + i) * 15;
+                const x = centerX + Math.cos(angle) * radius;
+                const y = centerY + Math.sin(angle) * radius - 20;
+
+                const starSize = 10 + Math.sin(time * 3 + i) * 3;
+                drawStar(ctx, x, y, starSize, 'rgba(255, 255, 0, 0.9)');
+            }
+        }
+
+        // Función auxiliar para dibujar corazón
+        function drawHeart(ctx, x, y, size, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x, y + size / 4);
+            ctx.bezierCurveTo(x, y, x - size / 2, y, x - size / 2, y + size / 4);
+            ctx.bezierCurveTo(x - size / 2, y + size / 2, x, y + size * 3 / 4, x, y + size);
+            ctx.bezierCurveTo(x, y + size * 3 / 4, x + size / 2, y + size / 2, x + size / 2, y + size / 4);
+            ctx.bezierCurveTo(x + size / 2, y, x, y, x, y + size / 4);
+            ctx.fill();
+        }
+
+        // Función auxiliar para dibujar estrella
+        function drawStar(ctx, x, y, size, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x, y - size);
+            for (let i = 0; i < 5; i++) {
+                ctx.lineTo(x + Math.cos((i * 4 * Math.PI) / 5) * size, 
+                          y - Math.sin((i * 4 * Math.PI) / 5) * size);
+                ctx.lineTo(x + Math.cos(((i * 4 + 2) * Math.PI) / 5) * size * 0.5, 
+                          y - Math.sin(((i * 4 + 2) * Math.PI) / 5) * size * 0.5);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Detectar caras
+        async function detectFaces() {
+            if (!stream) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.scale(-1, 1);
+            ctx.translate(-canvas.width, 0);
+
+            try {
+                const detections = await faceapi.detectAllFaces(video, 
+                    new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+
+                detections.forEach(detection => {
+                    const landmarks = detection.landmarks;
+                    
+                    if (currentFilter !== 'none') {
+                        apply3DFilter(ctx, landmarks, currentFilter);
+                    }
+                });
+            } catch (error) {
+                console.error('Error en detección:', error);
+            }
+
+            ctx.restore();
+            animationId = requestAnimationFrame(detectFaces);
+        }
+
+        // Event listeners
+        document.getElementById('startCamera').addEventListener('click', startCamera);
+        document.getElementById('stopCamera').addEventListener('click', stopCamera);
+        document.getElementById('takePhoto').addEventListener('click', takePhoto);
+        document.getElementById('switchCamera').addEventListener('click', switchCamera);
+
+        // Botones de filtro
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+            });
+        });
+
+        // Cargar modelos al iniciar
+        loadModels();
+    </script>
+</body>
+</html>
+```
