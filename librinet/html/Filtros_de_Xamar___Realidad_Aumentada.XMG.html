@@ -1,0 +1,874 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filtros de Xamar - Realidad Aumentada</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #00dbde, #fc00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(0, 219, 222, 0.5);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.85;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .camera-section {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #000;
+            box-shadow: 0 0 30px rgba(0, 219, 222, 0.3);
+        }
+
+        #video, #canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00dbde, #fc00ff);
+            background-size: 200% auto;
+        }
+
+        .btn-primary:hover {
+            background-position: right center;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 219, 222, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.2);
+        }
+
+        .filters-section {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .filter-item {
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 15px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-item:hover {
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .filter-item.active {
+            border: 2px solid #00dbde;
+            background: rgba(0, 219, 222, 0.15);
+            box-shadow: 0 0 20px rgba(0, 219, 222, 0.5);
+        }
+
+        .filter-icon {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-name {
+            font-size: 15px;
+            color: #fff;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .effects-section {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .effects-container {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding: 15px 5px;
+            margin-top: 25px;
+        }
+
+        .effect-item {
+            min-width: 110px;
+            height: 110px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 45px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .effect-item:hover {
+            transform: scale(1.15);
+            box-shadow: 0 0 25px rgba(0, 219, 222, 0.5);
+        }
+
+        .effect-item.active {
+            border: 2px solid #fc00ff;
+            box-shadow: 0 0 25px rgba(252, 0, 255, 0.7);
+        }
+
+        .gallery-section {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .gallery-item {
+            aspect-ratio: 1;
+            border-radius: 15px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 25px rgba(0, 219, 222, 0.4);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .modal-content {
+            max-width: 90%;
+            max-height: 90%;
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 219, 222, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-content img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            font-size: 35px;
+            color: #fff;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .close-modal:hover {
+            background: rgba(252, 0, 255, 0.5);
+            transform: rotate(90deg);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.2em;
+            }
+            
+            .filters-grid {
+                grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 70px;
+            height: 70px;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-top: 5px solid #00dbde;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 25px;
+            box-shadow: 0 0 20px rgba(0, 219, 222, 0.5);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 6px;
+            height: 30px;
+            background: linear-gradient(to bottom, #00dbde, #fc00ff);
+            border-radius: 3px;
+            box-shadow: 0 0 10px rgba(0, 219, 222, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🐺 Xamar AR Filters</h1>
+        <p>Filtros de realidad aumentada inspirados en el universo de Xamar</p>
+    </div>
+
+    <div class="container">
+        <div class="camera-section">
+            <div class="camera-container">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" id="startCamera">Iniciar Cámara</button>
+                <button class="btn btn-secondary" id="takePhoto">Tomar Foto</button>
+                <button class="btn btn-secondary" id="switchCamera">Cambiar Cámara</button>
+            </div>
+        </div>
+
+        <div class="filters-section">
+            <h2 class="section-title">Filtros de Xamar</h2>
+            <div class="filters-grid">
+                <div class="filter-item" data-filter="wolf">
+                    <div class="filter-icon">🐺</div>
+                    <div class="filter-name">Lobo Nocturno</div>
+                </div>
+                <div class="filter-item" data-filter="moon">
+                    <div class="filter-icon">🌙</div>
+                    <div class="filter-name">Luna Llena</div>
+                </div>
+                <div class="filter-item" data-filter="forest">
+                    <div class="filter-icon">🌲</div>
+                    <div class="filter-name">Bosque Místico</div>
+                </div>
+                <div class="filter-item" data-filter="eyes">
+                    <div class="filter-icon">👁️</div>
+                    <div class="filter-name">Ojos de Fuego</div>
+                </div>
+                <div class="filter-item" data-filter="transformation">
+                    <div class="filter-icon">✨</div>
+                    <div class="filter-name">Transformación</div>
+                </div>
+                <div class="filter-item" data-filter="howl">
+                    <div class="filter-icon">🌕</div>
+                    <div class="filter-name">Aullido</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="effects-section">
+            <h2 class="section-title">Efectos Especiales</h2>
+            <div class="effects-container">
+                <div class="effect-item" data-effect="rain">🌧️</div>
+                <div class="effect-item" data-effect="snow">❄️</div>
+                <div class="effect-item" data-effect="stars">⭐</div>
+                <div class="effect-item" data-effect="lightning">⚡</div>
+                <div class="effect-item" data-effect="fire">🔥</div>
+                <div class="effect-item" data-effect="bubbles">🫧</div>
+            </div>
+        </div>
+
+        <div class="gallery-section">
+            <h2 class="section-title">Galería de Capturas</h2>
+            <div class="gallery-grid" id="gallery">
+                <div class="gallery-item">
+                    <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23444' width='100' height='100'/><text y='50' x='50' text-anchor='middle' fill='%23888' font-size='40'>📸</text></svg>" alt="Captura de ejemplo">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeModal">&times;</span>
+            <img id="modalImage" src="" alt="Foto ampliada">
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Procesando filtros AR...</p>
+    </div>
+
+    <script>
+        class XamarARFiltros {
+            constructor() {
+                this.video = document.getElementById('video');
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.stream = null;
+                this.currentFilter = null;
+                this.currentEffect = null;
+                this.facingMode = 'user';
+                this.photos = [];
+                
+                this.filters = {
+                    wolf: this.applyWolfFilter.bind(this),
+                    moon: this.applyMoonFilter.bind(this),
+                    forest: this.applyForestFilter.bind(this),
+                    eyes: this.applyEyesFilter.bind(this),
+                    transformation: this.applyTransformationFilter.bind(this),
+                    howl: this.applyHowlFilter.bind(this)
+                };
+
+                this.effects = {
+                    rain: this.applyRainEffect.bind(this),
+                    snow: this.applySnowEffect.bind(this),
+                    stars: this.applyStarsEffect.bind(this),
+                    lightning: this.applyLightningEffect.bind(this),
+                    fire: this.applyFireEffect.bind(this),
+                    bubbles: this.applyBubblesEffect.bind(this)
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.animate();
+            }
+
+            setupEventListeners() {
+                document.getElementById('startCamera').addEventListener('click', () => this.startCamera());
+                document.getElementById('takePhoto').addEventListener('click', () => this.takePhoto());
+                document.getElementById('switchCamera').addEventListener('click', () => this.switchCamera());
+                document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
+
+                document.querySelectorAll('.filter-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        document.querySelectorAll('.filter-item').forEach(f => f.classList.remove('active'));
+                        item.classList.add('active');
+                        this.currentFilter = item.dataset.filter;
+                    });
+                });
+
+                document.querySelectorAll('.effect-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        document.querySelectorAll('.effect-item').forEach(f => f.classList.remove('active'));
+                        item.classList.add('active');
+                        this.currentEffect = item.dataset.effect;
+                    });
+                });
+
+                document.querySelectorAll('.gallery-item').forEach(item => {
+                    item.addEventListener('click', () => this.openModal(item.querySelector('img').src));
+                });
+            }
+
+            async startCamera() {
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: this.facingMode },
+                        audio: false
+                    });
+                    this.video.srcObject = this.stream;
+                    
+                    this.video.onloadedmetadata = () => {
+                        this.canvas.width = this.video.videoWidth;
+                        this.canvas.height = this.video.videoHeight;
+                    };
+                } catch (error) {
+                    console.error('Error al acceder a la cámara:', error);
+                    alert('No se pudo acceder a la cámara. Por favor, verifica los permisos.');
+                }
+            }
+
+            switchCamera() {
+                this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                }
+                this.startCamera();
+            }
+
+            takePhoto() {
+                if (!this.video.videoWidth) {
+                    alert('Por favor, inicia la cámara primero');
+                    return;
+                }
+
+                this.ctx.drawImage(this.video, 0, 0);
+                
+                // Aplicar filtros y efectos
+                if (this.currentFilter) {
+                    this.filters[this.currentFilter]();
+                }
+                
+                if (this.currentEffect) {
+                    this.effects[this.currentEffect]();
+                }
+
+                const imageData = this.canvas.toDataURL('image/png');
+                this.addToGallery(imageData);
+            }
+
+            addToGallery(imageData) {
+                const gallery = document.getElementById('gallery');
+                const item = document.createElement('div');
+                item.className = 'gallery-item';
+                item.innerHTML = `<img src="${imageData}" alt="Captura">`;
+                item.addEventListener('click', () => this.openModal(imageData));
+                gallery.insertBefore(item, gallery.firstChild);
+                this.photos.unshift(imageData);
+            }
+
+            openModal(imageSrc) {
+                document.getElementById('modalImage').src = imageSrc;
+                document.getElementById('modal').style.display = 'flex';
+            }
+
+            closeModal() {
+                document.getElementById('modal').style.display = 'none';
+            }
+
+            // Filtros de Xamar
+            applyWolfFilter() {
+                const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const data = imageData.data;
+                
+                // Efecto de ojos brillantes (simulado)
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.min(255, data[i] * 1.2);     // R
+                    data[i + 1] = Math.min(255, data[i + 1] * 0.8); // G
+                    data[i + 2] = Math.min(255, data[i + 2] * 0.6); // B
+                }
+                
+                this.ctx.putImageData(imageData, 0, 0);
+                
+                // Añadir orejas de lobo
+                this.ctx.fillStyle = 'rgba(139, 69, 19, 0.8)';
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.canvas.width * 0.3, this.canvas.height * 0.2);
+                this.ctx.lineTo(this.canvas.width * 0.25, this.canvas.height * 0.1);
+                this.ctx.lineTo(this.canvas.width * 0.35, this.canvas.height * 0.15);
+                this.ctx.fill();
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.canvas.width * 0.7, this.canvas.height * 0.2);
+                this.ctx.lineTo(this.canvas.width * 0.75, this.canvas.height * 0.1);
+                this.ctx.lineTo(this.canvas.width * 0.65, this.canvas.height * 0.15);
+                this.ctx.fill();
+            }
+
+            applyMoonFilter() {
+                const gradient = this.ctx.createRadialGradient(
+                    this.canvas.width * 0.8, this.canvas.height * 0.2, 0,
+                    this.canvas.width * 0.8, this.canvas.height * 0.2, this.canvas.width * 0.3
+                );
+                gradient.addColorStop(0, 'rgba(255, 255, 200, 0.8)');
+                gradient.addColorStop(1, 'rgba(255, 255, 200, 0)');
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Efecto de luz lunar en la cara
+                this.ctx.fillStyle = 'rgba(255, 255, 200, 0.3)';
+                this.ctx.beginPath();
+                this.ctx.arc(this.canvas.width * 0.5, this.canvas.height * 0.4, this.canvas.width * 0.2, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            applyForestFilter() {
+                // Efecto de tonos verdes
+                const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.min(255, data[i] * 0.7);     // R
+                    data[i + 1] = Math.min(255, data[i + 1] * 1.3); // G
+                    data[i + 2] = Math.min(255, data[i + 2] * 0.8); // B
+                }
+                
+                this.ctx.putImageData(imageData, 0, 0);
+                
+                // Añadir elementos del bosque
+                this.ctx.fillStyle = 'rgba(34, 139, 34, 0.6)';
+                for (let i = 0; i < 5; i++) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(
+                        Math.random() * this.canvas.width,
+                        Math.random() * this.canvas.height,
+                        Math.random() * 50 + 20,
+                        0,
+                        Math.PI * 2
+                    );
+                    this.ctx.fill();
+                }
+            }
+
+            applyEyesFilter() {
+                // Ojos de fuego
+                const eyeY = this.canvas.height * 0.4;
+                const leftEyeX = this.canvas.width * 0.4;
+                const rightEyeX = this.canvas.width * 0.6;
+                
+                // Brillo en los ojos
+                this.ctx.fillStyle = 'rgba(255, 100, 0, 0.8)';
+                this.ctx.beginPath();
+                this.ctx.arc(leftEyeX, eyeY, 15, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.beginPath();
+                this.ctx.arc(rightEyeX, eyeY, 15, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Pupilas
+                this.ctx.fillStyle = 'rgba(255, 200, 0, 1)';
+                this.ctx.beginPath();
+                this.ctx.arc(leftEyeX, eyeY, 8, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.beginPath();
+                this.ctx.arc(rightEyeX, eyeY, 8, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            applyTransformationFilter() {
+                // Efecto de transformación con partículas
+                const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const data = imageData.data;
+                
+                // Efecto de brillo general
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.min(255, data[i] * 1.5);     // R
+                    data[i + 1] = Math.min(255, data[i + 1] * 1.5); // G
+                    data[i + 2] = Math.min(255, data[i + 2] * 1.5); // B
+                }
+                
+                this.ctx.putImageData(imageData, 0, 0);
+                
+                // Añadir partículas de transformación
+                for (let i = 0; i < 20; i++) {
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(
+                        Math.random() * this.canvas.width,
+                        Math.random() * this.canvas.height,
+                        Math.random() * 5 + 2,
+                        0,
+                        Math.PI * 2
+                    );
+                    this.ctx.fill();
+                }
+            }
+
+            applyHowlFilter() {
+                // Boca abierta para aullar
+                const mouthY = this.canvas.height * 0.6;
+                const mouthX = this.canvas.width * 0.5;
+                
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                this.ctx.beginPath();
+                this.ctx.ellipse(mouthX, mouthY, 30, 20, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Efecto de ondas de sonido
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                this.ctx.lineWidth = 3;
+                for (let i = 1; i <= 3; i++) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(mouthX, mouthY, 40 * i, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+            }
+
+            // Efectos especiales
+            applyRainEffect() {
+                this.ctx.strokeStyle = 'rgba(150, 200, 255, 0.6)';
+                this.ctx.lineWidth = 2;
+                for (let i = 0; i < 50; i++) {
+                    const x = Math.random() * this.canvas.width;
+                    const y = Math.random() * this.canvas.height;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, y);
+                    this.ctx.lineTo(x - 10, y + 20);
+                    this.ctx.stroke();
+                }
+            }
+
+            applySnowEffect() {
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                for (let i = 0; i < 30; i++) {
+                    const x = Math.random() * this.canvas.width;
+                    const y = Math.random() * this.canvas.height;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, Math.random() * 5 + 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+
+            applyStarsEffect() {
+                this.ctx.fillStyle = 'rgba(255, 255, 200, 1)';
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.random() * this.canvas.width;
+                    const y = Math.random() * this.canvas.height;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Añadir brillo
+                    this.ctx.fillStyle = 'rgba(255, 255, 200, 0.5)';
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.fillStyle = 'rgba(255, 255, 200, 1)';
+                }
+            }
+
+            applyLightningEffect() {
+                this.ctx.strokeStyle = 'rgba(255, 255, 100, 1)';
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.canvas.width * 0.3, 0);
+                this.ctx.lineTo(this.canvas.width * 0.5, this.canvas.height * 0.5);
+                this.ctx.lineTo(this.canvas.width * 0.4, this.canvas.height);
+                this.ctx.stroke();
+                
+                // Brillo
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+            }
+
+            applyFireEffect() {
+                for (let i = 0; i < 10; i++) {
+                    const x = Math.random() * this.canvas.width;
+                    const y = this.canvas.height - Math.random() * 100;
+                    
+                    this.ctx.fillStyle = 'rgba(255, 100, 0, 0.8)';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, y);
+                    this.ctx.lineTo(x - 10, y - 30);
+                    this.ctx.lineTo(x + 10, y - 30);
+                    this.ctx.fill();
+                }
+            }
+
+            applyBubblesEffect() {
+                this.ctx.strokeStyle = 'rgba(200, 230, 255, 0.8)';
+                this.ctx.lineWidth = 2;
+                for (let i = 0; i < 15; i++) {
+                    const x = Math.random() * this.canvas.width;
+                    const y = Math.random() * this.canvas.height;
+                    const radius = Math.random() * 20 + 10;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                    
+                    // Brillo en la burbuja
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    this.ctx.beginPath();
+                    this.ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Aquí podrías añadir animaciones en tiempo real si lo deseas
+            }
+        }
+
+        // Inicializar la aplicación cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', () => {
+            new XamarARFiltros();
+        });
+    </script>
+</body>
+</html>
+```
