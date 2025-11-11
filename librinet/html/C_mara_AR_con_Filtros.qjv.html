@@ -1,0 +1,710 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cámara AR con Filtros</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: Arial, sans-serif;
+        background: #000;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    #video {
+        width: 100%;
+        height: 100vh;
+        object-fit: cover;
+        transform: scaleX(-1);
+    }
+    
+    #canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+    
+    .controls {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 15px;
+        background: rgba(0,0,0,0.7);
+        padding: 15px;
+        border-radius: 50px;
+        backdrop-filter: blur(10px);
+        flex-wrap: wrap;
+        max-width: 90vw;
+        justify-content: center;
+    }
+    
+    .filter-btn {
+        width: 60px;
+        height: 60px;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 30px;
+        background: rgba(255,255,255,0.2);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .filter-btn:hover {
+        transform: scale(1.1);
+        background: rgba(255,255,255,0.3);
+    }
+    
+    .filter-btn.active {
+        background: rgba(255,255,255,0.5);
+        box-shadow: 0 0 20px rgba(255,255,255,0.5);
+    }
+    
+    .capture-btn {
+        width: 70px;
+        height: 70px;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        background: #fff;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .capture-btn:active {
+        transform: scale(0.9);
+    }
+    
+    .gallery-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border: none;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.2);
+        cursor: pointer;
+        font-size: 24px;
+    }
+    
+    .flash {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: white;
+        opacity: 0;
+        pointer-events: none;
+    }
+    
+    @keyframes flashAnimation {
+        0% { opacity: 0; }
+        50% { opacity: 0.8; }
+        100% { opacity: 0; }
+    }
+</style>
+</head>
+<body>
+<video id="video" autoplay></video>
+<canvas id="canvas"></canvas>
+<div class="flash" id="flash"></div>
+
+<button class="gallery-btn" onclick="openGallery()">📷</button>
+
+<div class="controls">
+    <button class="filter-btn" data-filter="none" onclick="setFilter('none')">😊</button>
+    <button class="filter-btn" data-filter="dog" onclick="setFilter('dog')">🐶</button>
+    <button class="filter-btn" data-filter="cat" onclick="setFilter('cat')">🐱</button>
+    <button class="filter-btn" data-filter="rabbit" onclick="setFilter('rabbit')">🐰</button>
+    <button class="filter-btn" data-filter="panda" onclick="setFilter('panda')">🐼</button>
+    <button class="filter-btn" data-filter="fox" onclick="setFilter('fox')">🦊</button>
+    <button class="filter-btn" data-filter="bear" onclick="setFilter('bear')">🐻</button>
+    <button class="filter-btn" data-filter="pig" onclick="setFilter('pig')">🐷</button>
+    <button class="filter-btn" data-filter="monkey" onclick="setFilter('monkey')">🐵</button>
+    <button class="filter-btn" data-filter="lion" onclick="setFilter('lion')">🦁</button>
+    <button class="filter-btn" data-filter="tiger" onclick="setFilter('tiger')">🐯</button>
+    <button class="filter-btn" data-filter="glasses" onclick="setFilter('glasses')">🕶️</button>
+    <button class="filter-btn" data-filter="sunglasses" onclick="setFilter('sunglasses')">😎</button>
+    <button class="filter-btn" data-filter="nerd" onclick="setFilter('nerd')">🤓</button>
+    <button class="filter-btn" data-filter="crown" onclick="setFilter('crown')">👑</button>
+    <button class="filter-btn" data-filter="party" onclick="setFilter('party')">🎉</button>
+    <button class="filter-btn" data-filter="halo" onclick="setFilter('halo')">😇</button>
+    <button class="filter-btn" data-filter="devil" onclick="setFilter('devil')">😈</button>
+    <button class="filter-btn" data-filter="clown" onclick="setFilter('clown')">🤡</button>
+    <button class="filter-btn" data-filter="robot" onclick="setFilter('robot')">🤖</button>
+    <button class="filter-btn" data-filter="alien" onclick="setFilter('alien')">👽</button>
+    <button class="filter-btn" data-filter="ghost" onclick="setFilter('ghost')">👻</button>
+    <button class="filter-btn" data-filter="skull" onclick="setFilter('skull')">💀</button>
+    <button class="filter-btn" data-filter="heart" onclick="setFilter('heart')">❤️</button>
+    <button class="filter-btn" data-filter="star" onclick="setFilter('star')">⭐</button>
+    <button class="filter-btn" data-filter="rainbow" onclick="setFilter('rainbow')">🌈</button>
+    <button class="filter-btn" data-filter="fire" onclick="setFilter('fire')">🔥</button>
+    <button class="filter-btn" data-filter="lightning" onclick="setFilter('lightning')">⚡</button>
+    <button class="filter-btn" data-filter="snow" onclick="setFilter('snow')">❄️</button>
+    <button class="filter-btn" data-filter="diamond" onclick="setFilter('diamond')">💎</button>
+    <button class="filter-btn" data-filter="money" onclick="setFilter('money')">💰</button>
+    <button class="filter-btn" data-filter="unicorn" onclick="setFilter('unicorn')">🦄</button>
+    <button class="filter-btn" data-filter="dragon" onclick="setFilter('dragon')">🐉</button>
+    <button class="filter-btn" data-filter="butterfly" onclick="setFilter('butterfly')">🦋</button>
+    <button class="filter-btn" data-filter="flower" onclick="setFilter('flower')">🌸</button>
+    <button class="filter-btn" data-filter="mustache" onclick="setFilter('mustache')">👨‍</button>
+    <button class="filter-btn" data-filter="beard" onclick="setFilter('beard')">🧔</button>
+    <button class="filter-btn" data-filter="makeup" onclick="setFilter('makeup')">💄</button>
+    <button class="filter-btn" data-filter="tattoo" onclick="setFilter('tattoo')">🗿</button>
+    <button class="filter-btn" data-filter="viking" onclick="setFilter('viking')">🪓</button>
+    <button class="filter-btn" data-filter="pirate" onclick="setFilter('pirate')">🏴‍☠️</button>
+    <button class="filter-btn" data-filter="ninja" onclick="setFilter('ninja')">🥷</button>
+    <button class="filter-btn" data-filter="superhero" onclick="setFilter('superhero')">🦸</button>
+    <button class="filter-btn" data-filter="vampire" onclick="setFilter('vampire')">🧛</button>
+    <button class="filter-btn" data-filter="zombie" onclick="setFilter('zombie')">🧟</button>
+    <button class="capture-btn" onclick="capture()"></button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@latest/dist/face-landmarks-detection.min.js"></script>
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let currentFilter = 'none';
+    let stream;
+    let model;
+    let faces = [];
+    
+    // Inicializar modelo de detección facial
+    async function initModel() {
+        model = await faceLandmarksDetection.load(
+            faceLandmarksDetection.SupportedPackages.mediapipeFacemesh,
+            { maxFaces: 1 }
+        );
+    }
+    
+    // Iniciar cámara
+    async function initCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'user' },
+                audio: false 
+            });
+            video.srcObject = stream;
+            
+            video.onloadedmetadata = async () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                await trackFaces();
+            };
+        } catch (err) {
+            console.error('Error al acceder a la cámara:', err);
+        }
+    }
+    
+    // Seguimiento facial
+    async function trackFaces() {
+        while (true) {
+            if (video.readyState === 4) {
+                faces = await model.estimateFaces({ input: video });
+                drawFilter();
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000 / 30)); // 30 FPS
+        }
+    }
+    
+    // Obtener posición y tamaño real de la cara basado en puntos clave
+    function getFacePosition() {
+        if (faces.length > 0) {
+            const keypoints = faces[0].keypoints;
+            
+            // Obtener puntos de referencia para calcular el tamaño
+            const left = Math.min(...keypoints.map(p => p.x));
+            const right = Math.max(...keypoints.map(p => p.x));
+            const top = Math.min(...keypoints.map(p => p.y));
+            const bottom = Math.max(...keypoints.map(p => p.y));
+            
+            const centerX = (left + right) / 2;
+            const centerY = (top + bottom) / 2;
+            const width = right - left;
+            const height = bottom - top;
+            
+            // Calcular rotación basada en los ojos
+            const leftEye = keypoints[33];
+            const rightEye = keypoints[263];
+            const rotation = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x);
+            
+            return {
+                x: centerX,
+                y: centerY,
+                width: width,
+                height: height,
+                rotation: rotation,
+                scale: width / 200 // Escala relativa a una cara de referencia
+            };
+        }
+        return null;
+    }
+    
+    // Dibujar filtros adaptativos
+    function drawFilter() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        if (currentFilter !== 'none') {
+            const face = getFacePosition();
+            if (face) {
+                ctx.save();
+                ctx.translate(face.x, face.y);
+                ctx.rotate(face.rotation);
+                ctx.scale(-1, 1);
+                
+                // Ajustar el tamaño del filtro basado en el tamaño real de la cara
+                const baseSize = face.width * 0.8;
+                const centerX = 0;
+                const centerY = 0;
+                const size = baseSize;
+                
+                switch(currentFilter) {
+                    case 'dog':
+                        ctx.fillStyle = '#8B4513';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.3, centerY - size*0.4, size*0.15, size*0.25, -0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.3, centerY - size*0.4, size*0.15, size*0.25, 0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY + size*0.05, size*0.08, size*0.07, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#FF69B4';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY + size*0.15, size*0.06, size*0.1, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'cat':
+                        ctx.fillStyle = '#FFA500';
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - size*0.25, centerY - size*0.35);
+                        ctx.lineTo(centerX - size*0.4, centerY - size*0.5);
+                        ctx.lineTo(centerX - size*0.15, centerY - size*0.4);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.moveTo(centerX + size*0.25, centerY - size*0.35);
+                        ctx.lineTo(centerX + size*0.4, centerY - size*0.5);
+                        ctx.lineTo(centerX + size*0.15, centerY - size*0.4);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 3;
+                        for(let i = 0; i < 3; i++) {
+                            ctx.beginPath();
+                            ctx.moveTo(centerX - size*0.2, centerY + size*0.05 + i * size*0.05);
+                            ctx.lineTo(centerX - size*0.35, centerY + i * size*0.05);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.moveTo(centerX + size*0.2, centerY + size*0.05 + i * size*0.05);
+                            ctx.lineTo(centerX + size*0.35, centerY + i * size*0.05);
+                            ctx.stroke();
+                        }
+                        break;
+                        
+                    case 'rabbit':
+                        ctx.fillStyle = '#FFB6C1';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.2, centerY - size*0.45, size*0.1, size*0.3, -0.2, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.2, centerY - size*0.45, size*0.1, size*0.3, 0.2, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#FF69B4';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY + size*0.05, size*0.08, size*0.06, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'panda':
+                        // Orejas
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.3, centerY - size*0.35, size*0.15, size*0.2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.3, centerY - size*0.35, size*0.15, size*0.2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Ojos
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.15, centerY - size*0.1, size*0.1, size*0.12, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.15, centerY - size*0.1, size*0.1, size*0.12, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Ojos blancos
+                        ctx.fillStyle = '#FFF';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.15, centerY - size*0.1, size*0.04, size*0.06, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.15, centerY - size*0.1, size*0.04, size*0.06, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'fox':
+                        // Orejas
+                        ctx.fillStyle = '#FF4500';
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - size*0.22, centerY - size*0.4);
+                        ctx.lineTo(centerX - size*0.35, centerY - size*0.55);
+                        ctx.lineTo(centerX - size*0.15, centerY - size*0.43);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.moveTo(centerX + size*0.22, centerY - size*0.4);
+                        ctx.lineTo(centerX + size*0.35, centerY - size*0.55);
+                        ctx.lineTo(centerX + size*0.15, centerY - size*0.43);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Nariz
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY + size*0.02, size*0.06, size*0.04, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'bear':
+                        // Orejas
+                        ctx.fillStyle = '#8B4513';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.28, centerY - size*0.27, size*0.14, size*0.17, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.28, centerY - size*0.27, size*0.14, size*0.17, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // hocico
+                        ctx.fillStyle = '#654321';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY + size*0.02, size*0.16, size*0.12, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Nariz
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY - size*0.02, size*0.08, size*0.06, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'pig':
+                        // Orejas
+                        ctx.fillStyle = '#FFB6C1';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.22, centerY - size*0.27, size*0.11, size*0.14, -0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.22, centerY - size*0.27, size*0.11, size*0.14, 0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Nariz
+                        ctx.fillStyle = '#FF69B4';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY + size*0.02, size*0.11, size*0.08, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Agujeros de nariz
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.04, centerY + size*0.02, size*0.015, size*0.02, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.04, centerY + size*0.02, size*0.015, size*0.02, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'monkey':
+                        // Orejas
+                        ctx.fillStyle = '#8B4513';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.25, centerY - size*0.24, size*0.16, size*0.19, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.25, centerY - size*0.24, size*0.16, size*0.19, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Boca abierta
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY + size*0.06, size*0.12, size*0.08, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'lion':
+                        // Crin
+                        ctx.fillStyle = '#FFD700';
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY - size*0.12, size*0.48, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Orejas
+                        ctx.fillStyle = '#CD853F';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.32, centerY - size*0.26, size*0.16, size*0.2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.32, centerY - size*0.26, size*0.16, size*0.2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'tiger':
+                        // Rayas
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = size*0.04;
+                        for(let i = 0; i < 5; i++) {
+                            ctx.beginPath();
+                            ctx.moveTo(centerX - size*0.4 + i * size*0.16, centerY - size*0.6);
+                            ctx.lineTo(centerX - size*0.44 + i * size*0.16, centerY - size*0.4);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.moveTo(centerX - size*0.4 + i * size*0.16, centerY - size*0.6);
+                            ctx.lineTo(centerX - size*0.36 + i * size*0.16, centerY - size*0.4);
+                            ctx.stroke();
+                        }
+                        // Orejas
+                        ctx.fillStyle = '#FF8C00';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.25, centerY - size*0.28, size*0.16, size*0.2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.25, centerY - size*0.28, size*0.16, size*0.2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'sunglasses':
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.rect(centerX - size*0.3, centerY - size*0.12, size*0.24, size*0.15);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.rect(centerX + size*0.06, centerY - size*0.12, size*0.24, size*0.15);
+                        ctx.fill();
+                        // Puente
+                        ctx.beginPath();
+                        ctx.rect(centerX - size*0.03, centerY - size*0.1, size*0.06, size*0.03);
+                        ctx.fill();
+                        break;
+                        
+                    case 'nerd':
+                        // Gafas gruesas
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = size*0.05;
+                        ctx.beginPath();
+                        ctx.arc(centerX - size*0.18, centerY - size*0.06, size*0.135, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.arc(centerX + size*0.18, centerY - size*0.06, size*0.135, 0, Math.PI * 2);
+                        ctx.stroke();
+                        // Cinta
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - size*0.045, centerY - size*0.06);
+                        ctx.lineTo(centerX + size*0.045, centerY - size*0.06);
+                        ctx.stroke();
+                        // Dientes
+                        ctx.fillStyle = '#FFF';
+                        ctx.beginPath();
+                        ctx.rect(centerX - size*0.09, centerY + size*0.08, size*0.18, size*0.06);
+                        ctx.fill();
+                        break;
+                        
+                    case 'party':
+                        // Sombrero de fiesta
+                        ctx.fillStyle = '#FF00FF';
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - size*0.24, centerY - size*0.2);
+                        ctx.lineTo(centerX, centerY - size*0.45);
+                        ctx.lineTo(centerX + size*0.24, centerY - size*0.2);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Serpentina
+                        ctx.strokeStyle = '#00FF00';
+                        ctx.lineWidth = size*0.02;
+                        ctx.beginPath();
+                        ctx.arc(centerX - size*0.3, centerY - size*0.5, size*0.09, 0, Math.PI);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.arc(centerX + size*0.3, centerY - size*0.5, size*0.09, 0, Math.PI);
+                        ctx.stroke();
+                        break;
+                        
+                    case 'halo':
+                        // Halo
+                        ctx.strokeStyle = '#FFD700';
+                        ctx.lineWidth = size*0.04;
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY - size*0.45, size*0.24, size*0.06, 0, 0, Math.PI * 2);
+                        ctx.stroke();
+                        // Brillo
+                        ctx.fillStyle = '#FFFF00';
+                        for(let i = 0; i < 6; i++) {
+                            const angle = (i / 6) * Math.PI * 2;
+                            const x = centerX + Math.cos(angle) * size*0.24;
+                            const y = centerY - size*0.45 + Math.sin(angle) * size*0.06;
+                            ctx.beginPath();
+                            ctx.arc(x, y, size*0.015, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        break;
+                        
+                    case 'devil':
+                        // Cuernos
+                        ctx.fillStyle = '#8B0000';
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - size*0.15, centerY - size*0.3);
+                        ctx.lineTo(centerX - size*0.24, centerY - size*0.44);
+                        ctx.lineTo(centerX - size*0.06, centerY - size*0.36);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.moveTo(centerX + size*0.15, centerY - size*0.3);
+                        ctx.lineTo(centerX + size*0.24, centerY - size*0.44);
+                        ctx.lineTo(centerX + size*0.06, centerY - size*0.36);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Cola
+                        ctx.beginPath();
+                        ctx.moveTo(centerX + size*0.3, centerY + size*0.2);
+                        ctx.quadraticCurveTo(centerX + size*0.45, centerY + size*0.1, centerX + size*0.36, centerY + size*0.24);
+                        ctx.stroke();
+                        break;
+                        
+                    case 'clown':
+                        // Pelo
+                        ctx.fillStyle = '#FF0000';
+                        for(let i = 0; i < 6; i++) {
+                            const angle = (i / 6) * Math.PI * 2;
+                            const x = centerX + Math.cos(angle) * size*0.27;
+                            const y = centerY - size*0.4 + Math.sin(angle) * size*0.05;
+                            ctx.beginPath();
+                            ctx.arc(x, y, size*0.075, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        // Nariz
+                        ctx.fillStyle = '#FF0000';
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY - size*0.04, size*0.06, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Boca sonriente
+                        ctx.strokeStyle = '#FF0000';
+                        ctx.lineWidth = size*0.05;
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY + size*0.06, size*0.15, 0, Math.PI);
+                        ctx.stroke();
+                        break;
+                        
+                    case 'robot':
+                        // Cabeza cuadrada
+                        ctx.fillStyle = '#C0C0C0';
+                        ctx.beginPath();
+                        ctx.rect(centerX - size*0.24, centerY - size*0.3, size*0.48, size*0.48);
+                        ctx.fill();
+                        // Ojos LED
+                        ctx.fillStyle = '#00FF00';
+                        ctx.beginPath();
+                        ctx.arc(centerX - size*0.12, centerY - size*0.16, size*0.06, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(centerX + size*0.12, centerY - size*0.16, size*0.06, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Antenas
+                        ctx.strokeStyle = '#C0C0C0';
+                        ctx.lineWidth = size*0.05;
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - size*0.12, centerY - size*0.3);
+                        ctx.lineTo(centerX - size*0.12, centerY - size*0.4);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(centerX + size*0.12, centerY - size*0.3);
+                        ctx.lineTo(centerX + size*0.12, centerY - size*0.4);
+                        ctx.stroke();
+                        break;
+                        
+                    case 'alien':
+                        // Cabeza alargada
+                        ctx.fillStyle = '#90EE90';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY - size*0.16, size*0.21, size*0.36, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Ojos grandes
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.1, centerY - size*0.16, size*0.075, size*0.1, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.1, centerY - size*0.16, size*0.075, size*0.1, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'ghost':
+                        // Cuerpo fantasma
+                        ctx.fillStyle = '#FFF';
+                        ctx.globalAlpha = 0.8;
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - size*0.24, centerY - size*0.18);
+                        ctx.quadraticCurveTo(centerX - size*0.3, centerY - size*0.09, centerX - size*0.24, centerY);
+                        ctx.quadraticCurveTo(centerX - size*0.18, centerY + size*0.06, centerX - size*0.12, centerY);
+                        ctx.quadraticCurveTo(centerX - size*0.06, centerY + size*0.06, centerX, centerY);
+                        ctx.quadraticCurveTo(centerX + size*0.06, centerY + size*0.06, centerX + size*0.12, centerY);
+                        ctx.quadraticCurveTo(centerX + size*0.18, centerY + size*0.06, centerX + size*0.24, centerY);
+                        ctx.quadraticCurveTo(centerX + size*0.3, centerY - size*0.09, centerX + size*0.24, centerY - size*0.18);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                        // Ojos
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(centerX - size*0.09, centerY - size*0.12, size*0.045, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(centerX + size*0.09, centerY - size*0.12, size*0.045, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'skull':
+                        // Cráneo
+                        ctx.fillStyle = '#FFF';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY - size*0.12, size*0.24, size*0.3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Ojos huecos
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.ellipse(centerX - size*0.09, centerY - size*0.135, size*0.06, size*0.075, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(centerX + size*0.09, centerY - size*0.135, size*0.06, size*0.075, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Nariz
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - size*0.045, centerY - size*0.075);
+                        ctx.lineTo(centerX, centerY - size*0.03);
+                        ctx.lineTo(centerX + size*0.045, centerY - size*0.075);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Dientes
+                        ctx.fillStyle = '#FFF';
+                        for(let i = 0; i < 6; i++) {
+                            ctx.beginPath();
+                            ctx.rect(centerX - size*0.135 + i * size*0.036, centerY - size*0.015, size*0.03, size*0.06);
+                            ctx.fill();
+                        }
+                        break;
+                        
+                    case 'rainbow':
+                        const colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00
