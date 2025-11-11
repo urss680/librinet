@@ -1,0 +1,76 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filtros 3D con Cámara</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #contenedor {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #video {
+            width: 100%;
+            height: 70vh;
+            object-fit: cover;
+        }
+        #filtros {
+            margin-top: 20px;
+        }
+        button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="contenedor">
+        <video id="video" autoplay></video>
+        <div id="filtros">
+            <button onclick="aplicarFiltro('none')">Sin Filtro</button>
+            <button onclick="aplicarFiltro('blur(5px)')">Blur</button>
+            <button onclick="aplicarFiltro('grayscale(100%)')">Grayscale</button>
+            <button onclick="aplicarFiltro('sepia(100%)')">Sepia</button>
+            <button onclick="aplicarFiltro('invert(100%)')">Invert</button>
+        </div>
+    </div>
+
+    <script>
+        let video = document.getElementById('video');
+        let filtroActual = 'none';
+
+        // Acceder a la cámara
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(error => {
+                console.error('Error al acceder a la cámara:', error);
+            });
+
+        // Aplicar filtro
+        function aplicarFiltro(filtro) {
+            video.style.filter = filtro;
+            filtroActual = filtro;
+        }
+    </script>
+</body>
+</html>
+```
