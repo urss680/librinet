@@ -1,0 +1,140 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector de Caras</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        #video {
+            border: 2px solid #333;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        #canvas {
+            display: none;
+        }
+        
+        #resultado {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Detector de Caras</h1>
+    <p>Permite el acceso a la cámara para detectar caras en tiempo real</p>
+    
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480"></canvas>
+    
+    <div>
+        <button id="btnIniciar">Iniciar Detección</button>
+        <button id="btnDetener" disabled>Detener Detección</button>
+    </div>
+    
+    <div id="resultado">Caras detectadas: 0</div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.11/dist/face-api.min.js"></script>
+    
+    <script>
+        let video = document.getElementById('video');
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        let btnIniciar = document.getElementById('btnIniciar');
+        let btnDetener = document.getElementById('btnDetener');
+        let resultado = document.getElementById('resultado');
+        let detectando = false;
+        
+        // Cargar modelos de face-api
+        async function cargarModelos() {
+            await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.11/model');
+            await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.11/model');
+        }
+        
+        // Acceder a la cámara
+        async function iniciarCamara() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (err) {
+                alert('Error al acceder a la cámara: ' + err.message);
+            }
+        }
+        
+        // Detectar caras
+        async function detectarCaras() {
+            if (!detectando) return;
+            
+            ctx.drawImage(video, 0, 0);
+            
+            const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                .withFaceLandmarks();
+            
+            resultado.textContent = `Caras detectadas: ${detections.length}`;
+            
+            // Dibujar rectángulos alrededor de las caras
+            detections.forEach(detection => {
+                const box = detection.detection.box;
+                ctx.strokeStyle = '#00FF00';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(box.x, box.y, box.width, box.height);
+            });
+            
+            requestAnimationFrame(detectarCaras);
+        }
+        
+        // Eventos de botones
+        btnIniciar.addEventListener('click', async () => {
+            btnIniciar.disabled = true;
+            btnDetener.disabled = false;
+            detectando = true;
+            await iniciarCamara();
+            detectarCaras();
+        });
+        
+        btnDetener.addEventListener('click', () => {
+            detectando = false;
+            btnIniciar.disabled = false;
+            btnDetener.disabled = true;
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        });
+        
+        // Cargar modelos al iniciar
+        cargarModelos();
+    </script>
+</body>
+</html>
+```
