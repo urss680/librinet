@@ -1,0 +1,855 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipyy - Editor con Pestañas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f0f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tabs-container {
+            background-color: #2c3e50;
+            display: flex;
+            align-items: center;
+            min-height: 40px;
+            padding: 0 10px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 5px;
+            flex: 1;
+            overflow-x: auto;
+        }
+        
+        .tab {
+            background-color: #34495e;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 120px;
+            justify-content: space-between;
+            transition: background-color 0.3s;
+        }
+        
+        .tab:hover {
+            background-color: #4a5f7a;
+        }
+        
+        .tab.active {
+            background-color: #3498db;
+        }
+        
+        .tab-close {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 5px;
+            border-radius: 3px;
+        }
+        
+        .tab-close:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+        
+        .new-tab-btn {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 20px;
+            margin-left: 10px;
+        }
+        
+        .new-tab-btn:hover {
+            background-color: #2ecc71;
+        }
+        
+        .toolbar {
+            background-color: #34495e;
+            color: white;
+            padding: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .toolbar button, .toolbar select {
+            padding: 8px 12px;
+            border: none;
+            background-color: #2c3e50;
+            color: white;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        
+        .toolbar button:hover, .toolbar select:hover {
+            background-color: #4a5f7a;
+        }
+        
+        .toolbar button.active {
+            background-color: #3498db;
+        }
+        
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 10px;
+        }
+        
+        .editor {
+            display: none;
+            flex: 1;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            font-size: 16px;
+            line-height: 1.6;
+            overflow-y: auto;
+            outline: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .editor.active {
+            display: block;
+        }
+        
+        .status-bar {
+            background-color: #ecf0f1;
+            padding: 8px 20px;
+            border-top: 1px solid #bdc3c7;
+            font-size: 14px;
+            color: #7f8c8d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .zoom-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .zoom-controls button {
+            padding: 5px 10px;
+            border: 1px solid #bdc3c7;
+            background-color: white;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        
+        .zoom-controls button:hover {
+            background-color: #f8f9fa;
+        }
+        
+        #zoomLevel {
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        .color-picker {
+            width: 40px;
+            height: 30px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .highlight-btn {
+            background-color: #f39c12 !important;
+        }
+        
+        .highlight-btn:hover {
+            background-color: #e67e22 !important;
+        }
+        
+        .font-size-input {
+            width: 60px;
+            padding: 8px;
+            border: none;
+            border-radius: 3px;
+            background-color: #2c3e50;
+            color: white;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .draggable-image {
+            cursor: move;
+            border: 2px solid transparent;
+            transition: border-color 0.3s;
+            max-width: 300px;
+            display: inline-block;
+            user-select: none;
+        }
+        
+        .draggable-image:hover {
+            border-color: #3498db;
+        }
+        
+        .draggable-image.selected {
+            border-color: #e74c3c;
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+        
+        .image-container {
+            position: relative;
+            display: inline-block;
+            margin: 10px;
+        }
+        
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #3498db;
+            border: 1px solid #fff;
+            cursor: nw-resize;
+            bottom: -5px;
+            right: -5px;
+            border-radius: 50%;
+        }
+        
+        .crop-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            border: 2px dashed #fff;
+            cursor: crosshair;
+            display: none;
+        }
+        
+        .crop-controls {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #2c3e50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: none;
+            gap: 5px;
+        }
+        
+        .crop-controls button {
+            padding: 3px 8px;
+            border: none;
+            background-color: #34495e;
+            color: white;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        .crop-controls button:hover {
+            background-color: #4a5f7a;
+        }
+    </style>
+</head>
+<body>
+    <div class="tabs-container">
+        <div class="tabs" id="tabsList">
+            <!-- Las pestañas se generarán dinámicamente -->
+        </div>
+        <button class="new-tab-btn" onclick="createNewTab()" title="Nueva pestaña">+</button>
+    </div>
+    
+    <div class="toolbar">
+        <button onclick="formatText('bold')" title="Negrita">
+            <strong>B</strong>
+        </button>
+        <button onclick="formatText('italic')" title="Cursiva">
+            <em>I</em>
+        </button>
+        <button onclick="formatText('underline')" title="Subrayado">
+            <u>U</u>
+        </button>
+        <button onclick="formatText('strikeThrough')" title="Tachado">
+            <s>T</s>
+        </button>
+        
+        <button onclick="toggleHighlight()" class="highlight-btn" title="Resaltar con color">
+            <span style="background-color: yellow;">Ab</span>
+        </button>
+        
+        <input type="color" class="color-picker" id="highlightColor" value="#ffff00" title="Color de resaltado">
+        
+        <select onchange="formatText('formatBlock', this.value)">
+            <option value="p">Párrafo</option>
+            <option value="h1">Título 1</option>
+            <option value="h2">Título 2</option>
+            <option value="h3">Título 3</option>
+        </select>
+        
+        <select onchange="formatText('fontName', this.value)">
+            <option value="Arial">Arial</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Courier New">Courier New</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Verdana">Verdana</option>
+        </select>
+        
+        <input type="number" class="font-size-input" id="fontSizeInput" value="16" min="8" max="72" title="Tamaño de fuente">
+        
+        <input type="color" class="color-picker" onchange="formatText('foreColor', this.value)" title="Color de texto">
+        
+        <button onclick="formatText('justifyLeft')" title="Alinear izquierda">
+            ⬅
+        </button>
+        <button onclick="formatText('justifyCenter')" title="Centrar">
+            ↔
+        </button>
+        <button onclick="formatText('justifyRight')" title="Alinear derecha">
+            ➡
+        </button>
+        
+        <button onclick="formatText('insertUnorderedList')" title="Lista con viñetas">
+            • Lista
+        </button>
+        <button onclick="formatText('insertOrderedList')" title="Lista numerada">
+            1. Lista
+        </button>
+        
+        <button onclick="insertImage()" title="Insertar imagen">
+            🖼️ Imagen
+        </button>
+        
+        <button onclick="formatText('removeFormat')" title="Quitar formato">
+            Quitar formato
+        </button>
+        
+        <button onclick="clearCurrentTab()" title="Limpiar pestaña actual">
+            🗑 Limpiar
+        </button>
+        
+        <button onclick="downloadPDF()" title="Descargar PDF">
+            📄 Descargar PDF
+        </button>
+        
+        <button onclick="createNewTab()" title="Nuevo documento">
+            📄 Nuevo
+        </button>
+    </div>
+    
+    <div class="editor-container" id="editorContainer">
+        <!-- Los editores se generarán dinámicamente -->
+    </div>
+    
+    <div class="status-bar">
+        <div>
+            <span id="wordCount">Palabras: 0</span> | 
+            <span id="charCount">Caracteres: 0</span>
+        </div>
+        <div class="zoom-controls">
+            <button onclick="zoomOut()" title="Disminuir zoom">-</button>
+            <span id="zoomLevel">100%</span>
+            <button onclick="zoomIn()" title="Aumentar zoom">+</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <script>
+        let tabCounter = 0;
+        let currentTabId = null;
+        let currentZoom = 100;
+        let isHighlighting = false;
+        let draggedImage = null;
+        let offset = { x: 0, y: 0 };
+        let isResizing = false;
+        let isCropping = false;
+        let cropStart = { x: 0, y: 0 };
+        let cropEnd = { x: 0, y: 0 };
+
+        // Manejar cambio de tamaño de fuente
+        document.getElementById('fontSizeInput').addEventListener('change', function() {
+            const size = this.value + 'px';
+            const activeEditor = document.querySelector('.editor.active');
+            if (activeEditor) {
+                activeEditor.style.fontSize = size;
+                formatText('fontSize', '3');
+            }
+        });
+
+        function formatText(command, value = null) {
+            const activeEditor = document.querySelector('.editor.active');
+            if (activeEditor) {
+                document.execCommand(command, false, value);
+                activeEditor.focus();
+            }
+        }
+        
+        function toggleHighlight() {
+            isHighlighting = !isHighlighting;
+            const btn = document.querySelector('.highlight-btn');
+            btn.classList.toggle('active', isHighlighting);
+            
+            if (isHighlighting) {
+                const color = document.getElementById('highlightColor').value;
+                formatText('hiliteColor', color);
+            }
+        }
+        
+        function insertImage() {
+            const activeEditor = document.querySelector('.editor.active');
+            if (!activeEditor) return;
+            
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const imgContainer = document.createElement('div');
+                        imgContainer.className = 'image-container';
+                        
+                        const img = document.createElement('img');
+                        img.src = event.target.result;
+                        img.className = 'draggable-image';
+                        img.style.width = '200px';
+                        img.style.height = 'auto';
+                        
+                        const resizeHandle = document.createElement('div');
+                        resizeHandle.className = 'resize-handle';
+                        
+                        const cropOverlay = document.createElement('div');
+                        cropOverlay.className = 'crop-overlay';
+                        
+                        const cropControls = document.createElement('div');
+                        cropControls.className = 'crop-controls';
+                        cropControls.innerHTML = `
+                            <button onclick="applyCrop(this)">Aplicar</button>
+                            <button onclick="cancelCrop(this)">Cancelar</button>
+                        `;
+                        
+                        imgContainer.appendChild(img);
+                        imgContainer.appendChild(resizeHandle);
+                        imgContainer.appendChild(cropOverlay);
+                        imgContainer.appendChild(cropControls);
+                        
+                        // Hacer la imagen arrastrable
+                        makeImageDraggable(img);
+                        makeImageResizable(img, resizeHandle);
+                        makeImageCroppable(img, cropOverlay, cropControls);
+                        
+                        // Insertar en la posición actual del cursor
+                        const selection = window.getSelection();
+                        if (selection.rangeCount > 0) {
+                            const range = selection.getRangeAt(0);
+                            range.insertNode(imgContainer);
+                        } else {
+                            activeEditor.appendChild(imgContainer);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        }
+        
+        function makeImageDraggable(img) {
+            img.addEventListener('mousedown', function(e) {
+                if (e.target.classList.contains('resize-handle')) return;
+                
+                draggedImage = img;
+                const rect = img.getBoundingClientRect();
+                offset.x = e.clientX - rect.left;
+                offset.y = e.clientY - rect.top;
+                
+                img.style.position = 'absolute';
+                img.style.zIndex = '1000';
+                img.classList.add('selected');
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                
+                e.preventDefault();
+            });
+        }
+        
+        function onMouseMove(e) {
+            if (draggedImage) {
+                draggedImage.style.left = (e.clientX - offset.x) + 'px';
+                draggedImage.style.top = (e.clientY - offset.y) + 'px';
+            }
+        }
+        
+        function onMouseUp() {
+            if (draggedImage) {
+                draggedImage.classList.remove('selected');
+                draggedImage = null;
+            }
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+        
+        function makeImageResizable(img, handle) {
+            handle.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                e.stopPropagation();
+                e.preventDefault();
+                
+                document.addEventListener('mousemove', onResize);
+                document.addEventListener('mouseup', onStopResize);
+            });
+            
+            function onResize(e) {
+                if (isResizing) {
+                    const rect = img.getBoundingClientRect();
+                    const newWidth = e.clientX - rect.left;
+                    const newHeight = e.clientY - rect.top;
+                    
+                    img.style.width = Math.max(50, newWidth) + 'px';
+                    img.style.height = 'auto';
+                }
+            }
+            
+            function onStopResize() {
+                isResizing = false;
+                document.removeEventListener('mousemove', onResize);
+                document.removeEventListener('mouseup', onStopResize);
+            }
+        }
+        
+        function makeImageCroppable(img, overlay, controls) {
+            img.addEventListener('dblclick', function() {
+                overlay.style.display = 'block';
+                controls.style.display = 'flex';
+                img.style.pointerEvents = 'none';
+            });
+            
+            overlay.addEventListener('mousedown', function(e) {
+                cropStart.x = e.offsetX;
+                cropStart.y = e.offsetY;
+                isCropping = true;
+                e.preventDefault();
+            });
+            
+            overlay.addEventListener('mousemove', function(e) {
+                if (isCropping) {
+                    cropEnd.x = e.offsetX;
+                    cropEnd.y = e.offsetY;
+                    
+                    const left = Math.min(cropStart.x, cropEnd.x);
+                    const top = Math.min(cropStart.y, cropEnd.y);
+                    const width = Math.abs(cropEnd.x - cropStart.x);
+                    const height = Math.abs(cropEnd.y - cropStart.y);
+                    
+                    overlay.style.background = `rgba(0,0,0,0.5) ${left}px ${top}px ${width}px ${height}px`;
+                }
+            });
+            
+            overlay.addEventListener('mouseup', function() {
+                isCropping = false;
+            });
+        }
+        
+        function applyCrop(button) {
+            const container = button.closest('.image-container');
+            const img = container.querySelector('.draggable-image');
+            const overlay = container.querySelector('.crop-overlay');
+            const controls = container.querySelector('.crop-controls');
+            
+            overlay.style.display = 'none';
+            controls.style.display = 'none';
+            img.style.pointerEvents = 'auto';
+            
+            alert('Función de recorte implementada. El recorte real requeriría canvas adicional.');
+        }
+        
+        function cancelCrop(button) {
+            const container = button.closest('.image-container');
+            const img = container.querySelector('.draggable-image');
+            const overlay = container.querySelector('.crop-overlay');
+            const controls = container.querySelector('.crop-controls');
+            
+            overlay.style.display = 'none';
+            controls.style.display = 'none';
+            img.style.pointerEvents = 'auto';
+        }
+        
+        function createNewTab() {
+            tabCounter++;
+            const tabId = `tab-${tabCounter}`;
+            const editorId = `editor-${tabCounter}`;
+            
+            // Crear pestaña
+            const tab = document.createElement('div');
+            tab.className = 'tab';
+            tab.id = tabId;
+            tab.innerHTML = `
+                <span onclick="switchTab('${tabId}')">Documento ${tabCounter}</span>
+                <button class="tab-close" onclick="closeTab('${tabId}')">×</button>
+            `;
+            
+            // Crear editor
+            const editor = document.createElement('div');
+            editor.className = 'editor';
+            editor.id = editorId;
+            editor.innerHTML = `
+                <h2>Documento ${tabCounter}</h2>
+                <p>Este es un nuevo documento en la pestaña ${tabCounter}.</p>
+                <p>Características del editor:</p>
+                <ul>
+                    <li>Formato de texto enriquecido</li>
+                    <li>Inserción de imágenes</li>
+                    <li>Exportación a PDF</li>
+                    <li>Contador de palabras</li>
+                </ul>
+                <p>© 2024 LibrillaiA</p>
+            `;
+            
+            document.getElementById('tabsList').appendChild(tab);
+            document.getElementById('editorContainer').appendChild(editor);
+            
+            // Hacer el editor editable
+            editor.contentEditable = true;
+            
+            // Añadir eventos de actualización
+            editor.addEventListener('input', function() {
+                if (this.parentElement.classList.contains('active')) {
+                    updateCounts();
+                }
+            });
+            
+            // Activar la nueva pestaña
+            switchTab(tabId);
+        }
+        
+        function switchTab(tabId) {
+            // Desactivar todas las pestañas y editores
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.editor').forEach(editor => editor.classList.remove('active'));
+            
+            // Activar la pestaña seleccionada
+            document.getElementById(tabId).classList.add('active');
+            
+            // Obtener el ID del editor correspondiente
+            const editorId = tabId.replace('tab', 'editor');
+            const editor = document.getElementById(editorId);
+            if (editor) {
+                editor.classList.add('active');
+                currentTabId = tabId;
+                updateCounts();
+            }
+        }
+        
+        function closeTab(tabId) {
+            const tabs = document.querySelectorAll('.tab');
+            if (tabs.length <= 1) {
+                alert('Debe haber al menos una pestaña abierta');
+                return;
+            }
+            
+            const tab = document.getElementById(tabId);
+            const isActive = tab.classList.contains('active');
+            
+            // Eliminar pestaña y editor
+            const editorId = tabId.replace('tab', 'editor');
+            const editor = document.getElementById(editorId);
+            
+            tab.remove();
+            if (editor) editor.remove();
+            
+            // Si era la pestaña activa, activar la primera disponible
+            if (isActive) {
+                const remainingTabs = document.querySelectorAll('.tab');
+                if (remainingTabs.length > 0) {
+                    const firstTab = remainingTabs[0];
+                    switchTab(firstTab.id);
+                }
+            }
+        }
+        
+        function clearCurrentTab() {
+            const activeEditor = document.querySelector('.editor.active');
+            if (activeEditor) {
+                if (confirm('¿Estás seguro de que quieres borrar el contenido de esta pestaña?')) {
+                    activeEditor.innerHTML = '<p></p>';
+                    updateCounts();
+                }
+            }
+        }
+        
+        function updateCounts() {
+            const activeEditor = document.querySelector('.editor.active');
+            if (!activeEditor) return;
+            
+            const text = activeEditor.innerText;
+            const words = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+            const chars = text.length;
+            
+            document.getElementById('wordCount').textContent = `Palabras: ${words}`;
+            document.getElementById('charCount').textContent = `Caracteres: ${chars}`;
+        }
+        
+        function zoomIn() {
+            if (currentZoom < 200) {
+                currentZoom += 10;
+                updateZoom();
+            }
+        }
+        
+        function zoomOut() {
+            if (currentZoom > 50) {
+                currentZoom -= 10;
+                updateZoom();
+            }
+        }
+        
+        function updateZoom() {
+            const activeEditor = document.querySelector('.editor.active');
+            if (activeEditor) {
+                activeEditor.style.fontSize = (16 * currentZoom / 100) + 'px';
+            }
+            document.getElementById('zoomLevel').textContent = currentZoom + '%';
+        }
+        
+        async function downloadPDF() {
+            const activeEditor = document.querySelector('.editor.active');
+            if (!activeEditor) return;
+            
+            // Deseleccionar imágenes antes de generar PDF
+            document.querySelectorAll('.draggable-image').forEach(img => {
+                img.classList.remove('selected');
+            });
+            
+            const canvas = await html2canvas(activeEditor, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                width: activeEditor.scrollWidth,
+                height: activeEditor.scrollHeight
+            });
+            
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = 210;
+            const pageHeight = 295;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            let position = 0;
+            
+            doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+            
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                doc.addPage();
+                doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+            
+            doc.save('documento_clipyy.pdf');
+        }
+        
+        // Crear la primera pestaña al cargar
+        window.onload = function() {
+            // Crear la primera pestaña con nombre "Prueba"
+            createFirstTab();
+        };
+        
+        function createFirstTab() {
+            tabCounter++;
+            const tabId = 'tab-1';
+            const editorId = 'editor-1';
+            
+            // Crear pestaña
+            const tab = document.createElement('div');
+            tab.className = 'tab active';
+            tab.id = tabId;
+            tab.innerHTML = `
+                <span onclick="switchTab('${tabId}')">Prueba</span>
+                <button class="tab-close" onclick="closeTab('${tabId}')">×</button>
+            `;
+            
+            // Crear editor
+            const editor = document.createElement('div');
+            editor.className = 'editor active';
+            editor.id = editorId;
+            editor.innerHTML = `
+                <h1>Información del Sistema</h1>
+                <p><strong>Nombre del sistema:</strong> Clipyy - Editor con Pestañas</p>
+                <p><strong>Versión:</strong> 1.0.0</p>
+                <p><strong>Desarrollador:</strong> LibrillaiA</p>
+                <p><strong>Año:</strong> 2024</p>
+                
+                <h2>Características Principales</h2>
+                <ul>
+                    <li>Editor de texto enriquecido con múltiples pestañas</li>
+                    <li>Formato de texto (negrita, cursiva, subrayado, tachado)</li>
+                    <li>Resaltado de texto con colores personalizables</li>
+                    <li>Insertar imágenes con funciones de arrastre, redimensionado y recorte</li>
+                    <li>Exportación a PDF</li>
+                    <li>Contador de palabras y caracteres</li>
+                    <li>Control de zoom</li>
+                </ul>
+                
+                <h2>Instrucciones de Uso</h2>
+                <p>1. Usa los botones de la barra de herramientas para formatear el texto</p>
+                <p>2. Haz doble clic en una imagen para activar el modo de recorte</p>
+                <p>3. Arrastra las imágenes para moverlas dentro del documento</p>
+                <p>4. Usa la esquina inferior derecha de las imágenes para redimensionarlas</p>
+                <p>5. Haz clic en el botón "Descargar PDF" para exportar tu documento</p>
+                
+                <p style="text-align: center; margin-top: 20px; font-style: italic;">
+                    © 2024 LibrillaiA - Todos los derechos reservados
+                </p>
+            `;
+            
+            document.getElementById('tabsList').appendChild(tab);
+            document.getElementById('editorContainer').appendChild(editor);
+            
+            // Hacer el editor editable
+            editor.contentEditable = true;
+            
+            // Añadir eventos de actualización
+            editor.addEventListener('input', function() {
+                if (this.parentElement.classList.contains('active')) {
+                    updateCounts();
+                }
+            });
+            
+            currentTabId = tabId;
+        }
+    </script>
+</body>
+</html>
+```
