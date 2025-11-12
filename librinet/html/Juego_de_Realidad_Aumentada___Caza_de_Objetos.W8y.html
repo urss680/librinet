@@ -1,0 +1,377 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Realidad Aumentada - Caza de Objetos</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #000;
+        }
+        
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 20px;
+            border-radius: 10px;
+            min-width: 200px;
+        }
+        
+        #score {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        #timer {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
+        #target {
+            font-size: 18px;
+            color: #4CAF50;
+        }
+        
+        .object {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+        
+        .object:hover {
+            transform: scale(1.2);
+        }
+        
+        .target-object {
+            background: radial-gradient(circle, #4CAF50, #2E7D32);
+            border: 3px solid #81C784;
+        }
+        
+        .decoy-object {
+            background: radial-gradient(circle, #F44336, #C62828);
+            border: 3px solid #EF9A9A;
+        }
+        
+        #startScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 40px;
+            border-radius: 20px;
+        }
+        
+        #startBtn {
+            font-size: 24px;
+            padding: 15px 40px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        #startBtn:hover {
+            background: #45a049;
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            background: rgba(0,0,0,0.9);
+            padding: 40px;
+            border-radius: 20px;
+            display: none;
+        }
+        
+        #finalScore {
+            font-size: 36px;
+            color: #4CAF50;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    
+    <div id="ui">
+        <div id="score">Puntuación: 0</div>
+        <div id="timer">Tiempo: 60s</div>
+        <div id="target">Objetivo: <span id="targetName">Hongo</span></div>
+    </div>
+    
+    <div id="startScreen">
+        <h1>Caza de Objetos AR</h1>
+        <p>Encuentra y toca los objetos correctos antes de que se acabe el tiempo</p>
+        <button id="startBtn">Comenzar Juego</button>
+    </div>
+    
+    <div id="gameOver">
+        <h2>¡Juego Terminado!</h2>
+        <div id="finalScore">0</div>
+        <button id="restartBtn" onclick="location.reload()">Jugar de Nuevo</button>
+    </div>
+
+    <script>
+        const objects = [
+            {name: 'Hongo', emoji: '🍄', color: '#8B4513'},
+            {name: 'Estrella', emoji: '⭐', color: '#FFD700'},
+            {name: 'Corazón', emoji: '❤️', color: '#FF1493'},
+            {name: 'Luna', emoji: '🌙', color: '#F0E68C'},
+            {name: 'Sol', emoji: '☀️', color: '#FFA500'},
+            {name: 'Flor', emoji: '🌸', color: '#FFB6C1'}
+        ];
+        
+        let score = 0;
+        let timeLeft = 60;
+        let currentTarget = 0;
+        let gameActive = false;
+        let objectsCreated = [];
+        
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOver');
+        const scoreElement = document.getElementById('score');
+        const timerElement = document.getElementById('timer');
+        const targetElement = document.getElementById('targetName');
+        
+        // Inicializar cámara
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                };
+            } catch (err) {
+                console.error('Error al acceder a la cámara:', err);
+                // Fallback: usar imagen de fondo
+                document.body.style.background = 'linear-gradient(45deg, #1a1a2e, #16213e)';
+            }
+        }
+        
+        // Crear objeto en pantalla
+        function createObject(isTarget = false) {
+            const object = document.createElement('div');
+            object.className = 'object ' + (isTarget ? 'target-object' : 'decoy-object');
+            
+            // Posición aleatoria
+            const x = Math.random() * (window.innerWidth - 100) + 50;
+            const y = Math.random() * (window.innerHeight - 200) + 100;
+            
+            object.style.left = x + 'px';
+            object.style.top = y + 'px';
+            
+            // Seleccionar objeto aleatorio
+            const objData = objects[Math.floor(Math.random() * objects.length)];
+            object.innerHTML = `<div style="font-size: 40px; text-align: center; line-height: 60px;">${objData.emoji}</div>`;
+            object.dataset.name = objData.name;
+            object.dataset.target = isTarget;
+            
+            object.addEventListener('click', handleObjectClick);
+            
+            document.body.appendChild(object);
+            objectsCreated.push(object);
+            
+            // Animación de aparición
+            object.style.transform = 'scale(0)';
+            setTimeout(() => {
+                object.style.transform = 'scale(1)';
+            }, 100);
+            
+            // Eliminar después de un tiempo
+            setTimeout(() => {
+                if (object.parentNode) {
+                    object.remove();
+                    objectsCreated = objectsCreated.filter(o => o !== object);
+                }
+            }, 5000);
+        }
+        
+        // Manejar click en objeto
+        function handleObjectClick(e) {
+            if (!gameActive) return;
+            
+            const object = e.currentTarget;
+            const isTarget = object.dataset.target === 'true';
+            
+            if (isTarget && object.dataset.name === objects[currentTarget].name) {
+                score += 10;
+                updateScore();
+                createExplosion(e.pageX, e.pageY, '#4CAF50');
+                
+                // Cambiar al siguiente objetivo
+                currentTarget = (currentTarget + 1) % objects.length;
+                targetElement.textContent = objects[currentTarget].name;
+            } else {
+                score = Math.max(0, score - 5);
+                updateScore();
+                createExplosion(e.pageX, e.pageY, '#F44336');
+            }
+            
+            object.remove();
+            objectsCreated = objectsCreated.filter(o => o !== object);
+        }
+        
+        // Crear efecto de explosión
+        function createExplosion(x, y, color) {
+            const particles = 20;
+            for (let i = 0; i < particles; i++) {
+                const particle = document.createElement('div');
+                particle.style.position = 'absolute';
+                particle.style.width = '10px';
+                particle.style.height = '10px';
+                particle.style.backgroundColor = color;
+                particle.style.borderRadius = '50%';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.pointerEvents = 'none';
+                
+                const angle = (Math.PI * 2 * i) / particles;
+                const velocity = 5 + Math.random() * 5;
+                const vx = Math.cos(angle) * velocity;
+                const vy = Math.sin(angle) * velocity;
+                
+                document.body.appendChild(particle);
+                
+                let posX = x;
+                let posY = y;
+                let opacity = 1;
+                
+                const animate = () => {
+                    posX += vx;
+                    posY += vy;
+                    opacity -= 0.05;
+                    
+                    particle.style.left = posX + 'px';
+                    particle.style.top = posY + 'px';
+                    particle.style.opacity = opacity;
+                    
+                    if (opacity > 0) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        particle.remove();
+                    }
+                };
+                
+                requestAnimationFrame(animate);
+            }
+        }
+        
+        // Actualizar puntuación
+        function updateScore() {
+            scoreElement.textContent = `Puntuación: ${score}`;
+        }
+        
+        // Actualizar temporizador
+        function updateTimer() {
+            timerElement.textContent = `Tiempo: ${timeLeft}s`;
+            
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+        
+        // Generar objetos aleatoriamente
+        function spawnObjects() {
+            if (!gameActive) return;
+            
+            // 30% de probabilidad de que sea el objetivo correcto
+            const isTarget = Math.random() < 0.3;
+            createObject(isTarget);
+            
+            // Generar más objetos con menos frecuencia
+            setTimeout(spawnObjects, 1000 + Math.random() * 2000);
+        }
+        
+        // Iniciar juego
+        function startGame() {
+            gameActive = true;
+            startScreen.style.display = 'none';
+            
+            // Iniciar temporizador
+            const timerInterval = setInterval(() => {
+                if (gameActive) {
+                    timeLeft--;
+                    updateTimer();
+                } else {
+                    clearInterval(timerInterval);
+                }
+            }, 1000);
+            
+            // Comenzar a generar objetos
+            spawnObjects();
+            
+            // Crear algunos objetos iniciales
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => createObject(Math.random() < 0.3), i * 500);
+            }
+        }
+        
+        // Terminar juego
+        function endGame() {
+            gameActive = false;
+            document.getElementById('finalScore').textContent = `Puntuación Final: ${score}`;
+            gameOverScreen.style.display = 'block';
+            
+            // Limpiar objetos restantes
+            objectsCreated.forEach(obj => obj.remove());
+            objectsCreated = [];
+        }
+        
+        // Event listeners
+        startBtn.addEventListener('click', startGame);
+        
+        // Inicializar
+        initCamera();
+        targetElement.textContent = objects[currentTarget].name;
+    </script>
+</body>
+</html>
+```
