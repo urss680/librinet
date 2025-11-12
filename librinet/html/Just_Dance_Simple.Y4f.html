@@ -1,0 +1,91 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Just Dance Simple</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #222;
+            color: #fff;
+            text-align: center;
+            padding: 50px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        input[type="file"] {
+            margin: 20px 0;
+        }
+        audio {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .dance-area {
+            background: #444;
+            padding: 30px;
+            border-radius: 10px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+        }
+        .start-btn {
+            padding: 15px 30px;
+            background-color: #1db954;
+            border: none;
+            color: white;
+            font-size: 1.2em;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        .start-btn:hover {
+            background-color: #1ed760;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Just Dance Simple</h1>
+        <input type="file" id="audioFile" accept="audio/*">
+        <br>
+        <audio id="musicPlayer" controls></audio>
+        <div class="dance-area" id="danceArea">Esperando canción...</div>
+        <button class="start-btn" onclick="startDance()">Comenzar Baile</button>
+    </div>
+
+    <script>
+        const audioFile = document.getElementById('audioFile');
+        const musicPlayer = document.getElementById('musicPlayer');
+        const danceArea = document.getElementById('danceArea');
+
+        audioFile.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                musicPlayer.src = fileURL;
+                danceArea.textContent = "Lista para bailar: " + file.name;
+            }
+        });
+
+        function startDance() {
+            if (musicPlayer.src) {
+                musicPlayer.play().then(() => {
+                    danceArea.innerHTML = "<strong>¡Música de fondo activada!</strong><br>Presiona play en el reproductor para iniciar el baile";
+                }).catch(error => {
+                    console.error("Error al reproducir la canción:", error);
+                    alert("Por favor, inicia la reproducción manualmente.");
+                });
+            } else {
+                alert("Por favor selecciona una canción primero");
+            }
+        }
+    </script>
+</body>
+</html>
+```
