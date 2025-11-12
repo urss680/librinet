@@ -1,0 +1,145 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reconocimiento facial - ¿Eres tú?</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #0f0c29;
+            background: linear-gradient(135deg, #24243e, #302b63, #0f0c29);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        h1 { margin-top: 0; }
+        #container {
+            background: rgba(255,255,255,.08);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 25px 35px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.4);
+            text-align: center;
+            max-width: 420px;
+            width: 90%;
+        }
+        video, canvas {
+            border-radius: 12px;
+            width: 100%;
+            max-width: 320px;
+            transform: scaleX(-1);
+        }
+        button {
+            margin-top: 15px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: #00c6ff;
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: .3s;
+        }
+        button:hover {
+            opacity: .9;
+        }
+        #result {
+            margin-top: 15px;
+            font-weight: bold;
+            min-height: 24px;
+        }
+        #confidence {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #ccc;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>¿Eres tú?</h1>
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" class="hidden"></canvas>
+        <br>
+        <button id="snap">Capturar y analizar</button>
+        <div id="result"></div>
+        <div id="confidence"></div>
+    </div>
+
+    <!-- face-api.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.11/dist/face-api.min.js"></script>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const result = document.getElementById('result');
+        const confidence = document.getElementById('confidence');
+        const snapBtn = document.getElementById('snap');
+
+        let labeledDescriptors = []; // Guardar descriptores de usuario
+
+        // Cargar modelos
+        async function loadModels() {
+            await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.11/model');
+            await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.11/model');
+            await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.11/model');
+        }
+
+        // Iniciar cámara
+        async function startCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            return new Promise((res) => { video.onloadedmetadata = () => res(); });
+        }
+
+        // Capturar y registrar rostro
+        snapBtn.addEventListener('click', async () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                                             .withFaceLandmarks()
+                                             .withFaceDescriptor();
+            if (!detections) {
+                result.textContent = "No se detectó ningún rostro.";
+                confidence.textContent = "";
+                return;
+            }
+
+            const descriptor = detections.descriptor;
+            if (labeledDescriptors.length === 0) {
+                // Primera captura: registrar usuario
+                labeledDescriptors.push(new faceapi.LabeledFaceDescriptors('Usuario', [descriptor]));
+                result.textContent = "Rostro registrado. Vuelve a capturar para verificar.";
+                confidence.textContent = "";
+            } else {
+                // Segunda captura: verificar
+                const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors);
+                const match = faceMatcher.findBestMatch(descriptor);
+                if (match.label === 'Usuario' && match.distance < 0.5) {
+                    result.textContent = "¡Sí eres tú!";
+                    result.style.color = "#7cff7c";
+                } else {
+                    result.textContent = "No eres tú.";
+                    result.style.color = "#ff7c7c";
+                }
+                confidence.textContent = `Confianza: ${(1 - match.distance).toFixed(2)}`;
+            }
+        });
+
+        (async () => {
+            await loadModels();
+            await startCamera();
+        })();
+    </script>
+</body>
+</html>
+```
