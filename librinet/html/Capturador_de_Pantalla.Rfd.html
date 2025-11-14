@@ -1,0 +1,486 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capturador de Pantalla</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px;
+            min-height: 100vh;
+            color: #e6e6e6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.36);
+        }
+        
+        h1 {
+            color: #ffffff;
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 300;
+            font-size: 2.5rem;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(45deg, #2980b9, #3498db);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(45deg, #c0392b, #e74c3c);
+        }
+        
+        input[type="number"] {
+            padding: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 16px;
+            width: 100px;
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+        }
+        
+        label {
+            font-weight: 500;
+            color: #ffffff;
+            margin-right: 10px;
+        }
+        
+        #video {
+            width: 100%;
+            max-width: 800px;
+            display: block;
+            margin: 20px auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #canvas {
+            display: none;
+        }
+        
+        .preview-container {
+            position: relative;
+            display: inline-block;
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        
+        .crop-area {
+            position: absolute;
+            border: 2px solid #00ff00;
+            background-color: rgba(0, 255, 0, 0.1);
+            cursor: move;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+        }
+        
+        .crop-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #00ff00;
+            border: 2px solid white;
+            border-radius: 50%;
+        }
+        
+        .crop-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+        .crop-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+        .crop-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+        .crop-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+        
+        #preview {
+            max-width: 100%;
+            display: block;
+            margin: 20px auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .status {
+            text-align: center;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: rgba(46, 204, 113, 0.2);
+            color: #d5f5e3;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+        
+        .status.error {
+            background: rgba(231, 76, 60, 0.2);
+            color: #fadbd8;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Capturador de Pantalla en Tiempo Real</h1>
+        
+        <div class="controls">
+            <button id="btnIniciar" class="btn-primary">Iniciar Captura</button>
+            <button id="btnDetener" class="btn-danger hidden">Detener Captura</button>
+            <button id="btnCapturar" class="btn-secondary hidden">Capturar</button>
+            
+            <label for="numeroInicio">Número inicial:</label>
+            <input type="number" id="numeroInicio" value="1" min="1">
+        </div>
+        
+        <div id="status" class="status hidden"></div>
+        
+        <video id="video" autoplay></video>
+        <canvas id="canvas"></canvas>
+        
+        <div id="previewContainer" class="preview-container hidden">
+            <img id="preview" alt="Vista previa">
+            <div id="cropArea" class="crop-area hidden">
+                <div class="crop-handle nw"></div>
+                <div class="crop-handle ne"></div>
+                <div class="crop-handle sw"></div>
+                <div class="crop-handle se"></div>
+            </div>
+        </div>
+        
+        <div id="cropControls" class="controls hidden">
+            <button id="btnRecortar" class="btn-secondary">Aplicar Recorte</button>
+            <button id="btnCancelarRecorte" class="btn-danger">Cancelar Recorte</button>
+        </div>
+    </div>
+
+    <script>
+        let stream = null;
+        let currentStream = null;
+        let captureNumber = 1;
+        let cropArea = { x: 0, y: 0, width: 200, height: 200 };
+        let isDragging = false;
+        let isResizing = false;
+        let dragStart = { x: 0, y: 0 };
+        let resizeHandle = '';
+        let cropApplied = false;
+        let lastCropArea = null;
+
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const btnIniciar = document.getElementById('btnIniciar');
+        const btnDetener = document.getElementById('btnDetener');
+        const btnCapturar = document.getElementById('btnCapturar');
+        const btnRecortar = document.getElementById('btnRecortar');
+        const btnCancelarRecorte = document.getElementById('btnCancelarRecorte');
+        const preview = document.getElementById('preview');
+        const previewContainer = document.getElementById('previewContainer');
+        const cropAreaElement = document.getElementById('cropArea');
+        const cropControls = document.getElementById('cropControls');
+        const status = document.getElementById('status');
+        const numeroInicio = document.getElementById('numeroInicio');
+
+        btnIniciar.addEventListener('click', iniciarCaptura);
+        btnDetener.addEventListener('click', detenerCaptura);
+        btnCapturar.addEventListener('click', capturar);
+        btnRecortar.addEventListener('click', aplicarRecorte);
+        btnCancelarRecorte.addEventListener('click', cancelarRecorte);
+
+        async function iniciarCaptura() {
+            try {
+                captureNumber = parseInt(numeroInicio.value);
+                
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { mediaSource: "screen" },
+                    preferCurrentTab: true
+                });
+                
+                video.srcObject = stream;
+                currentStream = stream;
+                
+                btnIniciar.classList.add('hidden');
+                btnDetener.classList.remove('hidden');
+                btnCapturar.classList.remove('hidden');
+                
+                mostrarStatus('Captura iniciada. Selecciona el área a recortar (opcional) y presiona Capturar.', 'success');
+                
+                stream.getVideoTracks()[0].onended = () => {
+                    detenerCaptura();
+                };
+            } catch (error) {
+                mostrarStatus('Error al iniciar la captura: ' + error.message, 'error');
+            }
+        }
+
+        function detenerCaptura() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                currentStream = null;
+            }
+            
+            btnIniciar.classList.remove('hidden');
+            btnDetener.classList.add('hidden');
+            btnCapturar.classList.add('hidden');
+            previewContainer.classList.add('hidden');
+            cropControls.classList.add('hidden');
+            
+            mostrarStatus('Captura detenida', 'success');
+        }
+
+        function capturar() {
+            if (!video.videoWidth || !video.videoHeight) {
+                mostrarStatus('El video no está listo', 'error');
+                return;
+            }
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            const dataURL = canvas.toDataURL('image/png', 1.0);
+            preview.src = dataURL;
+            previewContainer.classList.remove('hidden');
+            
+            if (!cropApplied) {
+                inicializarRecorte();
+                cropControls.classList.remove('hidden');
+                mostrarStatus('Ajusta el área de recorte y presiona Aplicar Recorte', 'success');
+            } else {
+                procesarImagen(dataURL);
+            }
+        }
+
+        function inicializarRecorte() {
+            cropArea = lastCropArea || { 
+                x: 50, 
+                y: 50, 
+                width: preview.clientWidth - 100, 
+                height: preview.clientHeight - 100 
+            };
+            
+            actualizarCropArea();
+            
+            cropAreaElement.classList.remove('hidden');
+            
+            cropAreaElement.addEventListener('mousedown', iniciarDrag);
+            document.addEventListener('mousemove', arrastrar);
+            document.addEventListener('mouseup', detenerDrag);
+            
+            document.querySelectorAll('.crop-handle').forEach(handle => {
+                handle.addEventListener('mousedown', iniciarResize);
+            });
+        }
+
+        function actualizarCropArea() {
+            cropAreaElement.style.left = cropArea.x + 'px';
+            cropAreaElement.style.top = cropArea.y + 'px';
+            cropAreaElement.style.width = cropArea.width + 'px';
+            cropAreaElement.style.height = cropArea.height + 'px';
+        }
+
+        function iniciarDrag(e) {
+            if (e.target.classList.contains('crop-handle')) return;
+            
+            isDragging = true;
+            dragStart.x = e.clientX - cropArea.x;
+            dragStart.y = e.clientY - cropArea.y;
+            e.preventDefault();
+        }
+
+        function iniciarResize(e) {
+            isResizing = true;
+            resizeHandle = e.target.className.split(' ')[1];
+            dragStart.x = e.clientX;
+            dragStart.y = e.clientY;
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function arrastrar(e) {
+            if (isDragging) {
+                const rect = previewContainer.getBoundingClientRect();
+                let newX = e.clientX - dragStart.x;
+                let newY = e.clientY - dragStart.y;
+                
+                newX = Math.max(0, Math.min(newX, preview.clientWidth - cropArea.width));
+                newY = Math.max(0, Math.min(newY, preview.clientHeight - cropArea.height));
+                
+                cropArea.x = newX;
+                cropArea.y = newY;
+                actualizarCropArea();
+            } else if (isResizing) {
+                const deltaX = e.clientX - dragStart.x;
+                const deltaY = e.clientY - dragStart.y;
+                
+                switch(resizeHandle) {
+                    case 'se':
+                        cropArea.width = Math.max(50, cropArea.width + deltaX);
+                        cropArea.height = Math.max(50, cropArea.height + deltaY);
+                        break;
+                    case 'sw':
+                        cropArea.width = Math.max(50, cropArea.width - deltaX);
+                        cropArea.height = Math.max(50, cropArea.height + deltaY);
+                        cropArea.x += deltaX;
+                        break;
+                    case 'ne':
+                        cropArea.width = Math.max(50, cropArea.width + deltaX);
+                        cropArea.height = Math.max(50, cropArea.height - deltaY);
+                        cropArea.y += deltaY;
+                        break;
+                    case 'nw':
+                        cropArea.width = Math.max(50, cropArea.width - deltaX);
+                        cropArea.height = Math.max(50, cropArea.height - deltaY);
+                        cropArea.x += deltaX;
+                        cropArea.y += deltaY;
+                        break;
+                }
+                
+                dragStart.x = e.clientX;
+                dragStart.y = e.clientY;
+                actualizarCropArea();
+            }
+        }
+
+        function detenerDrag() {
+            isDragging = false;
+            isResizing = false;
+            resizeHandle = '';
+        }
+
+        function aplicarRecorte() {
+            cropApplied = true;
+            lastCropArea = { ...cropArea };
+            cropAreaElement.classList.add('hidden');
+            cropControls.classList.add('hidden');
+            
+            const scaleX = canvas.width / preview.clientWidth;
+            const scaleY = canvas.height / preview.clientHeight;
+            
+            const recorteCanvas = document.createElement('canvas');
+            const recorteCtx = recorteCanvas.getContext('2d');
+            recorteCanvas.width = cropArea.width * scaleX;
+            recorteCanvas.height = cropArea.height * scaleY;
+            
+            recorteCtx.drawImage(
+                canvas,
+                cropArea.x * scaleX,
+                cropArea.y * scaleY,
+                cropArea.width * scaleX,
+                cropArea.height * scaleY,
+                0, 0,
+                recorteCanvas.width,
+                recorteCanvas.height
+            );
+            
+            procesarImagen(recorteCanvas.toDataURL('image/png', 1.0));
+        }
+
+        function cancelarRecorte() {
+            cropApplied = false;
+            cropAreaElement.classList.add('hidden');
+            cropControls.classList.add('hidden');
+            procesarImagen(preview.src);
+        }
+
+        function procesarImagen(dataURL) {
+            const link = document.createElement('a');
+            link.download = `captura_${captureNumber}.png`;
+            link.href = dataURL;
+            link.click();
+            
+            mostrarStatus(`Captura ${captureNumber} descargada con máxima calidad`, 'success');
+            captureNumber++;
+        }
+
+        function mostrarStatus(mensaje, tipo) {
+            status.textContent = mensaje;
+            status.className = `status ${tipo}`;
+            status.classList.remove('hidden');
+            
+            setTimeout(() => {
+                status.classList.add('hidden');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
+```
