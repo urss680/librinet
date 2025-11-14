@@ -1,0 +1,350 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capturador de Pantalla en Directo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .capture-btn {
+            background: #2196F3;
+        }
+        
+        .capture-btn:hover {
+            background: #0b7dda;
+        }
+        
+        input[type="number"] {
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: #333;
+            color: white;
+            width: 80px;
+        }
+        
+        .video-container {
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        #videoElement {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .status {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .counter {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .config-section {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .config-section h3 {
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+        
+        .config-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .preview-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .preview-item {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .preview-item img {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .preview-item .name {
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Capturador de Pantalla en Directo</h1>
+            <p>Captura imágenes en máxima calidad PNG desde tu pantalla</p>
+        </div>
+        
+        <div class="config-section">
+            <h3>Configuración de Capturas</h3>
+            <div class="config-controls">
+                <label>Contador inicial:</label>
+                <input type="number" id="startCounter" value="1" min="1" max="9999">
+                <button onclick="updateCounter()">Actualizar contador</button>
+                <button onclick="resetCounter()">Reiniciar a 1</button>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="startBtn" onclick="startCapture()">Compartir Pantalla</button>
+            <button id="stopBtn" onclick="stopCapture()" disabled>Detener Pantalla</button>
+            <button class="capture-btn" id="captureBtn" onclick="captureImage()" disabled>Capturar Imagen</button>
+            <button onclick="downloadAllCaptures()">Descargar Todas</button>
+            <button onclick="clearCaptures()">Limpiar Capturas</button>
+        </div>
+        
+        <div class="video-container">
+            <video id="videoElement" autoplay></video>
+        </div>
+        
+        <div class="status">
+            <div class="counter">Capturas realizadas: <span id="captureCount">0</span></div>
+            <div id="statusText">Esperando para iniciar...</div>
+        </div>
+        
+        <div class="preview-container" id="previewContainer"></div>
+    </div>
+    
+    <canvas id="canvas" style="display: none;"></canvas>
+    
+    <script>
+        let stream = null;
+        let captures = [];
+        let currentCounter = 1;
+        let videoElement = document.getElementById('videoElement');
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        
+        function updateStatus(message) {
+            document.getElementById('statusText').textContent = message;
+        }
+        
+        function updateCounterDisplay() {
+            document.getElementById('captureCount').textContent = captures.length;
+        }
+        
+        function updateCounter() {
+            currentCounter = parseInt(document.getElementById('startCounter').value);
+            updateStatus(`Contador actualizado a: ${currentCounter}`);
+        }
+        
+        function resetCounter() {
+            currentCounter = 1;
+            document.getElementById('startCounter').value = 1;
+            updateStatus('Contador reiniciado a 1');
+        }
+        
+        async function startCapture() {
+            try {
+                updateStatus('Solicitando permisos de pantalla...');
+                stream = await navigator.mediaDevices.getDisplayMedia({ 
+                    video: { 
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        frameRate: 30
+                    },
+                    audio: false
+                });
+                
+                videoElement.srcObject = stream;
+                
+                videoElement.onloadedmetadata = function() {
+                    canvas.width = videoElement.videoWidth;
+                    canvas.height = videoElement.videoHeight;
+                    updateStatus('Pantalla compartida - Listo para capturar');
+                };
+                
+                stream.getVideoTracks()[0].onended = function() {
+                    stopCapture();
+                    updateStatus('La pantalla compartida fue cerrada');
+                };
+                
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('captureBtn').disabled = false;
+                
+            } catch (error) {
+                updateStatus('Error al compartir pantalla: ' + error.message);
+                console.error('Error:', error);
+            }
+        }
+        
+        function stopCapture() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                videoElement.srcObject = null;
+                stream = null;
+            }
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('captureBtn').disabled = true;
+            updateStatus('Pantalla compartida detenida');
+        }
+        
+        function captureImage() {
+            if (!stream) {
+                updateStatus('La pantalla no está siendo compartida');
+                return;
+            }
+            
+            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const filename = `${currentCounter}.png`;
+                
+                captures.push({ url, filename, blob });
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.click();
+                
+                addPreview(url, filename);
+                
+                currentCounter++;
+                document.getElementById('startCounter').value = currentCounter;
+                
+                updateStatus(`Captura guardada: ${filename}`);
+                updateCounterDisplay();
+            }, 'image/png');
+        }
+        
+        function addPreview(url, filename) {
+            const previewContainer = document.getElementById('previewContainer');
+            const previewItem = document.createElement('div');
+            previewItem.className = 'preview-item';
+            
+            const img = document.createElement('img');
+            img.src = url;
+            
+            const name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = filename;
+            
+            previewItem.appendChild(img);
+            previewItem.appendChild(name);
+            previewContainer.appendChild(previewItem);
+        }
+        
+        function downloadAllCaptures() {
+            if (captures.length === 0) {
+                updateStatus('No hay capturas para descargar');
+                return;
+            }
+            
+            captures.forEach((capture, index) => {
+                setTimeout(() => {
+                    const link = document.createElement('a');
+                    link.href = capture.url;
+                    link.download = capture.filename;
+                    link.click();
+                }, index * 500);
+            });
+            
+            updateStatus(`Descargando ${captures.length} capturas...`);
+        }
+        
+        function clearCaptures() {
+            captures.forEach(capture => URL.revokeObjectURL(capture.url));
+            captures = [];
+            document.getElementById('previewContainer').innerHTML = '';
+            updateCounterDisplay();
+            updateStatus('Capturas limpiadas');
+        }
+        
+        window.addEventListener('beforeunload', function() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            captures.forEach(capture => URL.revokeObjectURL(capture.url));
+        });
+    </script>
+</body>
+</html>
+```
