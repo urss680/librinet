@@ -1,0 +1,141 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metano: de polar a apolar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #e6e6e6;
+        }
+        .container {
+            text-align: center;
+            max-width: 800px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        svg {
+            margin: 20px auto;
+            display: block;
+        }
+        h1 {
+            color: #ffffff;
+        }
+        p {
+            color: #d0d0d0;
+        }
+        .info {
+            margin-top: 20px;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .info p {
+            color: #d0d0d0;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #00ff00;
+            background: rgba(0, 255, 0, 0.05);
+            border-radius: 4px;
+        }
+        .step h3 {
+            color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>¿Cómo unos enlaces polares forman una molécula apolar?</h1>
+        
+        <!-- Paso 1 -->
+        <div class="step">
+            <h3>1. Cada enlace C–H es polar</h3>
+            <p>El carbono (electronegatividad 2.55) atrae un poco más los electrones que el hidrógeno (2.20).<br>
+            Resultado: pequeño momento dipolar en cada enlace, apuntando hacia C.</p>
+        </div>
+
+        <!-- Paso 2 -->
+        <div class="step">
+            <h3>2. Geometría tetraédrica perfecta</h3>
+            <p>Los cuatro H se disponen simétricamente alrededor del C con ángulos de 109.5°.</p>
+            <svg width="300" height="300" viewBox="0 0 300 300">
+                <defs>
+                    <radialGradient id="cg" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" style="stop-color:#444"/>
+                        <stop offset="100%" style="stop-color:#222"/>
+                    </radialGradient>
+                    <radialGradient id="hg" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" style="stop-color:#ccc"/>
+                        <stop offset="100%" style="stop-color:#999"/>
+                    </radialGradient>
+                </defs>
+                <!-- enlaces -->
+                <g stroke="#888" stroke-width="7" stroke-linecap="round">
+                    <line x1="150" y1="150" x2="220" y2="220"/>
+                    <line x1="150" y1="150" x2="80"  y2="220"/>
+                    <line x1="150" y1="150" x2="80"  y2="80"/>
+                    <line x1="150" y1="150" x2="220" y2="80"/>
+                </g>
+                <!-- átomos -->
+                <circle cx="150" cy="150" r="35" fill="url(#cg)" stroke="#666" stroke-width="2"/>
+                <text x="150" y="158" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold">C</text>
+                <circle cx="220" cy="220" r="25" fill="url(#hg)" stroke="#aaa" stroke-width="2"/>
+                <text x="220" y="228" text-anchor="middle" fill="#333" font-size="16">H</text>
+                <circle cx="80"  cy="220" r="25" fill="url(#hg)" stroke="#aaa" stroke-width="2"/>
+                <text x="80"  y="228" text-anchor="middle" fill="#333" font-size="16">H</text>
+                <circle cx="80"  cy="80"  r="25" fill="url(#hg)" stroke="#aaa" stroke-width="2"/>
+                <text x="80"  y="88"  text-anchor="middle" fill="#333" font-size="16">H</text>
+                <circle cx="220" cy="80"  r="25" fill="url(#hg)" stroke="#aaa" stroke-width="2"/>
+                <text x="220" y="88"  text-anchor="middle" fill="#333" font-size="16">H</text>
+                <!-- vectores dipolares (solo dirección) -->
+                <g stroke="#ff6666" stroke-width="3" fill="none" marker-end="url(#arrow)">
+                    <line x1="180" y1="180" x2="150" y2="150"/>
+                    <line x1="120" y1="180" x2="150" y2="150"/>
+                    <line x1="120" y1="120" x2="150" y2="150"/>
+                    <line x1="180" y1="120" x2="150" y2="150"/>
+                </g>
+                <defs>
+                    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#ff6666"/>
+                    </marker>
+                </defs>
+            </svg>
+        </div>
+
+        <!-- Paso 3 -->
+        <div class="step">
+            <h3>3. Suma vectorial de dipolos</h3>
+            <p>Los cuatro vectores apuntan a los vértices de un tetraedro; sus componentes x, y, z se cancelan de par en par.</p>
+            <p><strong>Resultado:</strong> momento dipolar neto = 0 D → molécula apolar.</p>
+        </div>
+
+        <!-- Paso 4 -->
+        <div class="step">
+            <h3>4. Comparación: agua vs metano</h3>
+            <table style="margin:0 auto;color:#d0d0d0;border-collapse:collapse;">
+                <tr><th style="padding:8px;border:1px solid #666;">Molécula</th><th style="padding:8px;border:1px solid #666;">Geometría</th><th style="padding:8px;border:1px solid #666;">μ (D)</th></tr>
+                <tr><td style="padding:8px;border:1px solid #666;">H₂O</td><td style="padding:8px;border:1px solid #666;">Angular (104.5°)</td><td style="padding:8px;border:1px solid #666;">1.85</td></tr>
+                <tr><td style="padding:8px;border:1px solid #666;">CH₄</td><td style="padding:8px;border:1px solid #666;">Tetraédrica (109.5°)</td><td style="padding:8px;border:1px solid #666;">0</td></tr>
+            </table>
+            <p>La simetría es clave: en el agua los dipolos no se cancelan; en el metano sí.</p>
+        </div>
+    </div>
+</body>
+</html>
+```
