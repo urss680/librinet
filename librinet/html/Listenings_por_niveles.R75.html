@@ -1,0 +1,206 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Listenings por niveles</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f4f7fa;color:#333}
+    header{background:#004d99;color:#fff;padding:20px 0;text-align:center}
+    main{max-width:900px;margin:30px auto;padding:0 15px}
+    section{margin-bottom:40px;background:#fff;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.1);padding:20px}
+    h2{margin-top:0;color:#004d99}
+    button{background:#004d99;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;margin-top:6px}
+    button:hover{background:#0066cc}
+    .q{margin:15px 0}
+    .q strong{display:block;margin-bottom:6px}
+    label{cursor:pointer;display:block;margin:4px 0}
+    .res{height:22px;margin-top:6px;font-weight:bold}
+    .ok{color:green}.ko{color:#b30000}
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Listenings por niveles</h1>
+</header>
+
+<main>
+
+  <!-- NIVEL A1 -->
+  <section>
+    <h2>Nivel A1 – “At the shop”</h2>
+    <button onclick="playA1()">▶ Escuchar audio</button>
+    <div class="q">
+      <strong>1. What does the man want to buy?</strong>
+      <label><input type="radio" name="a1q1" value="a">Apples</label>
+      <label><input type="radio" name="a1q1" value="b">Bread</label>
+      <label><input type="radio" name="a1q1" value="c">Milk</label>
+      <button onclick="checkA1(1,'b')">Comprobar</button>
+      <div id="a1r1" class="res"></div>
+    </div>
+    <div class="q">
+      <strong>2. How much is the bread?</strong>
+      <label><input type="radio" name="a1q2" value="a">1 dollar</label>
+      <label><input type="radio" name="a1q2" value="b">2 dollars</label>
+      <label><input type="radio" name="a1q2" value="c">3 dollars</label>
+      <button onclick="checkA1(2,'b')">Comprobar</button>
+      <div id="a1r2" class="res"></div>
+    </div>
+  </section>
+
+  <!-- NIVEL A2 -->
+  <section>
+    <h2>Nivel A2 – “A new neighbour”</h2>
+    <button onclick="playA2()">▶ Escuchar audio</button>
+    <div class="q">
+      <strong>1. Where is the new neighbour from?</strong>
+      <label><input type="radio" name="a2q1" value="a">Canada</label>
+      <label><input type="radio" name="a2q1" value="b">Australia</label>
+      <label><input type="radio" name="a2q1" value="c">The USA</label>
+      <button onclick="checkA2(1,'a')">Comprobar</button>
+      <div id="a2r1" class="res"></div>
+    </div>
+    <div class="q">
+      <strong>2. When will they have coffee together?</strong>
+      <label><input type="radio" name="a2q2" value="a">Tomorrow morning</label>
+      <label><input type="radio" name="a2q2" value="b">Next weekend</label>
+      <label><input type="radio" name="a2q2" value="c">This evening</label>
+      <button onclick="checkA2(2,'c')">Comprobar</button>
+      <div id="a2r2" class="res"></div>
+    </div>
+  </section>
+
+  <!-- NIVEL B1 -->
+  <section>
+    <h2>Nivel B1 – “Working from home”</h2>
+    <button onclick="playB1()">▶ Escuchar audio</button>
+    <div class="q">
+      <strong>1. What is the speaker’s main problem?</strong>
+      <label><input type="radio" name="b1q1" value="a">Bad internet</label>
+      <label><input type="radio" name="b1q1" value="b">Noise from construction</label>
+      <label><input type="radio" name="b1q1" value="c">Misses colleagues</label>
+      <button onclick="checkB1(1,'b')">Comprobar</button>
+      <div id="b1r1" class="res"></div>
+    </div>
+    <div class="q">
+      <strong>2. How does the speaker solve the problem?</strong>
+      <label><input type="radio" name="b1q2" value="a">Buys noise-cancelling headphones</label>
+      <label><input type="radio" name="b1q2" value="b">Goes to a café</label>
+      <label><input type="radio" name="b1q2" value="c">Asks for days off</label>
+      <button onclick="checkB1(2,'a')">Comprobar</button>
+      <div id="b1r2" class="res"></div>
+    </div>
+  </section>
+
+  <!-- NIVEL B2 -->
+  <section>
+    <h2>Nivel B2 – “The future of urban transport”</h2>
+    <button onclick="playB2()">▶ Escuchar audio</button>
+    <div class="q">
+      <strong>1. According to the speaker, what is the biggest obstacle to electric scooters?</strong>
+      <label><input type="radio" name="b2q1" value="a">Battery life</label>
+      <label><input type="radio" name="b2q1" value="b">City regulations</label>
+      <label><input type="radio" name="b2q1" value="c">Public perception</label>
+      <button onclick="checkB2(1,'b')">Comprobar</button>
+      <div id="b2r1" class="res"></div>
+    </div>
+    <div class="q">
+      <strong>2. Which solution is suggested to reduce traffic congestion?</strong>
+      <label><input type="radio" name="b2q2" value="a">Congestion charge</label>
+      <label><input type="radio" name="b2q2" value="b">Remote work incentives</label>
+      <label><input type="radio" name="b2q2" value="c">Underground roads</label>
+      <button onclick="checkB2(2,'a')">Comprobar</button>
+      <div id="b2r2" class="res"></div>
+    </div>
+  </section>
+
+  <!-- NIVEL C1 -->
+  <section>
+    <h2>Nivel C1 – “The ethics of AI”</h2>
+    <button onclick="playC1()">▶ Escuchar audio</button>
+    <div class="q">
+      <strong>1. What concern about bias is mentioned?</strong>
+      <label><input type="radio" name="c1q1" value="a">Facial recognition accuracy across races</label>
+      <label><input type="radio" name="c1q1" value="b">Voice assistants’ accents</label>
+      <label><input type="radio" name="c1q1" value="c">Translation errors</label>
+      <button onclick="checkC1(1,'a')">Comprobar</button>
+      <div id="c1r1" class="res"></div>
+    </div>
+    <div class="q">
+      <strong>2. Which principle is proposed to guarantee transparency?</strong>
+      <label><input type="radio" name="c1q2" value="a">Right to explanation</label>
+      <label><input type="radio" name="c1q2" value="b">Open-source only</label>
+      <label><input type="radio" name="c1q2" value="c">Annual audits</label>
+      <button onclick="checkC1(2,'a')">Comprobar</button>
+      <div id="c1r2" class="res"></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  /* TTS */
+  function speak(text){
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='en-US';
+    u.rate=0.9;
+    speechSynthesis.speak(u);
+  }
+  function playA1(){
+    speak('Good morning. I would like a loaf of bread, please. Here you are. That will be two dollars. Thank you.');
+  }
+  function playA2(){
+    speak('Hi, I m your new neighbour, Emma. I just moved here from Canada. Nice to meet you, Emma. Would you like to come for coffee this evening? Sure, that sounds lovely.');
+  }
+  function playB1(){
+    speak('Since I started working from home, the construction noise outside has been terrible. I couldn t concentrate at all. In the end, I bought some noise-cancelling headphones. Now I can focus and my productivity is back to normal.');
+  }
+  function playB2(){
+    speak('Electric scooters promise greener cities, yet strict city regulations often block their full potential. To ease traffic congestion, many experts propose a congestion charge for private cars entering downtown areas.');
+  }
+  function playC1(){
+    speak('Artificial-intelligence systems can inherit human biases. For instance, facial recognition performs unevenly across racial groups. To ensure transparency, policymakers defend every citizen s right to explanation when algorithms make decisions that affect their lives.');
+  }
+
+  /* CHECK */
+  function checkA1(n,ok){
+    const sel=document.querySelector('input[name="a1q'+n+'"]:checked');
+    const box=document.getElementById('a1r'+n);
+    if(!sel){box.textContent='Elige una opción';box.className='res ko';return}
+    box.textContent=sel.value===ok?'✔ Correcto':'✘ Incorrecto';
+    box.className=sel.value===ok?'res ok':'res ko';
+  }
+  function checkA2(n,ok){
+    const sel=document.querySelector('input[name="a2q'+n+'"]:checked');
+    const box=document.getElementById('a2r'+n);
+    if(!sel){box.textContent='Elige una opción';box.className='res ko';return}
+    box.textContent=sel.value===ok?'✔ Correcto':'✘ Incorrecto';
+    box.className=sel.value===ok?'res ok':'res ko';
+  }
+  function checkB1(n,ok){
+    const sel=document.querySelector('input[name="b1q'+n+'"]:checked');
+    const box=document.getElementById('b1r'+n);
+    if(!sel){box.textContent='Elige una opción';box.className='res ko';return}
+    box.textContent=sel.value===ok?'✔ Correcto':'✘ Incorrecto';
+    box.className=sel.value===ok?'res ok':'res ko';
+  }
+  function checkB2(n,ok){
+    const sel=document.querySelector('input[name="b2q'+n+'"]:checked');
+    const box=document.getElementById('b2r'+n);
+    if(!sel){box.textContent='Elige una opción';box.className='res ko';return}
+    box.textContent=sel.value===ok?'✔ Correcto':'✘ Incorrecto';
+    box.className=sel.value===ok?'res ok':'res ko';
+  }
+  function checkC1(n,ok){
+    const sel=document.querySelector('input[name="c1q'+n+'"]:checked');
+    const box=document.getElementById('c1r'+n);
+    if(!sel){box.textContent='Elige una opción';box.className='res ko';return}
+    box.textContent=sel.value===ok?'✔ Correcto':'✘ Incorrecto';
+    box.className=sel.value===ok?'res ok':'res ko';
+  }
+</script>
+
+</body>
+</html>
+```
