@@ -1,0 +1,61 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Listening – Solo Audio</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;background:#f2f9ff;margin:0;padding:2rem;text-align:center;}
+  button{padding:.7rem 1.4rem;margin:.5rem;border:none;border-radius:4px;background:#0077cc;color:#fff;font-size:1rem;cursor:pointer;}
+  button:hover{background:#005c99;}
+  #preguntas{margin-top:2rem;text-align:left;max-width:600px;margin-left:auto;margin-right:auto;}
+  .opcion{display:block;margin:.4rem 0;}
+</style>
+</head>
+
+<body>
+
+<h1>Listening Practice</h1>
+<button onclick="reproducirAudio()">▶ Escuchar audio</button>
+
+<div id="preguntas">
+  <h3>Questions</h3>
+  <p>1. Where is the woman travelling?</p>
+  <label class="opcion"><input type="radio" name="q1" value="a">A. To Edinburgh</label>
+  <label class="opcion"><input type="radio" name="q1" value="b">B. To New York</label>
+  <label class="opcion"><input type="radio" name="q1" value="c">C. To Paris</label>
+
+  <p>2. What gate does she have?</p>
+  <label class="opcion"><input type="radio" name="q2" value="a">A. B12</label>
+  <label class="opcion"><input type="radio" name="q2" value="b">B. B23</label>
+  <label class="opcion"><input type="radio" name="q2" value="c">C. B11</label>
+
+  <p>3. How does the woman take her coffee?</p>
+  <label class="opcion"><input type="radio" name="q3" value="a">A. Black</label>
+  <label class="opcion"><input type="radio" name="q3" value="b">B. With milk</label>
+  <label class="opcion"><input type="radio" name="q3" value="c">C. With sugar</label>
+
+  <button onclick="corregir()">Check answers</button>
+  <p id="resultado"></p>
+</div>
+
+<script>
+function reproducirAudio(){
+  if(!window.speechSynthesis){alert("Tu navegador no admite síntesis de voz.");return;}
+  const utter = new SpeechSynthesisUtterance("Hi, John! I didn’t expect to see you here. Same here, but I’m heading to New York. My gate is B12. Absolutely. Black coffee for me, please.");
+  utter.lang = "en-US";
+  speechSynthesis.speak(utter);
+}
+
+function corregir(){
+  let ok=0;
+  if(document.querySelector('input[name="q1"]:checked')?.value==="b") ok++;
+  if(document.querySelector('input[name="q2"]:checked')?.value==="a") ok++;
+  if(document.querySelector('input[name="q3"]:checked')?.value==="a") ok++;
+  document.getElementById("resultado").textContent = `You got ${ok}/3 questions right.`;
+}
+</script>
+
+</body>
+</html>
+```
