@@ -1,0 +1,108 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Creador de Conversación Texto-a-Voz</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
+        h1 { color: #333; }
+        .controls { margin-bottom: 20px; }
+        label { display: inline-block; width: 120px; font-weight: bold; }
+        select, textarea, button { margin: 4px 0; padding: 6px 10px; font-size: 14px; }
+        textarea { width: 90%; height: 60px; resize: vertical; }
+        button { cursor: pointer; background: #007bff; color: #fff; border: none; }
+        button:hover { background: #0056b3; }
+        .line { margin: 10px 0; }
+        .line button { margin-left: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Creador de Conversación Texto-a-Voz</h1>
+
+    <div class="controls">
+        <label>Voz Hablante 1:</label>
+        <select id="voice1"></select><br>
+        <label>Voz Hablante 2:</label>
+        <select id="voice2"></select>
+    </div>
+
+    <div id="dialogue"></div>
+
+    <button onclick="addLine(1)">Añadir Hablante 1</button>
+    <button onclick="addLine(2)">Añadir Hablante 2</button>
+    <button onclick="playAll()">Reproducir Conversación</button>
+
+    <script>
+        let voices = [];
+        const dialogue = [];
+
+        function populateVoices() {
+            voices = speechSynthesis.getVoices();
+            const v1 = document.getElementById('voice1');
+            const v2 = document.getElementById('voice2');
+            v1.innerHTML = '';
+            v2.innerHTML = '';
+            voices.forEach((v, i) => {
+                const option1 = new Option(v.name, i);
+                const option2 = new Option(v.name, i);
+                v1.add(option1);
+                v2.add(option2);
+            });
+            if (voices.length > 1) {
+                v2.selectedIndex = 1;
+            }
+        }
+
+        speechSynthesis.onvoiceschanged = populateVoices;
+        window.onload = () => {
+            if (speechSynthesis.getVoices().length) populateVoices();
+        };
+
+        function addLine(speaker) {
+            const idx = dialogue.length;
+            const div = document.createElement('div');
+            div.className = 'line';
+            div.innerHTML = `
+                <strong>Hablante ${speaker}:</strong>
+                <textarea id="text${idx}" placeholder="Escribe el texto..."></textarea>
+                <button onclick="speakLine(${speaker}, ${idx})">Escuchar</button>
+                <button onclick="removeLine(${idx})">Eliminar</button>
+            `;
+            document.getElementById('dialogue').appendChild(div);
+            dialogue.push({ speaker, elementId: `text${idx}` });
+        }
+
+        function removeLine(index) {
+            const line = document.querySelector(`#text${index}`).parentElement;
+            line.remove();
+            dialogue[index] = null;
+        }
+
+        function speakLine(speaker, index) {
+            const text = document.getElementById(`text${index}`).value.trim();
+            if (!text) return;
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.voice = voices[speaker === 1 ? document.getElementById('voice1').value : document.getElementById('voice2').value];
+            speechSynthesis.speak(utter);
+        }
+
+        function playAll() {
+            speechSynthesis.cancel();
+            let chain = Promise.resolve();
+            dialogue.forEach(item => {
+                if (!item) return;
+                const text = document.getElementById(item.elementId).value.trim();
+                if (!text) return;
+                chain = chain.then(() => new Promise(resolve => {
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.voice = voices[item.speaker === 1 ? document.getElementById('voice1').value : document.getElementById('voice2').value];
+                    utter.onend = resolve;
+                    speechSynthesis.speak(utter);
+                }));
+            });
+        }
+    </script>
+</body>
+</html>
+```
