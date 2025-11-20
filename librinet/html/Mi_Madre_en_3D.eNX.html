@@ -1,0 +1,235 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Madre en 3D</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <div id="info">Para mi madre, con amor ❤️</div>
+        <div id="loading">Cargando...</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Escena
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x764ba2, 10, 50);
+        
+        // Cámara
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 15);
+        
+        // Renderizador
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        // Ocultar loading
+        document.getElementById('loading').style.display = 'none';
+        
+        // Luces
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.camera.left = -10;
+        directionalLight.shadow.camera.right = 10;
+        directionalLight.shadow.camera.top = 10;
+        directionalLight.shadow.camera.bottom = -10;
+        scene.add(directionalLight);
+        
+        // Crear figura de madre
+        const motherGroup = new THREE.Group();
+        
+        // Cuerpo (vestido)
+        const bodyGeometry = new THREE.ConeGeometry(2, 4, 8);
+        const bodyMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x8B4B8C,
+            shininess: 30
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 2;
+        body.castShadow = true;
+        motherGroup.add(body);
+        
+        // Cabeza
+        const headGeometry = new THREE.SphereGeometry(1, 32, 32);
+        const headMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xFFDBAC,
+            shininess: 50
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 5.5;
+        head.castShadow = true;
+        motherGroup.add(head);
+        
+        // Cabello
+        const hairGeometry = new THREE.SphereGeometry(1.1, 32, 32);
+        const hairMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x4B3621
+        });
+        const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+        hair.position.y = 5.8;
+        hair.scale.y = 0.8;
+        motherGroup.add(hair);
+        
+        // Ojos
+        const eyeGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+        const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+        
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(-0.3, 5.7, 0.9);
+        motherGroup.add(leftEye);
+        
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        rightEye.position.set(0.3, 5.7, 0.9);
+        motherGroup.add(rightEye);
+        
+        // Sonrisa
+        const smileGeometry = new THREE.TorusGeometry(0.3, 0.05, 8, 16, Math.PI);
+        const smileMaterial = new THREE.MeshPhongMaterial({ color: 0x8B0000 });
+        const smile = new THREE.Mesh(smileGeometry, smileMaterial);
+        smile.position.set(0, 5.2, 0.9);
+        smile.rotation.z = Math.PI;
+        motherGroup.add(smile);
+        
+        // Brazos
+        const armGeometry = new THREE.CylinderGeometry(0.2, 0.2, 2, 8);
+        const armMaterial = new THREE.MeshPhongMaterial({ color: 0xFFDBAC });
+        
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.position.set(-2, 3.5, 0);
+        leftArm.rotation.z = Math.PI / 4;
+        leftArm.castShadow = true;
+        motherGroup.add(leftArm);
+        
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.position.set(2, 3.5, 0);
+        rightArm.rotation.z = -Math.PI / 4;
+        rightArm.castShadow = true;
+        motherGroup.add(rightArm);
+        
+        // Corazón en el pecho
+        const heartGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const heartMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xFF1493,
+            emissive: 0xFF1493,
+            emissiveIntensity: 0.3
+        });
+        const heart = new THREE.Mesh(heartGeometry, heartMaterial);
+        heart.position.set(0, 3, 1.5);
+        heart.scale.set(1, 0.8, 0.5);
+        motherGroup.add(heart);
+        
+        scene.add(motherGroup);
+        
+        // Suelo
+        const floorGeometry = new THREE.PlaneGeometry(50, 50);
+        const floorMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x90EE90,
+            side: THREE.DoubleSide
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+        
+        // Flores alrededor
+        const flowerPositions = [
+            { x: 5, z: 5 }, { x: -5, z: 5 }, { x: 5, z: -5 }, { x: -5, z: -5 },
+            { x: 0, z: 8 }, { x: 0, z: -8 }, { x: 8, z: 0 }, { x: -8, z: 0 }
+        ];
+        
+        flowerPositions.forEach(pos => {
+            const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
+            const stemMaterial = new THREE.MeshPhongMaterial({ color: 0x228B22 });
+            const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+            stem.position.set(pos.x, -1.5, pos.z);
+            scene.add(stem);
+            
+            const petalGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const petalMaterial = new THREE.MeshPhongMaterial({ 
+                color: Math.random() > 0.5 ? 0xFF69B4 : 0xFFFF00
+            });
+            const flower = new THREE.Mesh(petalGeometry, petalMaterial);
+            flower.position.set(pos.x, -0.8, pos.z);
+            scene.add(flower);
+        });
+        
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotar la figura
+            motherGroup.rotation.y += 0.01;
+            
+            // Movimiento de cámara suave
+            camera.position.x = Math.sin(Date.now() * 0.001) * 2;
+            camera.position.y = 5 + Math.sin(Date.now() * 0.0015) * 1;
+            camera.lookAt(0, 2, 0);
+            
+            // Latido del corazón
+            const scale = 1 + Math.sin(Date.now() * 0.005) * 0.2;
+            heart.scale.set(scale, scale * 0.8, 0.5);
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Manejo de redimensionado
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Iniciar animación
+        animate();
+    </script>
+</body>
+</html>
+```
