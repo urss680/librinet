@@ -1,0 +1,176 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Conversación de Varios Turnos</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .speaker {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .speaker1 {
+            border-left: 5px solid #007BFF;
+        }
+        .speaker2 {
+            border-left: 5px solid #28A745;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #conversation {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            min-height: 200px;
+        }
+        .dialog-line {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .dialog1 {
+            background: #E3F2FD;
+            text-align: left;
+        }
+        .dialog2 {
+            background: #E8F5E9;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <h1>Conversación de Varios Turnos - Prueba de Inglés</h1>
+    
+    <div class="speaker speaker1">
+        <h2>Hablante 1 - Voz Masculina</h2>
+        <textarea id="text1" placeholder="Texto para Hablante 1"></textarea><br>
+        <button onclick="addToConversation(1)">Agregar Diálogo</button>
+    </div>
+    
+    <div class="speaker speaker2">
+        <h2>Hablante 2 - Voz Femenina</h2>
+        <textarea id="text2" placeholder="Texto para Hablante 2"></textarea><br>
+        <button onclick="addToConversation(2)">Agregar Diálogo</button>
+    </div>
+
+    <div id="conversation">
+        <h3>Conversación:</h3>
+        <div id="dialogContainer"></div>
+    </div>
+
+    <button onclick="playConversation()">Reproducir Conversación</button>
+    <button onclick="clearConversation()">Limpiar Conversación</button>
+
+    <script>
+        const synth = window.speechSynthesis;
+        let voice1, voice2;
+        let conversation = [];
+
+        window.speechSynthesis.onvoiceschanged = () => {
+            if (!voice1 || !voice2) {
+                const voices = synth.getVoices();
+                voice1 = voices.find(v => v.name === "Google UK English Male");
+                voice2 = voices.find(v => v.name === "Google UK English Female");
+            }
+        };
+
+        function addToConversation(speaker) {
+            const text = speaker === 1 ? 
+                document.getElementById('text1').value : 
+                document.getElementById('text2').value;
+            
+            if (text.trim() === '') return;
+            
+            conversation.push({speaker: speaker, text: text});
+            
+            const dialogDiv = document.createElement('div');
+            dialogDiv.className = `dialog-line dialog${speaker}`;
+            dialogDiv.innerHTML = `<strong>Hablante ${speaker}:</strong> ${text}`;
+            document.getElementById('dialogContainer').appendChild(dialogDiv);
+            
+            if (speaker === 1) {
+                document.getElementById('text1').value = '';
+            } else {
+                document.getElementById('text2').value = '';
+            }
+        }
+
+        function playConversation() {
+            let index = 0;
+            
+            function speakNext() {
+                if (index < conversation.length) {
+                    const current = conversation[index];
+                    const utterance = new SpeechSynthesisUtterance(current.text);
+                    
+                    if (current.speaker === 1) {
+                        utterance.voice = voice1;
+                        utterance.rate = 0.9;
+                        utterance.pitch = 0.8;
+                    } else {
+                        utterance.voice = voice2;
+                        utterance.rate = 1.0;
+                        utterance.pitch = 1.2;
+                    }
+                    
+                    utterance.lang = 'en-US';
+                    
+                    utterance.onend = () => {
+                        index++;
+                        setTimeout(speakNext, 500);
+                    };
+                    
+                    synth.speak(utterance);
+                }
+            }
+            
+            speakNext();
+        }
+
+        function clearConversation() {
+            conversation = [];
+            document.getElementById('dialogContainer').innerHTML = '';
+        }
+
+        // Ejemplo de diálogo de varios turnos
+        window.onload = () => {
+            document.getElementById('text1').value = 'Good morning! How are you doing today?';
+            addToConversation(1);
+            document.getElementById('text2').value = 'Good morning! I\'m doing well, thank you. How about yourself?';
+            addToConversation(2);
+            document.getElementById('text1').value = 'I\'m great, thanks! What are your plans for the weekend?';
+            addToConversation(1);
+            document.getElementById('text2').value = 'I\'m planning to visit the museum on Saturday. Would you like to join me?';
+            addToConversation(2);
+            document.getElementById('text1').value = 'That sounds wonderful! What time should we meet?';
+            addToConversation(1);
+            document.getElementById('text2').value = 'How about 10 AM at the main entrance?';
+            addToConversation(2);
+            document.getElementById('text1').value = 'Perfect! I\'ll see you there. Thank you for the invitation!';
+            addToConversation(1);
+            document.getElementById('text2').value = 'You\'re welcome! I\'m looking forward to it. Have a great day!';
+            addToConversation(2);
+        };
+    </script>
+</body>
+</html>
+```
