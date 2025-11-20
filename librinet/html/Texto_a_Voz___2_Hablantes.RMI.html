@@ -1,0 +1,112 @@
+```html
+<!-- App de Texto a Voz con 2 hablantes (Configuración fija y no editable) -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Texto a Voz - 2 Hablantes</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .speaker {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            background: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        select {
+            padding: 6px;
+            margin-left: 10px;
+            background: #e9ecef;
+            pointer-events: none; /* Deshabilita la interacción */
+        }
+    </style>
+</head>
+<body>
+    <h1>Texto a Voz con 2 Hablantes (Configuración Fija)</h1>
+    
+    <div class="speaker">
+        <h2>Hablante 1</h2>
+        <textarea id="text1" placeholder="Ingrese texto para hablar"></textarea><br>
+        <button onclick="speakSpeaker1()">Hablar</button>
+        <select id="voiceSelect1" disabled></select> <!-- Deshabilitado -->
+    </div>
+    
+    <div class="speaker">
+        <h2>Hablante 2</h2>
+        <textarea id="text2" placeholder="Ingrese texto para hablar"></textarea><br>
+        <button onclick="speakSpeaker2()">Hablar</button>
+        <select id="voiceSelect2" disabled></select> <!-- Deshabilitado -->
+    </div>
+
+    <script>
+        const synth = window.speechSynthesis;
+        let voice1, voice2;
+
+        function populateVoiceList(selectId) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '';
+            const voices = synth.getVoices();
+            voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.value = voice.name;
+                select.appendChild(option);
+            });
+        }
+
+        function speakSpeaker1() {
+            if (!synth.speaking) {
+                const text = document.getElementById('text1').value;
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.voice = voice1;
+                synth.speak(utterance);
+            }
+        }
+
+        function speakSpeaker2() {
+            if (!synth.speaking) {
+                const text = document.getElementById('text2').value;
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.voice = voice2;
+                synth.speak(utterance);
+            }
+        }
+
+        window.speechSynthesis.onvoiceschanged = () => {
+            // Inicializar solo si no ha ocurrido anteriormente
+            if (!voice1 || !voice2) {
+                const voices = synth.getVoices();
+                populateVoiceList('voiceSelect1');
+                populateVoiceList('voiceSelect2');
+
+                // Asignar voz específica por defecto
+                voice1 = voices.find(v => v.name === "Google UK English Male");
+                voice2 = voices.find(v => v.name === "Google UK English Female");
+
+                // Seleccionar voz inicial en select (visualmente)
+                if (voice1) document.getElementById('voiceSelect1').value = voice1.name;
+                if (voice2) document.getElementById('voiceSelect2').value = voice2.name;
+            }
+        };
+    </script>
+</body>
+</html>
+```
