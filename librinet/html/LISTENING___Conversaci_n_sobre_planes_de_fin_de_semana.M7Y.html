@@ -1,0 +1,110 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>LISTENING – Conversación sobre planes de fin de semana</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .pregunta {
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .respuesta {
+            margin-left: 20px;
+        }
+        input[type="radio"] {
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>LISTENING</h1>
+    <button onclick="playConversation()">Reproducir Conversación</button>
+
+    <div id="preguntas">
+        <div class="pregunta">1. How is the first person?</div>
+        <label class="respuesta"><input type="radio" name="q1" value="a">a) Bad</label><br>
+        <label class="respuesta"><input type="radio" name="q1" value="b">b) Very well</label><br>
+        <label class="respuesta"><input type="radio" name="q1" value="c">c) Regular</label><br>
+
+        <div class="pregunta">2. What is the second person planning to do on the weekend?</div>
+        <label class="respuesta"><input type="radio" name="q2" value="a">a) Go to the cinema</label><br>
+        <label class="respuesta"><input type="radio" name="q2" value="b">b) Visit the museum</label><br>
+        <label class="respuesta"><input type="radio" name="q2" value="c">c) Stay at home</label><br>
+
+        <div class="pregunta">3. What time do they agree to meet?</div>
+        <label class="respuesta"><input type="radio" name="q3" value="a">a) At nine</label><br>
+        <label class="respuesta"><input type="radio" name="q3" value="b">b) At ten</label><br>
+        <label class="respuesta"><input type="radio" name="q3" value="c">c) At eleven</label><br>
+    </div>
+
+    <script>
+        const synth = window.speechSynthesis;
+        let voice1, voice2;
+        const conversation = [
+            {speaker: 1, text: "Hello! How are you today?"},
+            {speaker: 2, text: "I'm fine, thank you. And you?"},
+            {speaker: 1, text: "I'm doing great. What are your plans for the weekend?"},
+            {speaker: 2, text: "I'm planning to visit the museum. Would you like to join me?"},
+            {speaker: 1, text: "That sounds wonderful! What time should we meet?"},
+            {speaker: 2, text: "How about ten o'clock in the morning?"}
+        ];
+
+        window.speechSynthesis.onvoiceschanged = () => {
+            if (!voice1 || !voice2) {
+                const voices = synth.getVoices();
+                voice1 = voices.find(v => v.name === "Google UK English Male");
+                voice2 = voices.find(v => v.name === "Google UK English Female");
+            }
+        };
+
+        function playConversation() {
+            let index = 0;
+            function speakNext() {
+                if (index < conversation.length) {
+                    const current = conversation[index];
+                    const utterance = new SpeechSynthesisUtterance(current.text);
+                    if (current.speaker === 1) {
+                        utterance.voice = voice1;
+                        utterance.rate = 0.9;
+                        utterance.pitch = 0.8;
+                    } else {
+                        utterance.voice = voice2;
+                        utterance.rate = 1.0;
+                        utterance.pitch = 1.2;
+                    }
+                    utterance.lang = 'en-US';
+                    utterance.onend = () => {
+                        index++;
+                        setTimeout(speakNext, 500);
+                    };
+                    synth.speak(utterance);
+                }
+            }
+            speakNext();
+        }
+    </script>
+</body>
+</html>
+```
