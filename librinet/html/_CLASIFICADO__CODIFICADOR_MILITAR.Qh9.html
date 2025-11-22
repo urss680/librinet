@@ -1,0 +1,108 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>[CLASIFICADO] CODIFICADOR MILITAR</title>
+  <style>
+    :root {
+      --bg: #0b1418;
+      --bg2: #111c22;
+      --accent: #00ff41;
+      --accent2: #ffcc00;
+      --text: #e5e5e5;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Courier New", monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.2rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    h2 {
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: var(--accent2);
+      text-transform: uppercase;
+    }
+    textarea {
+      width: 100%;
+      max-width: 600px;
+      height: 120px;
+      background: var(--bg2);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 0.6rem;
+      font-size: 1rem;
+      resize: vertical;
+    }
+    button {
+      margin-top: 0.6rem;
+      margin-right: 0.4rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: var(--accent);
+      color: #000;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    #output {
+      margin-top: 1.2rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      background: var(--bg2);
+      padding: 1rem;
+      border-radius: 4px;
+      width: 100%;
+      max-width: 600px;
+      min-height: 120px;
+      border: 1px solid var(--accent2);
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <h1>[CLASIFICADO] CODIFICADOR MILITAR</h1>
+  <p>Introduce el texto y selecciona la operación.</p>
+
+  <textarea id="inputText" placeholder="TEXTO A PROCESAR..."></textarea>
+
+  <div>
+    <button onclick="processText('encode')">CODIFICAR</button>
+    <button onclick="processText('decode')">DECODIFICAR</button>
+  </div>
+
+  <h2>RESULTADO:</h2>
+  <div id="output"></div>
+
+  <script>
+    const cipher = {
+      encode: (t) => btoa(t),
+      decode: (t) => atob(t)
+    };
+
+    function processText(mode) {
+      const input = document.getElementById('inputText').value;
+      const output = cipher[mode](input);
+      document.getElementById('output').textContent = output;
+    }
+  </script>
+</body>
+</html>
+```
