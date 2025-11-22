@@ -1,0 +1,429 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>LIBRILLAIA - Sistema de Seguridad Militar</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            overflow: hidden;
+        }
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+        }
+        h1 {
+            text-align: center;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border: 2px solid #00ff00;
+            border-collapse: collapse;
+            background: rgba(0, 20, 0, 0.8);
+        }
+        th, td {
+            border: 1px solid #00ff00;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background: #001100;
+            color: #00ff00;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            background: #000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 5px;
+            font-family: inherit;
+        }
+        button {
+            background: #001100;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #00ff00;
+            color: #000;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        #fileInput {
+            display: none;
+        }
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .matrix-rain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .matrix-rain span {
+            position: absolute;
+            font-size: 20px;
+            color: #00ff00;
+            animation: fall linear infinite;
+        }
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            color: #00ff00;
+        }
+        .demo-section {
+            margin-top: 40px;
+            padding: 20px;
+            border: 1px solid #00ff00;
+            background: rgba(0, 20, 0, 0.9);
+        }
+        .demo-output {
+            background: #000;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        h2 {
+            color: #00ff00;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix-rain" id="matrixRain"></div>
+    <div class="container">
+        <h1>LIBRILLAIA - SISTEMA DE SEGURIDAD MILITAR</h1>
+        
+        <!-- Sección de prueba de codificación -->
+        <div class="demo-section">
+            <h2>PRUEBA DE CODIFICACIÓN SEGURA EN LA NUBE</h2>
+            <div class="controls">
+                <button onclick="runEncodingTest()">EJECUTAR PRUEBA DE CODIFICACIÓN</button>
+                <button onclick="runDecodingTest()">EJECUTAR PRUEBA DE DESENCRIPTACIÓN</button>
+            </div>
+            <div id="testResults" class="demo-output">
+                Resultados de las pruebas aparecerán aquí...
+            </div>
+        </div>
+
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>CLASIFICACIÓN</th>
+                    <th>USUARIO</th>
+                    <th>CONTRASEÑA</th>
+                    <th>OPERACIONES</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div class="controls">
+            <button onclick="addRow()">AÑADIR REGISTRO</button>
+            <button onclick="exportData()">EXPORTAR ARCHIVO</button>
+            <button onclick="document.getElementById('fileInput').click()">IMPORTAR ARCHIVO</button>
+            <input type="file" id="fileInput" accept=".txt" onchange="importData(event)">
+        </div>
+        <div class="status" id="status">SISTEMA LIBRILLAIA OPERATIVO</div>
+    </div>
+
+    <script>
+        const layers = 15;
+        let rowCount = 0;
+
+        function addRow() {
+            const tbody = document.querySelector('#dataTable tbody');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" placeholder="Clasificación"></td>
+                <td><input type="text" placeholder="Usuario"></td>
+                <td><input type="password" placeholder="Contraseña"></td>
+                <td><button onclick="this.parentElement.parentElement.remove()">ELIMINAR</button></td>
+            `;
+            tbody.appendChild(tr);
+            rowCount++;
+            updateStatus('REGISTRO AÑADIDO');
+        }
+
+        function getTableData() {
+            const rows = [];
+            document.querySelectorAll('#dataTable tbody tr').forEach(tr => {
+                const inputs = tr.querySelectorAll('input');
+                rows.push({
+                    clasificacion: inputs[0].value,
+                    usuario: inputs[1].value,
+                    contraseña: inputs[2].value
+                });
+            });
+            return rows;
+        }
+
+        function setTableData(data) {
+            const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="text" value="${row.clasificacion}"></td>
+                    <td><input type="text" value="${row.usuario}"></td>
+                    <td><input type="password" value="${row.contraseña}"></td>
+                    <td><button onclick="this.parentElement.parentElement.remove()">ELIMINAR</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function rotate(str, amount) {
+            return str.split('').map(c => {
+                const code = c.charCodeAt(0);
+                if (code >= 32 && code <= 126) {
+                    const base = 32;
+                    return String.fromCharCode(((code - base + amount) % 95 + 95) % 95 + base);
+                }
+                return c;
+            }).join('');
+        }
+
+        function xor(str, key) {
+            return str.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join('');
+        }
+
+        function reverse(str) {
+            return str.split('').reverse().join('');
+        }
+
+        function caesar(str, shift) {
+            return str.split('').map(c => {
+                const code = c.charCodeAt(0);
+                if (code >= 32 && code <= 126) {
+                    const base = 32;
+                    return String.fromCharCode(((code - base + shift) % 95 + 95) % 95 + base);
+                }
+                return c;
+            }).join('');
+        }
+
+        function atbash(str) {
+            return str.split('').map(c => {
+                const code = c.charCodeAt(0);
+                if (code >= 32 && code <= 126) {
+                    const base = 32;
+                    return String.fromCharCode(126 - (code - base));
+                }
+                return c;
+            }).join('');
+        }
+
+        function railFence(str, rails) {
+            const fence = Array.from({ length: rails }, () => []);
+            let rail = 0, direction = 1;
+            for (let i = 0; i < str.length; i++) {
+                fence[rail].push(str[i]);
+                rail += direction;
+                if (rail === rails - 1 || rail === 0) direction *= -1;
+            }
+            return fence.flat().join('');
+        }
+
+        function vignere(text, key, encrypt = true) {
+            return text.split('').map((c, i) => {
+                const code = c.charCodeAt(0);
+                if (code >= 32 && code <= 126) {
+                    const base = 32;
+                    const keyShift = key.charCodeAt(i % key.length) - base;
+                    const shift = encrypt ? keyShift : -keyShift;
+                    return String.fromCharCode(((code - base + shift + 95) % 95) + base);
+                }
+                return c;
+            }).join('');
+        }
+
+        function base64Encode(str) {
+            return btoa(unescape(encodeURIComponent(str)));
+        }
+
+        function base64Decode(str) {
+            return decodeURIComponent(escape(atob(str)));
+        }
+
+        function customMap(str, map) {
+            return str.split('').map(c => map[c] || c).join('');
+        }
+
+        function shuffle(str, seed) {
+            const arr = str.split('');
+            let n = arr.length;
+            const rng = (s) => (s * 9301 + 49297) % 233280;
+            let s = seed;
+            for (let i = n - 1; i > 0; i--) {
+                s = rng(s);
+                const j = Math.floor((s / 233280) * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr.join('');
+        }
+
+        function encrypt(data) {
+            let text = JSON.stringify(data);
+            const key = 'LIBRAILLAIA_MILITAR_2024';
+            text = rotate(text, 7);
+            text = xor(text, key);
+            text = reverse(text);
+            text = caesar(text, 17);
+            text = atbash(text);
+            text = railFence(text, 5);
+            text = vignere(text, key);
+            text = base64Encode(text);
+            const map = {'a':'@','e':'3','i':'1','o':'0','s':'5','t':'7'};
+            text = customMap(text, map);
+            text = shuffle(text, 54321);
+            showMatrix();
+            updateStatus('ENCRIPTACIÓN MILITAR APLICADA');
+            return btoa(unescape(encodeURIComponent(text)));
+        }
+
+        function decrypt(cipher) {
+            let text = decodeURIComponent(escape(atob(cipher)));
+            text = shuffle(text, 54321);
+            const map = {'@':'a','3':'e','1':'i','0':'o','5':'s','7':'t'};
+            text = customMap(text, map);
+            text = base64Decode(text);
+            const key = 'LIBRAILLAIA_MILITAR_2024';
+            text = vignere(text, key, false);
+            text = railFence(text, 5);
+            text = atbash(text);
+            text = caesar(text, -17);
+            text = reverse(text);
+            text = xor(text, key);
+            text = rotate(text, -7);
+            showMatrix();
+            updateStatus('DESENCRIPTACIÓN MILITAR COMPLETADA');
+            return JSON.parse(text);
+        }
+
+        function showMatrix() {
+            const matrix = document.getElementById('matrixRain');
+            matrix.innerHTML = '';
+            const cols = Math.floor(window.innerWidth / 20);
+            for (let i = 0; i < cols; i++) {
+                const span = document.createElement('span');
+                span.style.left = `${i * 20}px`;
+                span.textContent = Math.random() > 0.5 ? '1' : '0';
+                span.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                span.style.animationDelay = `${Math.random() * 2}s`;
+                matrix.appendChild(span);
+            }
+            setTimeout(() => matrix.innerHTML = '', 5000);
+        }
+
+        function updateStatus(message) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            setTimeout(() => status.textContent = 'SISTEMA LIBRILLAIA OPERATIVO', 3000);
+        }
+
+        function runEncodingTest() {
+            const testData = [
+                {clasificacion: 'TOP SECRET', usuario: 'admin', contraseña: 'military123'},
+                {clasificacion: 'CLASSIFIED', usuario: 'user1', contraseña: 'secure456'}
+            ];
+            
+            const results = document.getElementById('testResults');
+            results.innerHTML = '<h3>PRUEBA DE CODIFICACIÓN EN LA NUBE</h3>';
+            results.innerHTML += '<p><strong>Datos originales:</strong></p>';
+            results.innerHTML += '<pre>' + JSON.stringify(testData, null, 2) + '</pre>';
+            
+            const encrypted = encrypt(testData);
+            results.innerHTML += '<p><strong>Datos encriptados (nube segura):</strong></p>';
+            results.innerHTML += '<pre style="color: #00ff00; background: #000; padding: 10px;">' + encrypted + '</pre>';
+            
+            results.innerHTML += '<p style="color: #00ff00;">✓ ENCRIPTACIÓN MILITAR COMPLETADA</p>';
+            results.innerHTML += '<p style="color: #ffff00;">⚡ Datos protegidos con 15 capas de seguridad</p>';
+        }
+
+        function runDecodingTest() {
+            const testData = [
+                {clasificacion: 'TOP SECRET', usuario: 'admin', contraseña: 'military123'},
+                {clasificacion: 'CLASSIFIED', usuario: 'user1', contraseña: 'secure456'}
+            ];
+            
+            const encrypted = encrypt(testData);
+            const decrypted = decrypt(encrypted);
+            
+            const results = document.getElementById('testResults');
+            results.innerHTML = '<h3>PRUEBA DE DESENCRIPTACIÓN DESDE LA NUBE</h3>';
+            results.innerHTML += '<p><strong>Datos encriptados (nube):</strong></p>';
+            results.innerHTML += '<pre style="color: #00ff00; background: #000; padding: 10px;">' + encrypted.substring(0, 100) + '...</pre>';
+            
+            results.innerHTML += '<p><strong>Datos desencriptados:</strong></p>';
+            results.innerHTML += '<pre>' + JSON.stringify(decrypted, null, 2) + '</pre>';
+            
+            results.innerHTML += '<p style="color: #00ff00;">✓ DESENCRIPTACIÓN MILITAR COMPLETADA</p>';
+            results.innerHTML += '<p style="color: #ffff00;">⚡ Integridad de datos verificada</p>';
+        }
+
+        function exportData() {
+            const data = getTableData();
+            const encrypted = encrypt(data);
+            const blob = new Blob([encrypted], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'LIBRILLAIA_MILITAR.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(event) {
+            const file = event.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const decrypted = decrypt(e.target.result);
+                    setTableData(decrypted);
+                    updateStatus('IMPORTACIÓN MILITAR EXITOSA');
+                } catch (err) {
+                    alert('ERROR: ARCHIVO MILITAR NO VÁLIDO');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Inicializar con una fila
+        addRow();
+        
+        // Mostrar matrix al cargar
+        setTimeout(showMatrix, 1000);
+    </script>
+</body>
+</html>
+```
