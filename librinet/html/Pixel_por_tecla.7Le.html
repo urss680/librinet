@@ -1,0 +1,38 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Pixel por tecla</title>
+<style>
+body{
+  margin:0;
+  background:#000;
+}
+canvas{
+  display:block;
+  background:#000;
+}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+window.addEventListener('keydown',()=>{
+  const x=Math.floor(Math.random()*canvas.width);
+  const y=Math.floor(Math.random()*canvas.height);
+  const r=Math.floor(Math.random()*256);
+  const g=Math.floor(Math.random()*256);
+  const b=Math.floor(Math.random()*256);
+  ctx.fillStyle=`rgb(${r},${g},${b})`;
+  ctx.fillRect(x,y,1,1);
+});
+</script>
+</body>
+</html>
+```
