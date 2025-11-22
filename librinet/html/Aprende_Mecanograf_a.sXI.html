@@ -1,0 +1,121 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Aprende Mecanografía</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 600px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        #texto {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #555;
+            line-height: 1.6;
+        }
+        #input {
+            width: 100%;
+            font-size: 20px;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        #input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        .correcto {
+            color: green;
+        }
+        .incorrecto {
+            color: red;
+            background: #ffe6e6;
+        }
+        #resultado {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Practica Mecanografía</h1>
+        <div id="texto">El rápido zorro marrón salta sobre el perro perezoso.</div>
+        <input id="input" type="text" placeholder="Escribe aquí..." autocomplete="off">
+        <div id="resultado"></div>
+        <button onclick="reiniciar()">Reiniciar</button>
+    </div>
+
+    <script>
+        const texto = document.getElementById('texto');
+        const input = document.getElementById('input');
+        const resultado = document.getElementById('resultado');
+        let index = 0;
+        let errores = 0;
+        let startTime;
+
+        input.focus();
+        startTime = Date.now();
+
+        input.addEventListener('input', e => {
+            const letra = e.target.value[index];
+            const span = document.createElement('span');
+            if (letra === texto.textContent[index]) {
+                span.className = 'correcto';
+                span.textContent = letra;
+            } else {
+                span.className = 'incorrecto';
+                span.textContent = texto.textContent[index];
+                errores++;
+            }
+            texto.replaceChild(span, texto.childNodes[index]);
+            index++;
+            if (index === texto.textContent.length) {
+                const tiempo = ((Date.now() - startTime) / 1000).toFixed(1);
+                const palabras = texto.textContent.split(' ').length;
+                const ppm = Math.round((palabras / tiempo) * 60);
+                resultado.textContent = `Completado en ${tiempo}s | PPM: ${ppm} | Errores: ${errores}`;
+                input.disabled = true;
+            }
+        });
+
+        function reiniciar() {
+            location.reload();
+        }
+    </script>
+</body>
+</html>
+```
