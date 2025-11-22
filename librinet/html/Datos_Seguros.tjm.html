@@ -1,0 +1,314 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Datos Seguros</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f0f0f;
+            color: #0f0;
+            padding: 20px;
+            overflow: hidden;
+        }
+        h1 {
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #0f0;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #0a0a0a;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            box-sizing: border-box;
+            background: #1a1a1a;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 4px;
+        }
+        button {
+            background: #0a0a0a;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 8px 12px;
+            margin: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0f0;
+            color: #000;
+        }
+        #fileInput {
+            display: none;
+        }
+        .matrix {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        .matrix span {
+            position: absolute;
+            font-size: 18px;
+            color: #0f0;
+            animation: fall linear forwards;
+        }
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>DATOS SEGUROS</h1>
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>SITIO</th>
+                <th>USUARIO</th>
+                <th>CONTRASEÑA</th>
+                <th>ACCIONES</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <button onclick="addRow()">Añadir Fila</button>
+    <button onclick="exportData()">Exportar Archivo</button>
+    <button onclick="document.getElementById('fileInput').click()">Importar Archivo</button>
+    <input type="file" id="fileInput" accept=".txt" onchange="importData(event)">
+
+    <div class="matrix" id="matrix"></div>
+
+    <script>
+        const layers = 10;
+        let rowCount = 0;
+
+        function addRow() {
+            const tbody = document.querySelector('#dataTable tbody');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" placeholder="Sitio"></td>
+                <td><input type="text" placeholder="Usuario"></td>
+                <td><input type="password" placeholder="Contraseña"></td>
+                <td><button onclick="this.parentElement.parentElement.remove()">Eliminar</button></td>
+            `;
+            tbody.appendChild(tr);
+            rowCount++;
+        }
+
+        function getTableData() {
+            const rows = [];
+            document.querySelectorAll('#dataTable tbody tr').forEach(tr => {
+                const inputs = tr.querySelectorAll('input');
+                rows.push({
+                    sitio: inputs[0].value,
+                    usuario: inputs[1].value,
+                    contraseña: inputs[2].value
+                });
+            });
+            return rows;
+        }
+
+        function setTableData(data) {
+            const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="text" value="${row.sitio}"></td>
+                    <td><input type="text" value="${row.usuario}"></td>
+                    <td><input type="password" value="${row.contraseña}"></td>
+                    <td><button onclick="this.parentElement.parentElement.remove()">Eliminar</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function rotate(str, amount) {
+            return str.split('').map(c => {
+                const code = c.charCodeAt(0);
+                if (code >= 32 && code <= 126) {
+                    const base = 32;
+                    return String.fromCharCode(((code - base + amount) % 95 + 95) % 95 + base);
+                }
+                return c;
+            }).join('');
+        }
+
+        function xor(str, key) {
+            return str.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join('');
+        }
+
+        function reverse(str) {
+            return str.split('').reverse().join('');
+        }
+
+        function caesar(str, shift) {
+            return str.split('').map(c => {
+                const code = c.charCodeAt(0);
+                if (code >= 32 && code <= 126) {
+                    const base = 32;
+                    return String.fromCharCode(((code - base + shift) % 95 + 95) % 95 + base);
+                }
+                return c;
+            }).join('');
+        }
+
+        function atbash(str) {
+            return str.split('').map(c => {
+                const code = c.charCodeAt(0);
+                if (code >= 32 && code <= 126) {
+                    const base = 32;
+                    return String.fromCharCode(126 - (code - base));
+                }
+                return c;
+            }).join('');
+        }
+
+        function railFence(str, rails) {
+            const fence = Array.from({ length: rails }, () => []);
+            let rail = 0, direction = 1;
+            for (let i = 0; i < str.length; i++) {
+                fence[rail].push(str[i]);
+                rail += direction;
+                if (rail === rails - 1 || rail === 0) direction *= -1;
+            }
+            return fence.flat().join('');
+        }
+
+        function vignere(text, key, encrypt = true) {
+            return text.split('').map((c, i) => {
+                const code = c.charCodeAt(0);
+                if (code >= 32 && code <= 126) {
+                    const base = 32;
+                    const keyShift = key.charCodeAt(i % key.length) - base;
+                    const shift = encrypt ? keyShift : -keyShift;
+                    return String.fromCharCode(((code - base + shift + 95) % 95) + base);
+                }
+                return c;
+            }).join('');
+        }
+
+        function base64Encode(str) {
+            return btoa(unescape(encodeURIComponent(str)));
+        }
+
+        function base64Decode(str) {
+            return decodeURIComponent(escape(atob(str)));
+        }
+
+        function customMap(str, map) {
+            return str.split('').map(c => map[c] || c).join('');
+        }
+
+        function shuffle(str, seed) {
+            const arr = str.split('');
+            let n = arr.length;
+            const rng = (s) => (s * 9301 + 49297) % 233280;
+            let s = seed;
+            for (let i = n - 1; i > 0; i--) {
+                s = rng(s);
+                const j = Math.floor((s / 233280) * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr.join('');
+        }
+
+        function encrypt(data) {
+            let text = JSON.stringify(data);
+            const key = 'clave_secreta';
+            text = rotate(text, 5);
+            text = xor(text, key);
+            text = reverse(text);
+            text = caesar(text, 13);
+            text = atbash(text);
+            text = railFence(text, 3);
+            text = vignere(text, key);
+            text = base64Encode(text);
+            const map = {'a':'@','e':'3','i':'1','o':'0','s':'5'};
+            text = customMap(text, map);
+            text = shuffle(text, 12345);
+            showMatrix();
+            return btoa(unescape(encodeURIComponent(text)));
+        }
+
+        function decrypt(cipher) {
+            let text = decodeURIComponent(escape(atob(cipher)));
+            text = shuffle(text, 12345);
+            const map = {'@':'a','3':'e','1':'i','0':'o','5':'s'};
+            text = customMap(text, map);
+            text = base64Decode(text);
+            const key = 'clave_secreta';
+            text = vignere(text, key, false);
+            text = railFence(text, 3);
+            text = atbash(text);
+            text = caesar(text, -13);
+            text = reverse(text);
+            text = xor(text, key);
+            text = rotate(text, -5);
+            showMatrix();
+            return JSON.parse(text);
+        }
+
+        function showMatrix() {
+            const matrix = document.getElementById('matrix');
+            matrix.innerHTML = '';
+            const cols = Math.floor(window.innerWidth / 20);
+            for (let i = 0; i < cols; i++) {
+                const span = document.createElement('span');
+                span.style.left = `${i * 20}px`;
+                span.textContent = Math.random() > 0.5 ? '1' : '0';
+                span.style.animationDuration = `${Math.random() * 2 + 1}s`;
+                span.style.animationDelay = `${Math.random() * 2}s`;
+                matrix.appendChild(span);
+            }
+            setTimeout(() => matrix.innerHTML = '', 3000);
+        }
+
+        function exportData() {
+            const data = getTableData();
+            const encrypted = encrypt(data);
+            const blob = new Blob([encrypted], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'datos_seguros.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const decrypted = decrypt(e.target.result);
+                    setTableData(decrypted);
+                } catch (err) {
+                    alert('Error al descifrar el archivo.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        addRow();
+    </script>
+</body>
+</html>
+```
