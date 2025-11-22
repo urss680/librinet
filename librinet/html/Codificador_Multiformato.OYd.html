@@ -1,0 +1,295 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Codificador Multiformato</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            padding: 30px;
+            width: 90%;
+            max-width: 1000px;
+            animation: fadeIn 0.5s ease;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .format-select {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            font-size: 16px;
+        }
+        textarea {
+            width: 100%;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            padding: 12px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 150px;
+        }
+        button {
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-encode { background: #27ae60; color: white; margin-right: 5px; }
+        .btn-decode { background: #3498db; color: white; margin-right: 5px; }
+        .btn-clear { background: #c0392b; color: white; }
+        .output {
+            margin-top: 20px;
+            background: #f9f9f9;
+            border-left: 4px solid #3498db;
+            border-radius: 6px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            padding: 15px;
+            position: relative;
+        }
+        .progress-container {
+            height: 5px;
+            background: #000;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-numbers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #0f0;
+            font-weight: bold;
+            font-size: 14px;
+            animation: moveNumbers 3s linear infinite;
+        }
+        @keyframes moveNumbers {
+            0% { transform: translateY(100%); }
+            100% { transform: translateY(-100%); }
+        }
+        .copy-button {
+            margin-top: 15px;
+            padding: 8px 20px;
+            border-radius: 6px;
+            background: #7f8c8d;
+            color: white;
+        }
+        footer {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #999;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Codificador Multiformato</h1>
+        
+        <div class="input-group">
+            <select class="format-select" id="encodeFormat">
+                <option value="base64">Base64</option>
+                <option value="hex">Hexadecimal</option>
+                <option value="binary">Binario</option>
+            </select>
+            <button class="btn-encode" onclick="codificar()">Codificar</button>
+            <button class="btn-decode" onclick="descodificar()">Descodificar</button>
+            <button class="btn-clear" onclick="limpiar()">Limpiar Todo</button>
+        </div>
+        
+        <div class="input-group">
+            <select class="format-select" id="decodeFormat">
+                <option value="base64">Base64</option>
+                <option value="hex">Hexadecimal</option>
+                <option value="binary">Binario</option>
+            </select>
+        </div>
+        
+        <textarea id="input" placeholder="Texto o datos a procesar..."></textarea>
+        
+        <div class="output" id="outputBox">
+            <div class="progress-container">
+                <div class="progress-numbers" id="progressNumbers">0%</div>
+            </div>
+            <div id="outputText">Resultado aparecerá aquí</div>
+        </div>
+        <button class="copy-button" onclick="copiar()">Copiar resultado</button>
+    </div>
+
+    <footer>© 2024 - Codificador Profesional Multiformato</footer>
+
+    <script>
+        let progressInterval;
+        
+        function actualizarProgreso(valor) {
+            document.getElementById('progressNumbers').innerText = `${valor}%`;
+            const progresoDiv = document.createElement('div');
+            progresoDiv.style.position = 'absolute';
+            progresoDiv.style.height = '100%';
+            progresoDiv.style.width = `${valor}%`;
+            progresoDiv.style.background = 'linear-gradient(to right, #0f0, #0ff)';
+            document.querySelector('.progress-container').innerHTML = '';
+            document.querySelector('.progress-container').appendChild(progresoDiv);
+            document.querySelector('.progress-container').appendChild(document.getElementById('progressNumbers'));
+        }
+        
+        function iniciarProgreso() {
+            document.getElementById('progressNumbers').innerText = '0%';
+            const progresoDiv = document.createElement('div');
+            progresoDiv.style.position = 'absolute';
+            progresoDiv.style.top = '0px';
+            progresoDiv.style.left = '0px';
+            progresoDiv.style.width = '0%';
+            progresoDiv.style.height = '100%';
+            progresoDiv.style.background = 'linear-gradient(to right, #0f0, #0ff)';
+            document.querySelector('.progress-container').innerHTML = '';
+            document.querySelector('.progress-container').appendChild(progresoDiv);
+            document.querySelector('.progress-container').appendChild(document.getElementById('progressNumbers'));
+        }
+        
+        function codificar() {
+            const texto = document.getElementById('input').value;
+            const formato = document.getElementById('encodeFormat').value;
+            iniciarProgreso();
+            
+            let valorProgreso = 1;
+            progressInterval = setInterval(() => {
+                valorProgreso += 1;
+                if (valorProgreso > 100) {
+                    clearInterval(progressInterval);
+                } else {
+                    document.getElementById('progressNumbers').innerText = `${valorProgreso}%`;
+                    document.querySelector('.progress-container div').style.width = `${valorProgreso}%`;
+                }
+            }, 30);
+            
+            setTimeout(() => {
+                clearInterval(progressInterval);
+                try {
+                    let resultado;
+                    switch(formato) {
+                        case 'base64':
+                            resultado = btoa(texto);
+                            break;
+                        case 'hex':
+                            resultado = texto.split('')
+                                .map(char => char.charCodeAt(0).toString(16).padStart(2, '0'))
+                                .join('');
+                            break;
+                        case 'binary':
+                            resultado = texto.split('')
+                                .map(char => char.charCodeAt(0).toString(2).padStart(8, '0'))
+                                .join(' ');
+                            break;
+                        default:
+                            throw new Error('Formato no soportado');
+                    }
+                    document.getElementById('outputText').innerText = resultado;
+                } catch (e) {
+                    document.getElementById('outputText').innerText = 'Error al codificar';
+                }
+            }, 3000);
+        }
+        
+        function descodificar() {
+            const texto = document.getElementById('input').value;
+            const formato = document.getElementById('decodeFormat').value;
+            iniciarProgreso();
+            
+            let valorProgreso = 1;
+            progressInterval = setInterval(() => {
+                valorProgreso += 1;
+                if (valorProgreso > 100) {
+                    clearInterval(progressInterval);
+                } else {
+                    document.getElementById('progressNumbers').innerText = `${valorProgreso}%`;
+                    document.querySelector('.progress-container div').style.width = `${valorProgreso}%`;
+                }
+            }, 30);
+            
+            setTimeout(() => {
+                clearInterval(progressInterval);
+                try {
+                    let resultado;
+                    switch(formato) {
+                        case 'base64':
+                            resultado = atob(texto);
+                            break;
+                        case 'hex':
+                            resultado = texto.match(/.{1,2}/g)
+                                .map(bytes => String.fromCharCode(parseInt(bytes, 16)))
+                                .join('');
+                            break;
+                        case 'binary':
+                            resultado = texto.split(' ')
+                                .map(binary => String.fromCharCode(parseInt(binary, 2)))
+                                .join('');
+                            break;
+                        default:
+                            throw new Error('Formato no soportado');
+                    }
+                    document.getElementById('outputText').innerText = resultado;
+                } catch (e) {
+                    document.getElementById('outputText').innerText = 'Error al decodificar';
+                }
+            }, 3000);
+        }
+        
+        function limpiar() {
+            document.getElementById('input').value = '';
+            document.getElementById('outputText').innerText = 'Resultado aparecerá aquí';
+            document.getElementById('progressNumbers').innerText = '0%';
+            document.querySelector('.progress-container').innerHTML = '';
+        }
+        
+        function copiar() {
+            const salida = document.getElementById('outputText').innerText;
+            navigator.clipboard.writeText(salida).then(() => {
+                alert('Copiado al portapapeles');
+            });
+        }
+        
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    btn.style.transform = 'scale(1)';
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>
+```
