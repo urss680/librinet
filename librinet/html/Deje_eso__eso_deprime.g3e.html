@@ -1,0 +1,72 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deje eso, eso deprime</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            animation: fadeIn 1s ease-in;
+        }
+
+        h1 {
+            color: white;
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: pulse 2s infinite;
+        }
+
+        .emoji {
+            font-size: 5rem;
+            animation: bounce 1s infinite alternate;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-20px); }
+        }
+
+        .message {
+            color: white;
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            opacity: 0;
+            animation: fadeIn 2s ease-in 0.5s forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emoji">💜</div>
+        <h1>¡MAMÁ, DEJÁ ESO!</h1>
+        <p class="message">Eso es de desesperadas y deprime...</p>
+    </div>
+</body>
+</html>
+```
