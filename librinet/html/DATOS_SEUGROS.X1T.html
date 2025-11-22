@@ -1,0 +1,146 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DATOS SEUGROS</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{
+            font-family:Arial,Helvetica,sans-serif;
+            background:#0f0c29;
+            background:linear-gradient(135deg,#24243e,#302b63,#0f0c29);
+            color:#fff;
+            min-height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            padding:20px;
+        }
+        .container{
+            background:rgba(255,255,255,.05);
+            border:1px solid rgba(255,255,255,.2);
+            border-radius:20px;
+            padding:40px;
+            max-width:700px;
+            width:100%;
+            backdrop-filter:blur(10px);
+        }
+        h1{
+            text-align:center;
+            margin-bottom:30px;
+            font-size:2em;
+            color:#00ff88;
+        }
+        label{
+            display:block;
+            margin:15px 0 5px;
+            color:#00ff88;
+        }
+        textarea,input{
+            width:100%;
+            padding:12px;
+            border:1px solid rgba(255,255,255,.3);
+            background:rgba(0,0,0,.3);
+            color:#fff;
+            border-radius:8px;
+            font-size:16px;
+        }
+        textarea{min-height:120px;resize:vertical;}
+        .buttons{
+            display:flex;
+            gap:10px;
+            margin:20px 0;
+            flex-wrap:wrap;
+        }
+        button{
+            flex:1 1 45%;
+            padding:12px;
+            border:none;
+            border-radius:8px;
+            font-weight:bold;
+            cursor:pointer;
+            transition:.3s;
+        }
+        .encode{background:#00ff88;color:#0f0c29;}
+        .decode{background:#ff0055;color:#fff;}
+        .encode:hover,.decode:hover{transform:scale(1.05);}
+        #result{
+            margin-top:20px;
+            padding:15px;
+            background:rgba(0,0,0,.3);
+            border-radius:8px;
+            word-break:break-all;
+            max-height:200px;
+            overflow-y:auto;
+        }
+        .hidden{display:none;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 DATOS SEUGROS 🔒</h1>
+        <label>Texto:</label>
+        <textarea id="texto" placeholder="Texto a codificar / descodificar"></textarea>
+        
+        <div class="buttons">
+            <button class="encode" onclick="codificar()">Codificar</button>
+            <button class="decode" onclick="descodificar()">Descodificar</button>
+            <button class="encode" onclick="copiar()">Copiar resultado</button>
+        </div>
+        
+        <div id="result" class="hidden"></div>
+    </div>
+
+    <script>
+        const capas=[
+            x=>btoa(x),
+            x=>[...x].map(c=>String.fromCharCode(c.charCodeAt(0)+1)).join(''),
+            x=>[...x].reverse().join(''),
+            x=>[...x].map(c=>c.charCodeAt(0).toString(16)).join('-'),
+            x=>btoa(x).split('').map((c,i)=>i%2?c.toUpperCase():c).join('')
+        ];
+
+        function aplicarCapas(texto,direccion){
+            let pasos=direccion===1?Array.from({length:5},(_,i)=>i):Array.from({length:5},(_,i)=>4-i);
+            let resultado=texto;
+            for(let idx of pasos){
+                let capaIdx=idx%capas.length;
+                try{
+                    resultado=capas[capaIdx](resultado);
+                }catch(e){
+                    throw new Error('Error en capa '+(capaIdx+1));
+                }
+            }
+            return resultado;
+        }
+
+        function codificar(){
+            let texto=document.getElementById('texto').value;
+            if(!texto){alert('Introduce texto');return;}
+            try{
+                let res=aplicarCapas(texto,1);
+                document.getElementById('result').textContent=res;
+                document.getElementById('result').classList.remove('hidden');
+            }catch(e){alert('Error codificando: '+e.message);}
+        }
+
+        function descodificar(){
+            let texto=document.getElementById('texto').value;
+            if(!texto){alert('Introduce texto');return;}
+            try{
+                let res=aplicarCapas(texto,-1);
+                document.getElementById('result').textContent='Texto introducido: '+texto+'\nTexto descodificado: '+res;
+                document.getElementById('result').classList.remove('hidden');
+            }catch(e){alert('Error descodificando: '+e.message);}
+        }
+
+        function copiar(){
+            let r=document.getElementById('result').textContent;
+            if(r){navigator.clipboard.writeText(r);alert('Copiado');}
+        }
+    </script>
+</body>
+</html>
+```
