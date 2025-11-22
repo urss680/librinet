@@ -1,0 +1,52 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Píxel-tecla</title>
+<style>
+body{margin:0;background:#000;display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column}
+canvas{display:block}
+label{color:#fff;margin-bottom:8px;font-family:sans-serif}
+</style>
+</head>
+<body>
+<label for="cantidad">Píxeles por tecla:</label>
+<input id="cantidad" type="number" min="1" max="1000" value="1">
+<canvas id="canvas"></canvas>
+<script>
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+const img=new Image();
+img.crossOrigin='anonymous';
+img.src='https://picsum.photos/800/600';
+img.onload=()=>{
+  canvas.width=img.width;
+  canvas.height=img.height;
+  ctx.drawImage(img,0,0);
+  const id=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d=id.data;
+  for(let i=0;i<d.length;i+=4){
+    d[i]=d[i+1]=d[i+2]=0;
+  }
+  ctx.putImageData(id,0,0);
+  let idx=0;
+  window.addEventListener('keydown',()=>{
+    const cant=Number(document.getElementById('cantidad').value);
+    for(let k=0;k<cant;k++){
+      if(idx>=d.length)return;
+      const x=(idx/4)%canvas.width;
+      const y=Math.floor((idx/4)/canvas.width);
+      const px=ctx.getImageData(x,y,1,1).data;
+      d[idx]=px[0];
+      d[idx+1]=px[1];
+      d[idx+2]=px[2];
+      idx+=4;
+    }
+    ctx.putImageData(id,0,0);
+  });
+};
+</script>
+</body>
+</html>
+```
