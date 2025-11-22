@@ -1,0 +1,164 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal Geométrico Infinito</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="fractal"></canvas>
+    
+    <script>
+        const canvas = document.getElementById('fractal');
+        const ctx = canvas.getContext('2d');
+        
+        // Ajustar tamaño del canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Parámetros del fractal
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+        let time = 0;
+        
+        // Colores para el degradado
+        function getColor(iteration, maxIter) {
+            const hue = (iteration / maxIter * 360 + time) % 360;
+            const saturation = 100;
+            const lightness = iteration === maxIter ? 0 : 50 + (iteration / maxIter * 50);
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        }
+        
+        // Función para dibujar el fractal de Mandelbrot
+        function drawFractal() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+            
+            const maxIter = 100;
+            
+            for (let px = 0; px < width; px++) {
+                for (let py = 0; py < height; py++) {
+                    // Convertir coordenadas de pantalla a coordenadas complejas
+                    const x0 = (px - width / 2) / (width / 4) / scale + offsetX;
+                    const y0 = (py - height / 2) / (height / 4) / scale + offsetY;
+                    
+                    let x = 0;
+                    let y = 0;
+                    let iteration = 0;
+                    
+                    // Algoritmo de Mandelbrot
+                    while (x * x + y * y <= 4 && iteration < maxIter) {
+                        const xtemp = x * x - y * y + x0;
+                        y = 2 * x * y + y0;
+                        x = xtemp;
+                        iteration++;
+                    }
+                    
+                    // Colorear el píxel
+                    const color = getColor(iteration, maxIter);
+                    const rgb = hslToRgb((iteration / maxIter * 360 + time) % 360 / 360, 1, iteration === maxIter ? 0 : 0.5 + (iteration / maxIter * 0.5));
+                    
+                    const index = (py * width + px) * 4;
+                    data[index] = rgb[0];     // R
+                    data[index + 1] = rgb[1]; // G
+                    data[index + 2] = rgb[2]; // B
+                    data[index + 3] = 255;    // A
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        // Convertir HSL a RGB
+        function hslToRgb(h, s, l) {
+            let r, g, b;
+            
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+                
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+            
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+        
+        // Animación
+        function animate() {
+            time += 0.5;
+            drawFractal();
+            requestAnimationFrame(animate);
+        }
+        
+        // Interacción con el mouse
+        let isDragging = false;
+        let lastX, lastY;
+        
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - lastX;
+                const deltaY = e.clientY - lastY;
+                offsetX -= deltaX / (canvas.width / 4) / scale;
+                offsetY -= deltaY / (canvas.height / 4) / scale;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            scale *= zoomFactor;
+        });
+        
+        // Iniciar animación
+        animate();
+    </script>
+</body>
+</html>
+```
