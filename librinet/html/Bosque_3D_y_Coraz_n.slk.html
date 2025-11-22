@@ -1,0 +1,166 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Bosque 3D y Corazón</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: sans-serif;
+            background: #000;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #mensaje {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff4d4d;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ff4d4d;
+            display: none;
+            pointer-events: none;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">WASD para moverte | Mouse para mirar | Click en el corazón</div>
+    <div id="mensaje">TQ EQUIERPO</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+    <script>
+        // Escena, cámara y renderizador
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x0a1a0a, 10, 100);
+        const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 5);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Luz
+        const light = new THREE.HemisphereLight(0x80ff80, 0x202020, 1.2);
+        scene.add(light);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // Suelo
+        const groundGeo = new THREE.PlaneGeometry(200, 200);
+        const groundMat = new THREE.MeshLambertMaterial({ color: 0x1a4a1a });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Árboles
+        const troncoMat = new THREE.MeshLambertMaterial({ color: 0x4a2a1a });
+        const hojasMat = new THREE.MeshLambertMaterial({ color: 0x0d5d0d });
+        for (let i = 0; i < 60; i++) {
+            const alto = 3 + Math.random() * 3;
+            const tronco = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.3, 0.4, alto),
+                troncoMat
+            );
+            const copa = new THREE.Mesh(
+                new THREE.ConeGeometry(2, 3, 8),
+                hojasMat
+            );
+            const x = (Math.random() - 0.5) * 150;
+            const z = (Math.random() - 0.5) * 150;
+            tronco.position.set(x, alto / 2, z);
+            copa.position.set(x, alto + 1, z);
+            tronco.castShadow = true;
+            copa.castShadow = true;
+            scene.add(tronco, copa);
+        }
+
+        // Corazón 3D
+        const heartShape = new THREE.Shape();
+        heartShape.moveTo(0, 0);
+        heartShape.bezierCurveTo(0, -0.3, -0.6, -0.3, -0.6, 0);
+        heartShape.bezierCurveTo(-0.6, 0.3, 0, 0.6, 0, 1);
+        heartShape.bezierCurveTo(0, 0.6, 0.6, 0.3, 0.6, 0);
+        heartShape.bezierCurveTo(0.6, -0.3, 0, -0.3, 0, 0);
+        const extrudeSettings = { depth: 0.4, bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: 0.1, bevelThickness: 0.1 };
+        const heartGeo = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+        const heartMat = new THREE.MeshPhongMaterial({ color: 0xff1a1a, emissive: 0x330000 });
+        const heart = new THREE.Mesh(heartGeo, heartMat);
+        heart.position.set(0, 1.5, -10);
+        heart.rotation.x = -Math.PI;
+        heart.castShadow = true;
+        scene.add(heart);
+
+        // Raycaster para click
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        // Controles de movimiento
+        const keys = {};
+        document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+        document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+        let mouseX = 0;
+        document.addEventListener('mousemove', e => {
+            mouseX = (e.clientX / innerWidth) * 2 - 1;
+        });
+
+        // Click en corazón
+        renderer.domElement.addEventListener('click', e => {
+            mouse.x = (e.clientX / innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(heart);
+            if (intersects.length > 0) {
+                document.getElementById('mensaje').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('mensaje').style.display = 'none';
+                }, 2000);
+            }
+        });
+
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Movimiento jugador
+            const speed = 0.1;
+            if (keys['w']) camera.position.z -= speed;
+            if (keys['s']) camera.position.z += speed;
+            if (keys['a']) camera.position.x -= speed;
+            if (keys['d']) camera.position.x += speed;
+            camera.rotation.y = -mouseX * 0.5;
+
+            // Animar corazón
+            heart.rotation.y += 0.01;
+            heart.position.y = 1.5 + Math.sin(Date.now() * 0.002) * 0.1;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Resize
+        addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+    </script>
+</body>
+</html>
+```
