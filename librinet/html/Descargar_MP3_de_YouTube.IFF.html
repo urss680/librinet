@@ -1,0 +1,134 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Descargar MP3 de YouTube</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:#0f0c29;
+      background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      color:#fff;
+    }
+    .card{
+      background:#fff;
+      color:#222;
+      border-radius:18px;
+      padding:40px 35px;
+      max-width:420px;
+      width:100%;
+      box-shadow:0 25px 50px rgba(0,0,0,.35);
+      text-align:center;
+    }
+    h1{font-size:26px;margin-bottom:8px}
+    p.sub{margin-bottom:25px;font-size:15px;color:#555}
+    input[type=url]{
+      width:100%;
+      padding:14px 18px;
+      border:2px solid #ccc;
+      border-radius:10px;
+      font-size:16px;
+      transition:border .25s;
+    }
+    input[type=url]:focus{
+      outline:none;border-color:#ff0066
+    }
+    button{
+      margin-top:22px;
+      width:100%;
+      background:#ff0066;
+      color:#fff;
+      border:none;
+      padding:14px;
+      border-radius:10px;
+      font-size:17px;
+      font-weight:600;
+      cursor:pointer;
+      transition:background .25s;
+    }
+    button:hover{background:#e6005c}
+    .hidden{display:none}
+    .result{margin-top:25px}
+    .result a{
+      display:inline-block;
+      margin-top:12px;
+      background:#25d366;
+      color:#fff;
+      padding:12px 24px;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:600;
+    }
+    .result a:hover{background:#1ebe5d}
+    .error{
+      margin-top:20px;
+      background:#fee;
+      color:#c33;
+      padding:12px;
+      border-radius:8px;
+      font-size:14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Descargar MP3</h1>
+    <p class="sub">Pega el enlace del video de YouTube</p>
+    <input id="url" type="url" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+    <button onclick="fetchMP3()">Obtener MP3</button>
+    <div id="loading" class="hidden">Procesando...</div>
+    <div id="error" class="error hidden"></div>
+    <div id="result" class="result hidden">
+      <div id="title"></div>
+      <a id="dl" href="#" download>Descargar MP3</a>
+    </div>
+  </div>
+
+  <script>
+    const api = 'https://api.rapidapi.com/convert'; // sustituir por tu endpoint real
+    async function fetchMP3(){
+      const url = document.getElementById('url').value.trim();
+      if(!url){showError('Introduce un enlace');return}
+      toggleLoading(true);
+      try{
+        const res = await fetch(api,{
+          method:'POST',
+          headers:{
+            'content-type':'application/json',
+            'x-rapidapi-key':'TU_CLAVE'
+          },
+          body:JSON.stringify({url:url,format:'mp3'})
+        });
+        const data = await res.json();
+        if(data.error) throw new Error(data.error);
+        document.getElementById('title').textContent = data.title;
+        document.getElementById('dl').href = data.downloadLink;
+        document.getElementById('result').classList.remove('hidden');
+      }catch(e){
+        showError('Error al procesar el video');
+      }finally{
+        toggleLoading(false);
+      }
+    }
+    function toggleLoading(on){
+      document.getElementById('loading').classList.toggle('hidden',!on);
+      document.getElementById('error').classList.add('hidden');
+    }
+    function showError(msg){
+      const err=document.getElementById('error');
+      err.textContent=msg;
+      err.classList.remove('hidden');
+    }
+    document.getElementById('url').addEventListener('keyup',e=>{if(e.key==='Enter')fetchMP3()});
+  </script>
+</body>
+</html>
+```
