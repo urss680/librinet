@@ -1,0 +1,180 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Teclado QWERTY Iluminado</title>
+<style>
+body{
+  background:#111;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+  margin:0;
+  font-family:Arial,Helvetica,sans-serif;
+  overflow:hidden;
+}
+#teclado{
+  display:inline-block;
+  background:#222;
+  padding:12px;
+  border-radius:12px;
+  box-shadow:0 0 12px rgba(0,0,0,.6);
+}
+.fila{
+  display:flex;
+  gap:6px;
+  margin-bottom:6px;
+}
+.k{
+  width:44px;
+  height:44px;
+  background:#333;
+  color:#eee;
+  border:1px solid #555;
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  font-weight:600;
+  transition:background .15s;
+}
+.k.on{
+  background:#0ff;
+  color:#000;
+}
+.space{
+  width:280px;
+}
+.backspace,.tab,.caps,.enter,.shift,.ctrl,.alt{
+  width:80px;
+}
+.backspace{width:100px;}
+.tab{width:70px;}
+.caps{width:90px;}
+.enter{width:96px;}
+.shift{width:110px;}
+.ctrl{width:70px;}
+
+/* letra que cae */
+.letra-cayendo{
+  position:absolute;
+  font-size:60px;
+  color:#0f0;
+  font-weight:700;
+  animation:caer 1.2s linear forwards;
+}
+@keyframes caer{
+  to{transform:translateY(calc(100vh + 60px));}
+}
+</style>
+</head>
+<body>
+<div id="teclado">
+  <div class="fila">
+    <div class="k" data-key="`">~</div>
+    <div class="k" data-key="1">1</div>
+    <div class="k" data-key="2">2</div>
+    <div class="k" data-key="3">3</div>
+    <div class="k" data-key="4">4</div>
+    <div class="k" data-key="5">5</div>
+    <div class="k" data-key="6">6</div>
+    <div class="k" data-key="7">7</div>
+    <div class="k" data-key="8">8</div>
+    <div class="k" data-key="9">9</div>
+    <div class="k" data-key="0">0</div>
+    <div class="k" data-key="-">-</div>
+    <div class="k" data-key="=">=</div>
+    <div class="k backspace" data-key="backspace">Backspace</div>
+  </div>
+  <div class="fila">
+    <div class="k tab" data-key="tab">Tab</div>
+    <div class="k" data-key="q">Q</div>
+    <div class="k" data-key="w">W</div>
+    <div class="k" data-key="e">E</div>
+    <div class="k" data-key="r">R</div>
+    <div class="k" data-key="t">T</div>
+    <div class="k" data-key="y">Y</div>
+    <div class="k" data-key="u">U</div>
+    <div class="k" data-key="i">I</div>
+    <div class="k" data-key="o">O</div>
+    <div class="k" data-key="p">P</div>
+    <div class="k" data-key="[">{</div>
+    <div class="k" data-key="]">}</div>
+    <div class="k" data-key="">\</div>
+  </div>
+  <div class="fila">
+    <div class="k caps" data-key="caps">Caps</div>
+    <div class="k" data-key="a">A</div>
+    <div class="k" data-key="s">S</div>
+    <div class="k" data-key="d">D</div>
+    <div class="k" data-key="f">F</div>
+    <div class="k" data-key="g">G</div>
+    <div class="k" data-key="h">H</div>
+    <div class="k" data-key="j">J</div>
+    <div class="k" data-key="k">K</div>
+    <div class="k" data-key="l">L</div>
+    <div class="k" data-key=";">:</div>
+    <div class="k" data-key="'">'</div>
+    <div class="k enter" data-key="enter">Enter</div>
+  </div>
+  <div class="fila">
+    <div class="k shift" data-key="shift">Shift</div>
+    <div class="k" data-key="z">Z</div>
+    <div class="k" data-key="x">X</div>
+    <div class="k" data-key="c">C</div>
+    <div class="k" data-key="v">V</div>
+    <div class="k" data-key="b">B</div>
+    <div class="k" data-key="n">N</div>
+    <div class="k" data-key="m">M</div>
+    <div class="k" data-key=","><</div>
+    <div class="k" data-key=".">></div>
+    <div class="k" data-key="/">?</div>
+    <div class="k shift" data-key="shift">Shift</div>
+  </div>
+  <div class="fila">
+    <div class="k ctrl" data-key="ctrl">Ctrl</div>
+    <div class="k alt" data-key="alt">Alt</div>
+    <div class="k space" data-key=" ">Space</div>
+    <div class="k alt" data-key="alt">Alt</div>
+    <div class="k ctrl" data-key="ctrl">Ctrl</div>
+  </div>
+</div>
+<script>
+function iluminar(key){
+  let sel='';
+  if(key===' ') sel='.k.space';
+  else if(key==='Backspace') sel='.k.backspace';
+  else if(key==='Tab') sel='.k.tab';
+  else if(key==='CapsLock') sel='.k.caps';
+  else if(key==='Enter') sel='.k.enter';
+  else if(key==='Shift') sel='.k.shift';
+  else if(key==='Control') sel='.k.ctrl';
+  else if(key==='Alt') sel='.k.alt';
+  else sel=`.k[data-key="${key.toLowerCase()}"]`;
+  const k=document.querySelector(sel);
+  if(k){
+    k.classList.add('on');
+    if(key.length===1) crearLetraCayendo(key.toUpperCase());
+    setTimeout(()=>k.classList.remove('on'),150);
+  }
+}
+function crearLetraCayendo(letra){
+  const span=document.createElement('span');
+  span.className='letra-cayendo';
+  span.textContent=letra;
+  span.style.left=Math.random()*window.innerWidth+'px';
+  span.style.top='-60px';
+  document.body.appendChild(span);
+  span.addEventListener('animationend',()=>span.remove());
+}
+window.addEventListener('keydown',e=>{
+  iluminar(e.key);
+});
+</script>
+</body>
+</html>
+```
