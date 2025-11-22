@@ -1,0 +1,27 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Código Oculto</title>
+  <style>
+    html,body{margin:0;height:100%;background:#000;color:#0f0;font-family:monospace;display:flex;align-items:center;justify-content:center;}
+    #txt{font-size:2em;letter-spacing:2px;text-shadow:0 0 5px #0f0;}
+  </style>
+</head>
+<body>
+  <div id="txt">ESPERANDO...</div>
+  <script>
+    // Código secreto: 42
+    const clave=42;
+    let sum=0;
+    document.addEventListener('keydown',e=>{
+      sum+=e.keyCode;
+      if(sum===clave*100){
+        document.getElementById('txt').textContent='BIENVENIDO, HAS DESBLOQUEADO EL MENSAJE OCULTO.';
+      }
+    });
+  </script>
+</body>
+</html>
+```
