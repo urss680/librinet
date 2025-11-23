@@ -1,0 +1,234 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bosque 3D con Joystick</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #87CEEB, #98D8C8);
+        }
+        #canvas {
+            display: block;
+        }
+        #joystick {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            touch-action: none;
+            z-index: 1000;
+        }
+        #joystick-knob {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #4CAF50, #2E7D32);
+            border-radius: 50%;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="joystick">
+        <div id="joystick-knob"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Jugador
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            z: 0,
+            angle: 0,
+            speed: 0
+        };
+
+        // Joystick
+        const joystick = document.getElementById('joystick');
+        const knob = document.getElementById('joystick-knob');
+        let joystickActive = false;
+        let joystickData = { x: 0, y: 0 };
+
+        // Árboles
+        const trees = [];
+        for (let i = 0; i < 200; i++) {
+            trees.push({
+                x: (Math.random() - 0.5) * 3000,
+                z: (Math.random() - 0.5) * 3000,
+                height: Math.random() * 150 + 100,
+                width: Math.random() * 40 + 30
+            });
+        }
+
+        // Control del joystick
+        function handleJoystick(e) {
+            if (!joystickActive) return;
+            
+            const rect = joystick.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            let x, y;
+            if (e.touches) {
+                x = e.touches[0].clientX;
+                y = e.touches[0].clientY;
+            } else {
+                x = e.clientX;
+                y = e.clientY;
+            }
+            
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const maxDistance = rect.width / 2 - 25;
+            
+            if (distance > maxDistance) {
+                const angle = Math.atan2(dy, dx);
+                joystickData.x = Math.cos(angle) * maxDistance;
+                joystickData.y = Math.sin(angle) * maxDistance;
+            } else {
+                joystickData.x = dx;
+                joystickData.y = dy;
+            }
+            
+            knob.style.transform = `translate(calc(-50% + ${joystickData.x}px), calc(-50% + ${joystickData.y}px))`;
+            
+            // Actualizar velocidad y ángulo del jugador
+            player.speed = Math.min(distance / maxDistance, 1) * 5;
+            player.angle = Math.atan2(joystickData.y, joystickData.x) - Math.PI / 2;
+        }
+
+        joystick.addEventListener('touchstart', (e) => {
+            joystickActive = true;
+            handleJoystick(e);
+        });
+
+        joystick.addEventListener('touchmove', handleJoystick);
+
+        joystick.addEventListener('touchend', () => {
+            joystickActive = false;
+            joystickData.x = 0;
+            joystickData.y = 0;
+            knob.style.transform = 'translate(-50%, -50%)';
+            player.speed = 0;
+        });
+
+        // Mouse events para desktop
+        joystick.addEventListener('mousedown', (e) => {
+            joystickActive = true;
+            handleJoystick(e);
+        });
+
+        window.addEventListener('mousemove', handleJoystick);
+        window.addEventListener('mouseup', () => {
+            joystickActive = false;
+            joystickData.x = 0;
+            joystickData.y = 0;
+            knob.style.transform = 'translate(-50%, -50%)';
+            player.speed = 0;
+        });
+
+        // Proyección 3D simple
+        function project3D(x, z) {
+            const relX = x - player.x;
+            const relZ = z - player.z;
+            
+            const rotX = relX * Math.cos(-player.angle) - relZ * Math.sin(-player.angle);
+            const rotZ = relX * Math.sin(-player.angle) + relZ * Math.cos(-player.angle);
+            
+            if (rotZ <= 0) return null;
+            
+            const scale = 300 / rotZ;
+            const screenX = canvas.width / 2 + rotX * scale;
+            const screenY = canvas.height / 2;
+            
+            return { x: screenX, y: screenY, scale: scale };
+        }
+
+        function drawTree(tree) {
+            const pos = project3D(tree.x, tree.z);
+            if (!pos) return;
+            
+            const width = tree.width * pos.scale;
+            const height = tree.height * pos.scale;
+            
+            // Tronco
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(pos.x - width / 8, pos.y, width / 4, height);
+            
+            // Copa del árbol
+            ctx.fillStyle = '#228B22';
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y - height * 0.7);
+            ctx.lineTo(pos.x - width / 2, pos.y + height * 0.1);
+            ctx.lineTo(pos.x + width / 2, pos.y + height * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y - height * 0.5);
+            ctx.lineTo(pos.x - width / 2.5, pos.y + height * 0.3);
+            ctx.lineTo(pos.x + width / 2.5, pos.y + height * 0.3);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function update() {
+            // Actualizar posición del jugador
+            player.x += Math.sin(player.angle) * player.speed;
+            player.z += Math.cos(player.angle) * player.speed;
+            
+            // Dibujar cielo
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#98D8C8');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar suelo
+            ctx.fillStyle = '#3E7C17';
+            ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+            
+            // Ordenar árboles por distancia
+            trees.sort((a, b) => {
+                const distA = Math.hypot(a.x - player.x, a.z - player.z);
+                const distB = Math.hypot(b.x - player.x, b.z - player.z);
+                return distB - distA;
+            });
+            
+            // Dibujar árboles
+            trees.forEach(tree => drawTree(tree));
+            
+            requestAnimationFrame(update);
+        }
+
+        // Redimensionar canvas
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        update();
+    </script>
+</body>
+</html>
+```
