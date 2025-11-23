@@ -1,0 +1,74 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Te quiero Cati</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #111;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        #cati {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 6vw;
+            color: #fff;
+            text-align: center;
+            animation: pulse 1.2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.15); }
+        }
+        .heart {
+            position: absolute;
+            font-size: 2.5vw;
+            color: #ff004c;
+            animation: fall 4s linear infinite;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+        }
+        .stupid {
+            font-size: 25vw;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.15;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="stupid">🤪</div>
+    <div id="cati">Cati<br><small style="font-size: 3vw;">te quiero</small></div>
+
+    <script>
+        function createHeart() {
+            const h = document.createElement('div');
+            h.className = 'heart';
+            h.innerHTML = '❤️';
+            h.style.left = Math.random() * 100 + 'vw';
+            h.style.animationDuration = (Math.random() * 2 + 3) + 's';
+            document.body.appendChild(h);
+            setTimeout(() => h.remove(), 5000);
+        }
+        setInterval(createHeart, 300);
+
+        const utter = new SpeechSynthesisUtterance('te quiero Cati');
+        utter.lang = 'es-ES';
+        utter.rate = 0.9;
+        function speak() { speechSynthesis.speak(utter); }
+        speak();
+        setInterval(speak, 4000);
+    </script>
+</body>
+</html>
+```
