@@ -1,0 +1,466 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Bosque 3D - Muñecas Voladoras</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
+            user-select: none;
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        /* Joystick */
+        #joystick {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 50%;
+            touch-action: none;
+        }
+        #knob {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        /* Controles de rotación */
+        #controls {
+            position: fixed;
+            right: 30px;
+            bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .arrow {
+            width: 60px;
+            height: 60px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            touch-action: none;
+        }
+        .arrow:active {
+            background: rgba(0,0,0,0.6);
+        }
+        /* Corazones flotantes */
+        .heart {
+            position: absolute;
+            color: #ff0000;
+            font-size: 24px;
+            pointer-events: none;
+            animation: fly 3s ease-out forwards;
+        }
+        @keyframes fly {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-300px) scale(1.5); opacity: 0; }
+        }
+        /* Indicador de mancomunada detectada */
+        #handStatus {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 18px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #handStatus.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <div id="handStatus">Mancomunada detectada</div>
+    <div id="joystick">
+        <div id="knob"></div>
+    </div>
+    <div id="controls">
+        <button class="arrow" id="leftArrow">◀</button>
+        <button class="arrow" id="rightArrow">▶</button>
+    </div>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0xcccccc, 10, 100);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 0);
+
+        const renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.left = -50;
+        directionalLight.shadow.camera.right = 50;
+        directionalLight.shadow.camera.top = 50;
+        directionalLight.shadow.camera.bottom = -50;
+        scene.add(directionalLight);
+
+        const groundGeometry = new THREE.PlaneGeometry(200, 200);
+        const groundMaterial = new THREE.MeshLambertMaterial({color:0x228B22});
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        function createTree(x, z){
+            const tree = new THREE.Group();
+            const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.7, 4);
+            const trunkMaterial = new THREE.MeshLambertMaterial({color:0x8B4513});
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 2;
+            trunk.castShadow = true;
+            tree.add(trunk);
+
+            const leavesGeometry = new THREE.ConeGeometry(3, 6, 8);
+            const leavesMaterial = new THREE.MeshLambertMaterial({color:0x228B22});
+            const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+            leaves.position.y = 6;
+            leaves.castShadow = true;
+            tree.add(leaves);
+
+            tree.position.set(x, 0, z);
+            scene.add(tree);
+        }
+
+        for(let i=0; i<50; i++){
+            const x = (Math.random()-0.5)*100;
+            const z = (Math.random()-0.5)*100;
+            createTree(x, z);
+        }
+
+        // Muñecas
+        const dolls = [];
+        function createDoll(x, z){
+            const doll = new THREE.Group();
+            
+            // Cabeza
+            const headGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const headMaterial = new THREE.MeshLambertMaterial({color:0xFFDAB9});
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 3.5;
+            head.castShadow = true;
+            doll.add(head);
+
+            // Cuerpo
+            const bodyGeometry = new THREE.CylinderGeometry(0.4, 0.5, 2);
+            const bodyMaterial = new THREE.MeshLambertMaterial({color:0xFF69B4});
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 2;
+            body.castShadow = true;
+            doll.add(body);
+
+            // Brazos
+            const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1.5);
+            const armMaterial = new THREE.MeshLambertMaterial({color:0xFFDAB9});
+            
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.6, 2.5, 0);
+            leftArm.rotation.z = Math.PI / 4;
+            leftArm.castShadow = true;
+            doll.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(0.6, 2.5, 0);
+            rightArm.rotation.z = -Math.PI / 4;
+            rightArm.castShadow = true;
+            doll.add(rightArm);
+
+            // Piernas
+            const legGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.5);
+            const legMaterial = new THREE.MeshLambertMaterial({color:0xFFDAB9});
+            
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(-0.2, 0.75, 0);
+            leftLeg.castShadow = true;
+            doll.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(0.2, 0.75, 0);
+            rightLeg.castShadow = true;
+            doll.add(rightLeg);
+
+            doll.position.set(x, 0, z);
+            doll.userData = {originalY: 0, flying: false, falling: false, attached: false};
+            scene.add(doll);
+            dolls.push(doll);
+        }
+
+        for(let i=0; i<10; i++){
+            const x = (Math.random()-0.5)*80;
+            const z = (Math.random()-0.5)*80;
+            createDoll(x, z);
+        }
+
+        // Raycaster para clic en muñecas
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function createHeart(x, y, z){
+            const heart = document.createElement('div');
+            heart.className = 'heart';
+            heart.innerHTML = '❤️';
+            heart.style.left = x + 'px';
+            heart.style.top = y + 'px';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 3000);
+        }
+
+        function speakAndFly(doll){
+            // Decir "te quiero"
+            const utterance = new SpeechSynthesisUtterance('te quiero');
+            utterance.lang = 'es-ES';
+            speechSynthesis.speak(utterance);
+
+            // Crear corazones flotantes
+            const vector = doll.position.clone();
+            vector.project(camera);
+            const x = (vector.x + 1) * window.innerWidth / 2;
+            const y = -(vector.y - 1) * window.innerHeight / 2;
+            createHeart(x, y);
+
+            // Transformar en corazón y volar
+            doll.children.forEach(child => {
+                if(child.geometry) child.visible = false;
+            });
+
+            // Crear corazón 3D
+            const heartShape = new THREE.Shape();
+            heartShape.moveTo(0, 0);
+            heartShape.bezierCurveTo(0, -0.3, -0.6, -0.3, -0.6, 0);
+            heartShape.bezierCurveTo(-0.6, 0.3, 0, 0.6, 0, 1);
+            heartShape.bezierCurveTo(0, 0.6, 0.6, 0.3, 0.6, 0);
+            heartShape.bezierCurveTo(0.6, -0.3, 0, -0.3, 0, 0);
+
+            const extrudeSettings = {
+                depth: 0.2,
+                bevelEnabled: true,
+                bevelSegments: 2,
+                steps: 2,
+                bevelSize: 0.1,
+                bevelThickness: 0.1
+            };
+
+            const heartGeometry = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+            const heartMaterial = new THREE.MeshLambertMaterial({color:0xff0000});
+            const heart = new THREE.Mesh(heartGeometry, heartMaterial);
+            heart.position.set(0, 2, 0);
+            heart.rotation.x = Math.PI;
+            heart.castShadow = true;
+            doll.add(heart);
+
+            // Volar
+            doll.userData.flying = true;
+            doll.userData.flyingStart = Date.now();
+            doll.userData.attached = true; // El jugador se queda enganchado a la muñeca
+        }
+
+        // Detección de mancomunada
+        let handRaised = false;
+        let handStatusShown = false;
+        const handStatus = document.getElementById('handStatus');
+
+        function detectHand() {
+            // Simula detección de mancomunada (gesto de mano)
+            // Activar con tecla "h"
+            document.addEventListener('keydown', (e) => {
+                if (e.key.toLowerCase() === 'h') {
+                    handRaised = true;
+                    if (!handStatusShown) {
+                        handStatus.classList.add('visible');
+                        handStatusShown = true;
+                        setTimeout(() => {
+                            handStatus.classList.remove('visible');
+                            handStatusShown = false;
+                        }, 2000);
+                    }
+                }
+            });
+            document.addEventListener('keyup', (e) => {
+                if (e.key.toLowerCase() === 'h') {
+                    handRaised = false;
+                }
+            });
+        }
+
+        detectHand();
+
+        // Modificar el clic para detectar mancomunada antes
+        window.addEventListener('click', (event)=>{
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(dolls, true);
+            
+            if(intersects.length > 0 && handRaised){
+                let doll = intersects[0].object;
+                while(doll.parent && !doll.userData.originalY){
+                    doll = doll.parent;
+                }
+                if(doll.userData && !doll.userData.flying){
+                    speakAndFly(doll);
+                }
+            }
+        });
+
+        // Detección de proximidad del jugador a las muñecas
+        function checkProximity() {
+            dolls.forEach(doll => {
+                if (doll.userData.flying) return;
+                
+                const distance = camera.position.distanceTo(doll.position);
+                if (distance < 2.5) { // Distancia de 2.5 unidades
+                    if (!doll.userData.nearPlayer) {
+                        doll.userData.nearPlayer = true;
+                        // Cambiar color de la muñeca a amarillo
+                        doll.children.forEach(child => {
+                            if (child.material && child.material.color) {
+                                child.material.color.set(0xffff00);
+                            }
+                        });
+                    }
+                } else {
+                    if (doll.userData.nearPlayer) {
+                        doll.userData.nearPlayer = false;
+                        // Restaurar colores originales
+                        doll.children.forEach((child, index) => {
+                            if (child.material && child.material.color) {
+                                if (index === 0) child.material.color.set(0xFFDAB9); // Cabeza
+                                else if (index === 1) child.material.color.set(0xFF69B4); // Cuerpo
+                                else child.material.color.set(0xFFDAB9); // Brazos y piernas
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        // Controles
+        const joystick = document.getElementById('joystick');
+        const knob = document.getElementById('knob');
+        const leftArrow = document.getElementById('leftArrow');
+        const rightArrow = document.getElementById('rightArrow');
+
+        let joystickActive = false;
+        let joystickData = {x:0, y:0};
+
+        function updateJoystick(e){
+            const rect = joystick.getBoundingClientRect();
+            const cx = rect.left + rect.width/2;
+            const cy = rect.top + rect.height/2;
+            const x = Math.max(-50, Math.min(50, (e.clientX || e.touches[0].clientX) - cx));
+            const y = Math.max(-50, Math.min(50, (e.clientY || e.touches[0].clientY) - cy));
+            knob.style.left = (50 + x) + 'px';
+            knob.style.top = (50 + y) + 'px';
+            joystickData.x = x / 50;
+            joystickData.y = y / 50;
+        }
+
+        function resetJoystick(){
+            knob.style.left = '50px';
+            knob.style.top = '50px';
+            joystickData = {x:0, y:0};
+        }
+
+        joystick.addEventListener('mousedown', ()=> joystickActive = true);
+        joystick.addEventListener('touchstart', ()=> joystickActive = true);
+        window.addEventListener('mouseup', ()=> {joystickActive = false; resetJoystick();});
+        window.addEventListener('touchend', ()=> {joystickActive = false; resetJoystick();});
+        window.addEventListener('mousemove', (e)=> {if(joystickActive) updateJoystick(e);});
+        window.addEventListener('touchmove', (e)=> {if(joystickActive) updateJoystick(e);});
+
+        let rotatingLeft = false;
+        let rotatingRight = false;
+        leftArrow.addEventListener('mousedown', ()=> rotatingLeft = true);
+        leftArrow.addEventListener('touchstart', ()=> rotatingLeft = true);
+        rightArrow.addEventListener('mousedown', ()=> rotatingRight = true);
+        rightArrow.addEventListener('touchstart', ()=> rotatingRight = true);
+        window.addEventListener('mouseup', ()=> {rotatingLeft = false; rotatingRight = false;});
+        window.addEventListener('touchend', ()=> {rotatingLeft = false; rotatingRight = false;});
+
+        function animate(){
+            requestAnimationFrame(animate);
+
+            // Movimiento
+            const speed = 0.15;
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            camera.position.add(forward.multiplyScalar(-joystickData.y * speed));
+            camera.position.add(right.multiplyScalar(joystickData.x * speed));
+
+            // Rotación
+            if(rotatingLeft) camera.rotation.y += 0.03;
+            if(rotatingRight) camera.rotation.y -= 0.03;
+
+            // Verificar proximidad
+            checkProximity();
+
+            // Animar muñecas
+            dolls.forEach(doll=>{
+                if(doll.userData.flying){
+                    const elapsed = Date.now() - doll.userData.flyingStart;
+                    if(elapsed < 2000){
+                        doll.position.y = Math.sin(elapsed * 0.01) * 10 + 5;
+                        if(doll.userData.attached){
+                            camera.position.y = doll.position.y + 2; // El jugador vuela con la muñeca
+                        }
+                    } else if(elapsed < 4000){
+                        doll.position.y -= 0.2;
+                        if(doll.userData.attached){
+                            camera.position.y = doll.position.y + 2;
+                        }
+                        if(doll.position.y <= 0){
+                            doll.position.y = 0;
+                            doll.userData.flying = false;
+                            doll.userData.attached = false;
+                        }
+                    }
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', ()=>{
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
+```
