@@ -1,0 +1,318 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Bosque 3D - Muñecas Perreando</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
+            user-select: none;
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #joystick {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 50%;
+            touch-action: none;
+        }
+        #knob {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        #controls {
+            position: fixed;
+            right: 30px;
+            bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .arrow {
+            width: 60px;
+            height: 60px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            touch-action: none;
+        }
+        .arrow:active {
+            background: rgba(0,0,0,0.6);
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <div id="joystick">
+        <div id="knob"></div>
+    </div>
+    <div id="controls">
+        <button class="arrow" id="leftArrow">◀</button>
+        <button class="arrow" id="rightArrow">▶</button>
+    </div>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0xcccccc, 10, 100);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 0);
+
+        const renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.left = -50;
+        directionalLight.shadow.camera.right = 50;
+        directionalLight.shadow.camera.top = 50;
+        directionalLight.shadow.camera.bottom = -50;
+        scene.add(directionalLight);
+
+        const groundGeometry = new THREE.PlaneGeometry(200, 200);
+        const groundMaterial = new THREE.MeshLambertMaterial({color:0x228B22});
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        function createTree(x, z){
+            const tree = new THREE.Group();
+            const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.7, 4);
+            const trunkMaterial = new THREE.MeshLambertMaterial({color:0x8B4513});
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 2;
+            trunk.castShadow = true;
+            tree.add(trunk);
+
+            const leavesGeometry = new THREE.ConeGeometry(3, 6, 8);
+            const leavesMaterial = new THREE.MeshLambertMaterial({color:0x228B22});
+            const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+            leaves.position.y = 6;
+            leaves.castShadow = true;
+            tree.add(leaves);
+
+            tree.position.set(x, 0, z);
+            scene.add(tree);
+        }
+
+        for(let i=0; i<50; i++){
+            const x = (Math.random()-0.5)*100;
+            const z = (Math.random()-0.5)*100;
+            createTree(x, z);
+        }
+
+        const dolls = [];
+        function createDoll(x, z){
+            const doll = new THREE.Group();
+            
+            // Cabeza
+            const headGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const headMaterial = new THREE.MeshLambertMaterial({color:0xFFDAB9});
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 3.5;
+            head.castShadow = true;
+            doll.add(head);
+
+            // Cuerpo (corto para que se vea la braga)
+            const bodyGeometry = new THREE.CylinderGeometry(0.4, 0.5, 1.2);
+            const bodyMaterial = new THREE.MeshLambertMaterial({color:0xFF69B4});
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 2.2;
+            body.castShadow = true;
+            doll.add(body);
+
+            // Braga (visible desde abajo)
+            const bragaGeometry = new THREE.PlaneGeometry(1, 0.6);
+            const bragaMaterial = new THREE.MeshLambertMaterial({color:0xff0000, side: THREE.DoubleSide});
+            const braga = new THREE.Mesh(bragaGeometry, bragaMaterial);
+            braga.position.y = 1.5;
+            braga.rotation.x = Math.PI / 2;
+            braga.castShadow = true;
+            doll.add(braga);
+
+            // Brazos
+            const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1.5);
+            const armMaterial = new THREE.MeshLambertMaterial({color:0xFFDAB9});
+            
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.6, 2.5, 0);
+            leftArm.rotation.z = Math.PI / 4;
+            leftArm.castShadow = true;
+            doll.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(0.6, 2.5, 0);
+            rightArm.rotation.z = -Math.PI / 4;
+            rightArm.castShadow = true;
+            doll.add(rightArm);
+
+            // Piernas
+            const legGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.5);
+            const legMaterial = new THREE.MeshLambertMaterial({color:0xFFDAB9});
+            
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(-0.2, 0.75, 0);
+            leftLeg.castShadow = true;
+            doll.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(0.2, 0.75, 0);
+            rightLeg.castShadow = true;
+            doll.add(rightLeg);
+
+            // Porro en la boca
+            const porroGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.8);
+            const porroMaterial = new THREE.MeshLambertMaterial({color:0x8B4513});
+            const porro = new THREE.Mesh(porroGeometry, porroMaterial);
+            porro.position.set(0.6, 3.3, 0);
+            porro.rotation.z = Math.PI / 4;
+            porro.castShadow = true;
+            doll.add(poro);
+
+            // Humo del porro
+            const smokeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const smokeMaterial = new THREE.MeshLambertMaterial({color:0xaaaaaa, transparent:true, opacity:0.6});
+            const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+            smoke.position.set(0.8, 3.6, 0);
+            doll.add(smoke);
+
+            doll.position.set(x, 0, z);
+            doll.userData = {dancePhase: 0, danceSpeed: 0.02 + Math.random()*0.03, smokePhase: 0};
+            scene.add(doll);
+            dolls.push(doll);
+        }
+
+        for(let i=0; i<10; i++){
+            const x = (Math.random()-0.5)*80;
+            const z = (Math.random()-0.5)*80;
+            createDoll(x, z);
+        }
+
+        // Controles
+        const joystick = document.getElementById('joystick');
+        const knob = document.getElementById('knob');
+        const leftArrow = document.getElementById('leftArrow');
+        const rightArrow = document.getElementById('rightArrow');
+
+        let joystickActive = false;
+        let joystickData = {x:0, y:0};
+
+        function updateJoystick(e){
+            const rect = joystick.getBoundingClientRect();
+            const cx = rect.left + rect.width/2;
+            const cy = rect.top + rect.height/2;
+            const x = Math.max(-50, Math.min(50, (e.clientX || e.touches[0].clientX) - cx));
+            const y = Math.max(-50, Math.min(50, (e.clientY || e.touches[0].clientY) - cy));
+            knob.style.left = (50 + x) + 'px';
+            knob.style.top = (50 + y) + 'px';
+            joystickData.x = x / 50;
+            joystickData.y = y / 50;
+        }
+
+        function resetJoystick(){
+            knob.style.left = '50px';
+            knob.style.top = '50px';
+            joystickData = {x:0, y:0};
+        }
+
+        joystick.addEventListener('mousedown', ()=> joystickActive = true);
+        joystick.addEventListener('touchstart', ()=> joystickActive = true);
+        window.addEventListener('mouseup', ()=> {joystickActive = false; resetJoystick();});
+        window.addEventListener('touchend', ()=> {joystickActive = false; resetJoystick();});
+        window.addEventListener('mousemove', (e)=> {if(joystickActive) updateJoystick(e);});
+        window.addEventListener('touchmove', (e)=> {if(joystickActive) updateJoystick(e);});
+
+        let rotatingLeft = false;
+        let rotatingRight = false;
+        leftArrow.addEventListener('mousedown', ()=> rotatingLeft = true);
+        leftArrow.addEventListener('touchstart', ()=> rotatingLeft = true);
+        rightArrow.addEventListener('mousedown', ()=> rotatingRight = true);
+        rightArrow.addEventListener('touchstart', ()=> rotatingRight = true);
+        window.addEventListener('mouseup', ()=> {rotatingLeft = false; rotatingRight = false;});
+        window.addEventListener('touchend', ()=> {rotatingLeft = false; rotatingRight = false;});
+
+        function animate(){
+            requestAnimationFrame(animate);
+
+            // Movimiento
+            const speed = 0.15;
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            camera.position.add(forward.multiplyScalar(-joystickData.y * speed));
+            camera.position.add(right.multiplyScalar(joystickData.x * speed));
+
+            // Rotación
+            if(rotatingLeft) camera.rotation.y += 0.03;
+            if(rotatingRight) camera.rotation.y -= 0.03;
+
+            // Animar muñecas perreando
+            dolls.forEach(doll=>{
+                const phase = doll.userData.dancePhase;
+                const speed = doll.userData.danceSpeed;
+                const smokePhase = doll.userData.smokePhase;
+
+                // Movimiento de cadera (perreo)
+                doll.position.x += Math.sin(phase) * 0.02;
+                doll.rotation.z = Math.sin(phase * 2) * 0.3;
+
+                // Movimiento de brazos
+                doll.children[3].rotation.x = Math.sin(phase) * 0.5;
+                doll.children[4].rotation.x = -Math.sin(phase) * 0.5;
+
+                // Movimiento de piernas
+                doll.children[5].rotation.x = Math.sin(phase + Math.PI/2) * 0.4;
+                doll.children[6].rotation.x = -Math.sin(phase + Math.PI/2) * 0.4;
+
+                // Hacer que la braga sea visible desde cualquier ángulo
+                doll.children[2].lookAt(camera.position);
+
+                // Animar el humo
+                const smoke = doll.children[8];
+                smoke.position.y = 3.6 + Math.sin(smokePhase) * 0.1;
+                smoke.scale.setScalar(1 + Math.sin(smokePhase) * 0.3);
+
+                doll.userData.dancePhase += speed;
+                doll.userData.smokePhase += 0.05;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', ()=>{
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
+```
