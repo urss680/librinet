@@ -1,0 +1,82 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal Triangular Interactivo</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { display: block; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+    </style>
+</head>
+<body>
+    <canvas id="c"></canvas>
+    <script>
+        const c = document.getElementById('c'), ctx = c.getContext('2d');
+        let w, h, t = 0, iter = 1, zoom = 1, panX = 0, panY = 0, dragging = false, lastX = 0, lastY = 0;
+        function resize() { c.width = w = innerWidth; c.height = h = innerHeight; }
+        addEventListener('resize', resize); resize();
+
+        c.addEventListener('wheel', e => {
+            e.preventDefault();
+            const dz = e.deltaY > 0 ? 0.9 : 1.1;
+            zoom *= dz;
+            zoom = Math.max(0.1, Math.min(zoom, 10));
+        });
+
+        c.addEventListener('mousedown', e => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+        addEventListener('mouseup', () => dragging = false);
+        addEventListener('mousemove', e => {
+            if (dragging) {
+                panX += e.clientX - lastX;
+                panY += e.clientY - lastY;
+                lastX = e.clientX; lastY = e.clientY;
+            }
+        });
+
+        function dibujo() {
+            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
+            ctx.save();
+            ctx.translate(w/2 + panX, h/2 + panY);
+            ctx.scale(zoom, zoom);
+            const s = Math.min(w, h) * 0.4;
+            function tri(x, y, l, p) {
+                if (p === 0) {
+                    ctx.fillStyle = `hsl(${(t * 2 + l) % 360}, 80%, 50%)`;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + l, y);
+                    ctx.lineTo(x + l / 2, y - l * 0.866);
+                    ctx.closePath(); ctx.fill();
+                } else {
+                    const m = l / 2;
+                    tri(x, y, m, p - 1);
+                    tri(x + m, y, m, p - 1);
+                    tri(x + m / 2, y - m * 0.866, m, p - 1);
+                }
+            }
+            tri(-s / 2, s * 0.288, s, iter);
+            ctx.restore();
+            t++;
+        }
+
+        function siguiente() {
+            iter++;
+            t = 0;
+        }
+
+        setInterval(() => {
+            if (iter < 7) {
+                siguiente();
+            } else {
+                iter = 1;
+            }
+        }, 3000);
+
+        setInterval(dibujo, 50);
+    </script>
+</body>
+</html>
+```
