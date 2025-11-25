@@ -1,0 +1,201 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Despertador de Graves y Agudos</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            color: #fff;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .status {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 DESPERTADOR EXTREMO 🚨</h1>
+        <button onclick="activarDespertador()">ACTIVAR DESPERTADOR</button>
+        <button onclick="detenerDespertador()">DETENER</button>
+        <div class="status" id="status">Sistema listo...</div>
+    </div>
+
+    <script>
+        let audioContext;
+        let osciladores = [];
+        let ganancias = [];
+        let intervalo;
+
+        function inicializarAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function crearOscilador(frecuencia, tipo, volumen) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc.type = tipo;
+            osc.frequency.setValueAtTime(frecuencia, audioContext.currentTime);
+            gain.gain.setValueAtTime(volumen, audioContext.currentTime);
+            
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            osc.start();
+            
+            osciladores.push(osc);
+            ganancias.push(gain);
+            
+            return { osc, gain };
+        }
+
+        function activarDespertador() {
+            inicializarAudio();
+            detenerDespertador();
+            
+            // Graves potentes (30-80 Hz)
+            const graves = [
+                { f: 40, t: 'sawtooth', v: 0.8 },
+                { f: 55, t: 'square', v: 0.7 },
+                { f: 35, t: 'sawtooth', v: 0.6 }
+            ];
+            
+            // Agudos penetrantes (2000-5000 Hz)
+            const agudos = [
+                { f: 3000, t: 'square', v: 0.9 },
+                { f: 2500, t: 'sine', v: 0.7 },
+                { f: 4000, t: 'square', v: 0.8 }
+            ];
+            
+            // Activar graves
+            graves.forEach((g, i) => {
+                setTimeout(() => {
+                    crearOscilador(g.f, g.t, g.v);
+                }, i * 200);
+            });
+            
+            // Activar agudos
+            agudos.forEach((a, i) => {
+                setTimeout(() => {
+                    crearOscilador(a.f, a.t, a.v);
+                }, i * 150);
+            });
+            
+            // Patrón de intermitencia brutal
+            let estado = true;
+            let contador = 0;
+            
+            function intermitencia() {
+                if (contador < 50) {
+                    ganancias.forEach(gain => {
+                        if (gain && gain.gain) {
+                            gain.gain.setValueAtTime(estado ? 0 : 0.8, audioContext.currentTime);
+                        }
+                    });
+                    estado = !estado;
+                    contador++;
+                } else {
+                    clearInterval(intervalo);
+                }
+            }
+            
+            intervalo = setInterval(intermitencia, 100);
+            
+            // Vibración si está disponible
+            if ('vibrate' in navigator) {
+                let vibrar = true;
+                let contadorVibracion = 0;
+                const vibracionIntervalo = setInterval(() => {
+                    if (contadorVibracion < 20) {
+                        navigator.vibrate([200, 100, 200]);
+                        contadorVibracion++;
+                    } else {
+                        clearInterval(vibracionIntervalo);
+                    }
+                }, 400);
+            }
+            
+            document.getElementById('status').textContent = '¡¡¡DESPIERTA YA!!!';
+            document.getElementById('status').style.color = '#ff6b6b';
+            document.getElementById('status').style.fontSize = '20px';
+            document.getElementById('status').style.fontWeight = 'bold';
+        }
+
+        function detenerDespertador() {
+            osciladores.forEach(osc => {
+                try {
+                    osc.stop();
+                } catch (e) {}
+            });
+            osciladores = [];
+            ganancias = [];
+            
+            if (intervalo) {
+                clearInterval(intervalo);
+            }
+            
+            document.getElementById('status').textContent = 'Detenido';
+            document.getElementById('status').style.color = '#fff';
+            document.getElementById('status').style.fontSize = '16px';
+        }
+
+        document.addEventListener('click', function() {
+            inicializarAudio();
+        }, { once: true });
+    </script>
+</body>
+</html>
+```
