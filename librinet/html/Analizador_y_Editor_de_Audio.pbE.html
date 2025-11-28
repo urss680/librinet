@@ -1,0 +1,224 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Analizador y Editor de Audio</title>
+  <style>
+    body{margin:0;background:#000;color:#0f0;font-family:monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;}
+    canvas{background:#111;border:1px solid #0f0;margin-top:10px;}
+    input[type="file"]{margin:10px;}
+    #info{margin-top:10px;font-size:14px;}
+    #timeBar{width:800px;height:20px;background:#222;margin-top:10px;position:relative;border:1px solid #0f0;cursor:pointer;}
+    #timeProgress{position:absolute;left:0;top:0;height:100%;background:#0f0;width:0%;}
+    #controls,#editControls{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+    #controls button,#editControls button{padding:8px 16px;background:#0f0;color:#000;border:none;font-weight:bold;cursor:pointer;}
+    #controls button:hover,#editControls button:hover{background:#0c0;}
+    #timeLabel{position:absolute;right:10px;top:2px;font-size:12px;color:#0f0;}
+    #waveform{height:150px;width:800px;background:#111;border:1px solid #0f0;margin-top:10px;}
+    input[type="range"]{width:180px;margin:0 5px;}
+    label{font-size:12px;margin-left:5px;}
+  </style>
+</head>
+<body>
+  <h1>Analizador y Editor de Audio</h1>
+  <input type="file" id="audioFile" accept="audio/*">
+  <canvas id="spectrum"></canvas>
+  <canvas id="waveform"></canvas>
+  <div id="info">Selecciona un archivo de audio</div>
+  <div id="timeBar">
+    <div id="timeProgress"></div>
+    <div id="timeLabel">0:00 / 0:00</div>
+  </div>
+  <div id="controls">
+    <button id="playBtn">▶ Play</button>
+    <button id="pauseBtn">⏸ Pause</button>
+    <button id="stopBtn">⏹ Stop</button>
+  </div>
+  <div id="editControls">
+    <button id="trimBtn">✂️ Recortar selección</button>
+    <button id="fadeInBtn">Fade In</button>
+    <button id="fadeOutBtn">Fade Out</button>
+    <button id="normalizeBtn">Normalizar</button>
+    <label>Ganancia<input type="range" id="gainSlider" min="0" max="300" value="100">%</label>
+    <button id="exportBtn">💾 Exportar WAV</button>
+  </div>
+
+  <script>
+    const fileInput=document.getElementById('audioFile');
+    const canvas=document.getElementById('spectrum');
+    const ctx=canvas.getContext('2d');
+    const wCanvas=document.getElementById('waveform');
+    const wCtx=wCanvas.getContext('2d');
+    const info=document.getElementById('info');
+    const timeProgress=document.getElementById('timeProgress');
+    const timeLabel=document.getElementById('timeLabel');
+    const timeBar=document.getElementById('timeBar');
+    const playBtn=document.getElementById('playBtn');
+    const pauseBtn=document.getElementById('pauseBtn');
+    const stopBtn=document.getElementById('stopBtn');
+    const trimBtn=document.getElementById('trimBtn');
+    const fadeInBtn=document.getElementById('fadeInBtn');
+    const fadeOutBtn=document.getElementById('fadeOutBtn');
+    const normalizeBtn=document.getElementById('normalizeBtn');
+    const gainSlider=document.getElementById('gainSlider');
+    const exportBtn=document.getElementById('exportBtn');
+    canvas.width=800;canvas.height=200;
+    wCanvas.width=800;wCanvas.height=150;
+    let audioContext,analyser,source,dataArray,audio,fileName;
+    let audioBuffer,rawBuffer,sampleRate,selection={start:0,end:0};
+    fileInput.addEventListener('change',handleFile,false);
+    playBtn.addEventListener('click',()=>audio&&audio.play());
+    pauseBtn.addEventListener('click',()=>audio&&audio.pause());
+    stopBtn.addEventListener('click',()=>{if(audio){audio.pause();audio.currentTime=0;}});
+    timeBar.addEventListener('click',e=>{if(!audio)return;const rect=timeBar.getBoundingClientRect();const x=e.clientX-rect.left;const percentage=x/rect.width;audio.currentTime=percentage*audio.duration;});
+    wCanvas.addEventListener('mousedown',e=>{const rect=wCanvas.getBoundingClientRect();selection.start=(e.clientX-rect.left)/wCanvas.width;selection.end=selection.start;});
+    wCanvas.addEventListener('mousemove',e=>{if(selection.start!==undefined){const rect=wCanvas.getBoundingClientRect();selection.end=(e.clientX-rect.left)/wCanvas.width;drawWaveform();}});
+    wCanvas.addEventListener('mouseup',()=>{if(selection.start>selection.end)[selection.start,selection.end]=[selection.end,selection.start];});
+    trimBtn.addEventListener('click',trimSelection);
+    fadeInBtn.addEventListener('click',()=>applyFade('in'));
+    fadeOutBtn.addEventListener('click',()=>applyFade('out'));
+    normalizeBtn.addEventListener('click',normalize);
+    gainSlider.addEventListener('input',applyGain);
+    exportBtn.addEventListener('click',exportWAV);
+    function handleFile(e){
+      const file=e.target.files[0];if(!file)return;
+      fileName=file.name;const reader=new FileReader();
+      reader.onload=async(ev)=>{
+        const arrayBuffer=ev.target.result;
+        if(audioContext)audioContext.close();
+        audioContext=new(window.AudioContext||window.webkitAudioContext)();
+        audioBuffer=await audioContext.decodeAudioData(arrayBuffer.slice());
+        sampleRate=audioBuffer.sampleRate;
+        rawBuffer=audioBuffer.getChannelData(0);
+        setupPlayback();
+        draw();drawWaveform();updateTimeBar();
+      };
+      reader.readAsArrayBuffer(file);
+    }
+    function setupPlayback(){
+      const blob=new Blob([bufferToWave(audioBuffer,sampleRate)],{type:'audio/wav'});
+      const url=URL.createObjectURL(blob);
+      if(audio)audio.pause();
+      audio=new Audio(url);audio.crossOrigin="anonymous";
+      analyser=audioContext.createAnalyser();analyser.fftSize=2048;
+      source=audioContext.createMediaElementSource(audio);
+      source.connect(analyser);analyser.connect(audioContext.destination);
+      const m=Math.floor(audio.duration/60);const s=Math.floor(audio.duration%60).toString().padStart(2,'0');
+      info.textContent=`${fileName} - Duración: ${m}:${s}`;
+      dataArray=new Uint8Array(analyser.frequencyBinCount);
+      audio.play();
+    }
+    function draw(){
+      requestAnimationFrame(draw);
+      if(analyser){analyser.getByteFrequencyData(dataArray);}
+      ctx.fillStyle="#111";ctx.fillRect(0,0,canvas.width,canvas.height);
+      const barWidth=(canvas.width/dataArray.length)*2.5;let barHeight;let x=0;
+      for(let i=0;i<dataArray.length;i++){
+        barHeight=dataArray[i]/255*canvas.height;
+        const r=barHeight+(25*(i/dataArray.length));
+        const g=250*(i/dataArray.length);
+        ctx.fillStyle=`rgb(${r},${g},50)`;
+        ctx.fillRect(x,canvas.height-barHeight,barWidth,barHeight);
+        x+=barWidth+1;
+      }
+    }
+    function drawWaveform(){
+      wCtx.fillStyle="#111";wCtx.fillRect(0,0,wCanvas.width,wCanvas.height);
+      wCtx.strokeStyle="#0f0";wCtx.beginPath();const w=wCanvas.width,h=wCanvas.height;
+      for(let i=0;i<w;i++){
+        const idx=Math.floor((i/w)*rawBuffer.length);
+        const v=rawBuffer[idx];const y=(1+v)*h/2;
+        if(i===0)wCtx.moveTo(i,y);else wCtx.lineTo(i,y);
+      }
+      wCtx.stroke();
+      if(selection.start!==undefined&&selection.end!==undefined){
+        wCtx.fillStyle="rgba(0,255,0,0.3)";
+        const s=Math.min(selection.start,selection.end)*wCanvas.width;
+        const e=Math.max(selection.start,selection.end)*wCanvas.width;
+        wCtx.fillRect(s,0,e-s,wCanvas.height);
+      }
+    }
+    function trimSelection(){
+      const start=Math.floor(Math.min(selection.start,selection.end)*rawBuffer.length);
+      const end=Math.floor(Math.max(selection.start,selection.end)*rawBuffer.length);
+      const trimmed=rawBuffer.slice(start,end);
+      rawBuffer=trimmed;
+      audioBuffer=audioContext.createBuffer(1,trimmed.length,sampleRate);
+      audioBuffer.getChannelData(0).set(trimmed);
+      setupPlayback();
+      drawWaveform();
+    }
+    function applyFade(type){
+      const len=rawBuffer.length;
+      for(let i=0;i<len;i++){
+        const idx=type==='in'?i:len-1-i;
+        const fade=idx/len;
+        rawBuffer[idx]*=fade;
+      }
+      audioBuffer.getChannelData(0).set(rawBuffer);
+      setupPlayback();
+      drawWaveform();
+    }
+    function normalize(){
+      const max=Math.max(...rawBuffer.map(Math.abs));
+      const scale=0.99/max;
+      for(let i=0;i<rawBuffer.length;i++)rawBuffer[i]*=scale;
+      audioBuffer.getChannelData(0).set(rawBuffer);
+      setupPlayback();
+      drawWaveform();
+    }
+    function applyGain(){
+      const gain=gainSlider.value/100;
+      const copied=audioContext.createBuffer(1,audioBuffer.length,sampleRate);
+      const src=audioBuffer.getChannelData(0);
+      const dst=copied.getChannelData(0);
+      for(let i=0;i<src.length;i++)dst[i]=src[i]*gain;
+      audioBuffer=copied;rawBuffer=audioBuffer.getChannelData(0);
+      setupPlayback();drawWaveform();
+    }
+    function updateTimeBar(){
+      if(!audio)return;
+      requestAnimationFrame(updateTimeBar);
+      const progress=(audio.currentTime/audio.duration)*100;
+      timeProgress.style.width=progress+"%";
+      const cm=Math.floor(audio.currentTime/60);
+      const cs=Math.floor(audio.currentTime%60).toString().padStart(2,'0');
+      const dm=Math.floor(audio.duration/60);
+      const ds=Math.floor(audio.duration%60).toString().padStart(2,'0');
+      timeLabel.textContent=`${cm}:${cs} / ${dm}:${ds}`;
+    }
+    function bufferToWave(buffer, len) {
+      const length = len * buffer.numberOfChannels * 2 + 44;
+      const arrayBuffer = new ArrayBuffer(length);
+      const view = new DataView(arrayBuffer);
+      const channels = [];
+      let offset = 0;
+      let pos = 0;
+      const setUint16 = (data) => { view.setUint16(pos, data, true); pos += 2; };
+      const setUint32 = (data) => { view.setUint32(pos, data, true); pos += 4; };
+      setUint32(0x46464952); setUint32(pos - 8); setUint32(0x45564157);
+      setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(buffer.numberOfChannels);
+      setUint32(buffer.sampleRate); setUint32(buffer.sampleRate * 2 * buffer.numberOfChannels);
+      setUint16(buffer.numberOfChannels * 2); setUint16(16);
+      setUint32(0x61746164); setUint32(pos - 44);
+      for (let i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
+      while (pos < length) {
+        for (let i = 0; i < buffer.numberOfChannels; i++) {
+          let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+          view.setInt16(pos, sample, true); pos += 2;
+        }
+        offset++;
+      }
+      return new Blob([arrayBuffer], { type: 'audio/wav' });
+    }
+    function exportWAV(){
+      const wav = bufferToWave(audioBuffer, audioBuffer.length);
+      const url = URL.createObjectURL(wav);
+      const a = document.createElement('a'); a.href = url; a.download = 'edited_' + fileName.replace(/\.[^/.]+$/, "") + '.wav'; a.click();
+    }
+  </script>
+</body>
+</html>
+```
