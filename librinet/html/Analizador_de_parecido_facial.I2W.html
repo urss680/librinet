@@ -1,0 +1,108 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analizador de parecido facial</title>
+  <style>
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;padding:20px}
+    h1{margin-bottom:10px}
+    #upload{width:220px;margin:10px 0}
+    img,video,canvas{max-width:640px;max-height:480px;border:2px solid #0ff;border-radius:8px;background:#000}
+    .row{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .col{text-align:center}
+    button{padding:10px 18px;border:none;border-radius:4px;background:#0ff;color:#000;font-weight:bold;cursor:pointer;margin:5px}
+    button:disabled{background:#555;color:#888;cursor:not-allowed}
+    #status{margin-top:10px;font-size:14px}
+  </style>
+</head>
+<body>
+  <h1>Analizador de parecido facial</h1>
+  <input type="file" id="upload" accept="image/*"/>
+  <div class="row">
+    <div class="col">
+      <h3>Imagen de referencia</h3>
+      <img id="refImg" style="display:none;" alt="referencia"/>
+    </div>
+    <div class="col">
+      <h3>Cámara (vivo)</h3>
+      <video id="video" autoplay muted style="display:none;"></video>
+      <canvas id="canvas" style="display:none;"></canvas>
+      <img id="snap" style="display:none;" alt="captura"/>
+    </div>
+  </div>
+  <div>
+    <button id="startCam" disabled>Iniciar cámara</button>
+    <button id="capture" disabled>Capturar</button>
+    <button id="compare" disabled>Comparar</button>
+  </div>
+  <div id="status">Carga una imagen de referencia para comenzar.</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.min.js"></script>
+  <script>
+    const upload=document.getElementById('upload');
+    const refImg=document.getElementById('refImg');
+    const video=document.getElementById('video');
+    const canvas=document.getElementById('canvas');
+    const snap=document.getElementById('snap');
+    const startCam=document.getElementById('startCam');
+    const capture=document.getElementById('capture');
+    const compareBtn=document.getElementById('compare');
+    const status=document.getElementById('status');
+    let refDescriptor=null;
+    let stream=null;
+
+    async function loadModels(){
+      await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+      await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+    }
+    loadModels().then(()=>status.textContent='Modelos cargados.');
+
+    upload.addEventListener('change',async e=>{
+      const file=e.target.files[0];
+      if(!file)return;
+      refImg.src=URL.createObjectURL(file);
+      refImg.onload=async()=>{
+        const detect=await faceapi.detectSingleFace(refImg,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+        if(!detect)return status.textContent='No se encontró rostro en la imagen de referencia.';
+        refDescriptor=detect.descriptor;
+        status.textContent='Imagen de referencia lista. Puedes iniciar la cámara.';
+        startCam.disabled=false;
+      };
+    });
+
+    startCam.addEventListener('click',async()=>{
+      stream=await navigator.mediaDevices.getUserMedia({video:true});
+      video.srcObject=stream;
+      video.style.display='block';
+      capture.disabled=false;
+      status.textContent='Cámara iniciada. Presiona "Capturar".';
+    });
+
+    capture.addEventListener('click',()=>{
+      canvas.width=video.videoWidth;
+      canvas.height=video.videoHeight;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(video,0,0);
+      snap.src=canvas.toDataURL('image/png');
+      snap.style.display='block';
+      compareBtn.disabled=false;
+      status.textContent='Captura lista. Ahora compara.';
+    });
+
+    compareBtn.addEventListener('click',async()=>{
+      if(!refDescriptor){status.textContent='Falta imagen de referencia.';return;}
+      const detect2=await faceapi.detectSingleFace(snap,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+      if(!detect2){status.textContent='No se detectó rostro en la captura.';return;}
+      const dist=faceapi.euclideanDistance(refDescriptor,detect2.descriptor);
+      const pct=Math.round((1-dist)*100);
+      status.textContent=`Parecido: ${pct}% (distancia: ${dist.toFixed(2)})`;
+    });
+
+    window.addEventListener('beforeunload',()=>{if(stream)stream.getTracks().forEach(t=>t.stop());});
+  </script>
+</body>
+</html>
+```
