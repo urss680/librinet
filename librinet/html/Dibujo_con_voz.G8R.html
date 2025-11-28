@@ -1,0 +1,112 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dibujo con voz</title>
+  <style>
+    html,body{margin:0;height:100%;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:Arial,Helvetica,sans-serif}
+    canvas{background:#000;border:2px solid #0ff;cursor:crosshair}
+    button{padding:8px 14px;margin:6px;font-size:14px;border:none;border-radius:4px;background:#0ff;color:#000;font-weight:bold;cursor:pointer}
+    button:hover{background:#0cc}
+    #status{margin-top:6px;font-size:13px;color:#0f0}
+  </style>
+</head>
+<body>
+  <canvas id="c" width="700" height="500"></canvas>
+  <div>
+    <button id="btn">🎤 Activar comandos de voz</button>
+    <button onclick="ctx.clearRect(0,0,c.width,c.height)">🗑 Borrar lienzo</button>
+  </div>
+  <div id="status">Presiona el botón y habla: «color rojo», «grosor 5», «circulo 100 100 40», «linea 0 0 200 200», «rect 50 50 80 120» o «tri 200 200 250 300 150 300»</div>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#0ff';
+    ctx.fillStyle = '#0ff';
+    ctx.lineWidth = 2;
+
+    const colores = {
+      negro:'#000',blanco:'#fff',rojo:'#f00',verde:'#0f0',azul:'#00f',
+      amarillo:'#ff0',cian:'#0ff',magenta:'#f0f',naranja:'#ffa500'
+    };
+
+    const btn = document.getElementById('btn');
+    const status = document.getElementById('status');
+    let escuchando = false;
+    let recognition;
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      status.textContent = 'Tu navegador no soporta reconocimiento de voz.';
+      btn.disabled = true;
+    } else {
+      const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new Speech();
+      recognition.lang = 'es-ES';
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
+      recognition.onresult = e => {
+        const transcript = e.results[e.results.length-1][0].transcript.trim().toLowerCase();
+        status.textContent = 'Escuchado: «' + transcript + '»';
+        procesarComando(transcript);
+      };
+      recognition.onerror = e => status.textContent = 'Error: ' + e.error;
+      recognition.onend = () => {
+        escuchando = false;
+        btn.textContent = '🎤 Activar comandos de voz';
+        status.textContent = 'Micrófono apagado.';
+      };
+    }
+
+    btn.onclick = () => {
+      if (escuchando) {
+        recognition.stop();
+      } else {
+        recognition.start();
+        escuchando = true;
+        btn.textContent = '⏹ Detener voz';
+        status.textContent = 'Escuchando...';
+      }
+    };
+
+    function procesarComando(txt) {
+      const partes = txt.split(/\s+/);
+      const cmd = partes[0];
+      if (cmd === 'color') {
+        const c = partes[1];
+        if (colores[c]) {
+          ctx.strokeStyle = colores[c];
+          ctx.fillStyle = colores[c];
+        }
+      } else if (cmd === 'grosor') {
+        ctx.lineWidth = parseInt(partes[1]) || 2;
+      } else if (cmd === 'circulo') {
+        const [x,y,r] = [1,2,3].map(i => parseInt(partes[i]) || 0);
+        ctx.beginPath();
+        ctx.arc(x,y,r,0,Math.PI*2);
+        ctx.stroke();
+      } else if (cmd === 'linea') {
+        const [x1,y1,x2,y2] = [1,2,3,4].map(i => parseInt(partes[i]) || 0);
+        ctx.beginPath();
+        ctx.moveTo(x1,y1);
+        ctx.lineTo(x2,y2);
+        ctx.stroke();
+      } else if (cmd === 'rect') {
+        const [x,y,w,h] = [1,2,3,4].map(i => parseInt(partes[i]) || 0);
+        ctx.strokeRect(x,y,w,h);
+      } else if (cmd === 'tri') {
+        const [x1,y1,x2,y2,x3,y3] = [1,2,3,4,5,6].map(i => parseInt(partes[i]) || 0);
+        ctx.beginPath();
+        ctx.moveTo(x1,y1);
+        ctx.lineTo(x2,y2);
+        ctx.lineTo(x3,y3);
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+  </script>
+</body>
+</html>
+```
