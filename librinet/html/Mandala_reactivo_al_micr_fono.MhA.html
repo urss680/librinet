@@ -1,0 +1,91 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mandala reactivo al micrófono</title>
+    <style>
+        body{margin:0;background:#000;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;}
+        canvas{background:#000;}
+    </style>
+</head>
+<body>
+    <canvas id="mandala"></canvas>
+    <script>
+        const canvas=document.getElementById('mandala');
+        const ctx=canvas.getContext('2d');
+        canvas.width=window.innerWidth;
+        canvas.height=window.innerHeight;
+        const cx=canvas.width/2,cy=canvas.height/2;
+
+        let audioCtx,analyser,dataArray,bufferLength;
+
+        navigator.mediaDevices.getUserMedia({audio:true})
+            .then(stream=>{
+                audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+                analyser=audioCtx.createAnalyser();
+                analyser.fftSize=1024;
+                const source=audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                bufferLength=analyser.frequencyBinCount;
+                dataArray=new Uint8Array(bufferLength);
+                draw();
+            })
+            .catch(err=>alert('Micrófono no accesible: '+err));
+
+        function draw(){
+            requestAnimationFrame(draw);
+            if(!analyser)return;
+            analyser.getByteFrequencyData(dataArray);
+
+            // Volumen total
+            const level=dataArray.reduce((a,b)=>a+b,0)/bufferLength/255;
+
+            // Frecuencias bajas, medias y altas
+            const low=dataArray.slice(0,bufferLength/3).reduce((a,b)=>a+b,0)/(bufferLength/3)/255;
+            const mid=dataArray.slice(bufferLength/3,2*bufferLength/3).reduce((a,b)=>a+b,0)/(bufferLength/3)/255;
+            const high=dataArray.slice(2*bufferLength/3).reduce((a,b)=>a+b,0)/(bufferLength/3)/255;
+
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+
+            const petals=3+Math.floor(low*12);          // bajas → número de pétalos
+            const layers=2+Math.floor(mid*8);       // medias → capas
+            const twist=Date.now()*0.0002*(1+high);   // altas → velocidad de giro
+            const maxRadius=Math.min(cx,cy)*0.9;
+
+            ctx.save();
+            ctx.translate(cx,cy);
+            ctx.rotate(twist);
+
+            for(let l=0;l<layers;l++){
+                const radius=(l+1)*maxRadius/layers;
+                const hue=(low*360+mid*180+high*90+Date.now()*0.1)%360;
+                const sat=50+mid*50;
+                const light=30+level*50;
+                ctx.strokeStyle=`hsla(${hue},${sat}%,${light}%,${1-l/layers})`;
+                ctx.lineWidth=1+level*6;
+
+                ctx.beginPath();
+                for(let i=0;i<=360;i++){
+                    const angle=i*Math.PI/180;
+                    const petal=1+0.4*Math.sin(petals*angle+l+low*Math.PI);
+                    const noise=1+0.3*Math.sin(i*0.1+Date.now()*0.005)*level;
+                    const r=radius*petal*noise;
+                    const x=r*Math.cos(angle);
+                    const y=r*Math.sin(angle);
+                    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        window.addEventListener('resize',()=>{
+            canvas.width=window.innerWidth;
+            canvas.height=window.innerHeight;
+        });
+    </script>
+</body>
+</html>
+```
