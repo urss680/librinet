@@ -1,0 +1,125 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Analizador de Espectro de Audio</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #0f0;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    canvas {
+      background: #111;
+      border: 1px solid #0f0;
+      margin-top: 10px;
+    }
+    input[type="file"] {
+      margin: 10px;
+    }
+    #timeBar {
+      width: 800px;
+      height: 10px;
+      background: #222;
+      margin-top: 10px;
+      position: relative;
+      border: 1px solid #0f0;
+    }
+    #timeProgress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      background: #0f0;
+      width: 0%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Analizador de Espectro</h1>
+  <input type="file" id="audioFile" accept="audio/*">
+  <canvas id="spectrum"></canvas>
+  <div id="timeBar">
+    <div id="timeProgress"></div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('audioFile');
+    const canvas = document.getElementById('spectrum');
+    const ctx = canvas.getContext('2d');
+    const timeProgress = document.getElementById('timeProgress');
+    canvas.width = 800;
+    canvas.height = 400;
+
+    let audioContext, analyser, source, dataArray, audio;
+
+    fileInput.addEventListener('change', handleFile, false);
+
+    function handleFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const url = URL.createObjectURL(file);
+      if (audioContext) audioContext.close();
+
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+
+      audio = new Audio(url);
+      audio.crossOrigin = "anonymous";
+      source = audioContext.createMediaElementSource(audio);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      const bufferLength = analyser.frequencyBinCount;
+      dataArray = new Uint8Array(bufferLength);
+
+      audio.play();
+      draw();
+      updateTimeBar();
+    }
+
+    function draw() {
+      requestAnimationFrame(draw);
+      if (!analyser) return;
+
+      analyser.getByteFrequencyData(dataArray);
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const barWidth = (canvas.width / dataArray.length) * 2.5;
+      let barHeight;
+      let x = 0;
+
+      for (let i = 0; i < dataArray.length; i++) {
+        barHeight = dataArray[i] / 255 * canvas.height;
+
+        const r = barHeight + (25 * (i / dataArray.length));
+        const g = 250 * (i / dataArray.length);
+        const b = 50;
+
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+
+        x += barWidth + 1;
+      }
+    }
+
+    function updateTimeBar() {
+      if (!audio) return;
+      requestAnimationFrame(updateTimeBar);
+      const progress = (audio.currentTime / 10) * 100; // 10 segundos
+      timeProgress.style.width = Math.min(progress, 100) + "%";
+    }
+  </script>
+</body>
+</html>
+```
