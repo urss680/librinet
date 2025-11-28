@@ -1,0 +1,84 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>¿Cuánto te pareces?</title>
+  <style>
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;padding:20px}
+    h1{margin-bottom:10px}
+    input[type=file]{margin:10px 5px}
+    .row{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .col{text-align:center}
+    img{max-width:300px;max-height:300px;border:2px solid #0ff;border-radius:8px;background:#000;display:none}
+    button{padding:10px 18px;border:none;border-radius:4px;background:#0ff;color:#000;font-weight:bold;cursor:pointer;margin:10px 0}
+    button:disabled{background:#555;color:#888;cursor:not-allowed}
+    #status{margin-top:10px;font-size:16px}
+  </style>
+</head>
+<body>
+  <h1>¿Cuánto te pareces?</h1>
+  <div>
+    <input type="file" id="img1" accept="image/*"/>
+    <input type="file" id="img2" accept="image/*"/>
+  </div>
+  <div class="row">
+    <div class="col">
+      <h3>Imagen 1</h3>
+      <img id="pic1" alt="imagen1"/>
+    </div>
+    <div class="col">
+      <h3>Imagen 2</h3>
+      <img id="pic2" alt="imagen2"/>
+    </div>
+  </div>
+  <button id="compare" disabled>Comparar</button>
+  <div id="status">Sube ambas imágenes.</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.min.js"></script>
+  <script>
+    const img1=document.getElementById('img1');
+    const img2=document.getElementById('img2');
+    const pic1=document.getElementById('pic1');
+    const pic2=document.getElementById('pic2');
+    const compareBtn=document.getElementById('compare');
+    const status=document.getElementById('status');
+    let desc1=null,desc2=null;
+
+    async function loadModels(){
+      await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+      await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+    }
+    loadModels().then(()=>status.textContent='Modelos listos. Sube ambas imágenes.');
+
+    function handleFile(input,imgEl,store){
+      return async(e)=>{
+        const file=e.target.files[0];
+        if(!file)return;
+        imgEl.src=URL.createObjectURL(file);
+        imgEl.style.display='block';
+        imgEl.onload=async()=>{
+          const detect=await faceapi.detectSingleFace(imgEl,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+          if(!detect){status.textContent='No se encontró rostro en una de las imágenes.';return;}
+          if(store===1)desc1=detect.descriptor;
+          if(store===2)desc2=detect.descriptor;
+          if(desc1&&desc2){compareBtn.disabled=false;status.textContent='Ambas caras detectadas. Presiona "Comparar".';}
+        };
+      };
+    }
+
+    img1.addEventListener('change',handleFile(img1,pic1,1));
+    img2.addEventListener('change',handleFile(img2,pic2,2));
+
+    compareBtn.addEventListener('click',()=>{
+      if(!desc1||!desc2)return;
+      const dist=faceapi.euclideanDistance(desc1,desc2);
+      const pct=Math.round((1-dist)*100);
+      status.textContent=`Parecido: ${pct}% (distancia: ${dist.toFixed(2)})`;
+    });
+  </script>
+</body>
+</html>
+```
