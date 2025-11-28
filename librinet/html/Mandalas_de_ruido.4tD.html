@@ -1,0 +1,101 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mandalas de ruido</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            background: radial-gradient(circle, #0a0a0a 0%, #000 100%);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="mandala"></canvas>
+
+    <script>
+        const canvas = document.getElementById('mandala');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        let audioCtx, analyser, dataArray, bufferLength;
+
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 512;
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                draw();
+            })
+            .catch(err => {
+                alert('No se pudo acceder al micrófono: ' + err);
+            });
+
+        function draw() {
+            requestAnimationFrame(draw);
+            if (!analyser) return;
+            analyser.getByteFrequencyData(dataArray);
+
+            // Promedio de volumen
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+            const level = sum / bufferLength / 255;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const petals = 6;
+            const layers = 8;
+            const maxRadius = Math.min(centerX, centerY) * 0.9;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(Date.now() * 0.0001);
+
+            for (let l = 0; l < layers; l++) {
+                const radius = (l + 1) * maxRadius / layers;
+                const hue = (l * 60 + Date.now() * 0.05) % 360;
+                ctx.strokeStyle = `hsla(${hue}, 100%, ${50 + level * 40}%, ${1 - l / layers})`;
+                ctx.lineWidth = 2 + level * 5;
+
+                ctx.beginPath();
+                for (let i = 0; i <= 360; i++) {
+                    const angle = i * Math.PI / 180;
+                    const petalFactor = 1 + 0.3 * Math.sin(petals * angle + l);
+                    const noiseFactor = 1 + level * 0.5 * Math.sin(i * 0.1 + Date.now() * 0.002);
+                    const r = radius * petalFactor * noiseFactor;
+                    const x = r * Math.cos(angle);
+                    const y = r * Math.sin(angle);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
+```
