@@ -1,0 +1,95 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dibujo con voz y barras de sonido</title>
+  <style>
+    html,body{margin:0;height:100%;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:Arial,Helvetica,sans-serif}
+    canvas{background:#000;border:2px solid #0ff;cursor:crosshair}
+    button{padding:8px 14px;margin:6px;font-size:14px;border:none;border-radius:4px;background:#0ff;color:#000;font-weight:bold;cursor:pointer}
+    button:hover{background:#0cc}
+    #status{margin-top:6px;font-size:13px;color:#0f0}
+    #bars{display:flex;align-items:flex-end;height:60px;margin-top:8px}
+    .bar{width:4px;background:#0ff;margin:0 1px;min-height:2px;transition:height .05s}
+  </style>
+</head>
+<body>
+  <canvas id="c" width="700" height="500"></canvas>
+  <button id="btn">🎤 Activar micrófono</button>
+  <button onclick="ctx.clearRect(0,0,c.width,c.height)">🗑 Borrar lienzo</button>
+  <div id="bars"></div>
+  <div id="status">Presiona el botón para activar el micrófono y ver las barras de sonido en directo</div>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#0ff';
+    ctx.fillStyle = '#0ff';
+    ctx.lineWidth = 2;
+
+    const btn = document.getElementById('btn');
+    const status = document.getElementById('status');
+    const bars = document.getElementById('bars');
+    let audioCtx, analyser, dataArray, stream;
+    let escuchando = false;
+
+    function crearBarras(n=60){
+      bars.innerHTML='';
+      for(let i=0;i<n;i++){
+        const b=document.createElement('div');
+        b.className='bar';
+        bars.appendChild(b);
+      }
+    }
+    crearBarras();
+
+    async function iniciarMicrofono(){
+      try{
+        stream = await navigator.mediaDevices.getUserMedia({audio:true});
+        audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 128;
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        source.connect(analyser);
+        animarBarras();
+      }catch(err){
+        status.textContent='Error al acceder al micrófono: '+err;
+      }
+    }
+
+    function animarBarras(){
+      requestAnimationFrame(animarBarras);
+      analyser.getByteFrequencyData(dataArray);
+      const elementos = bars.children;
+      const step = Math.floor(dataArray.length/elementos.length);
+      for(let i=0;i<elementos.length;i++){
+        const valor = dataArray[i*step]/255;
+        elementos[i].style.height = Math.max(2,valor*60)+'px';
+      }
+    }
+
+    btn.onclick = () => {
+      if(escuchando){
+        if(stream){
+          stream.getTracks().forEach(t=>t.stop());
+        }
+        if(audioCtx) audioCtx.close();
+        escuchando=false;
+        btn.textContent='🎤 Activar micrófono';
+        status.textContent='Micrófono apagado.';
+        bars.innerHTML='';
+        crearBarras();
+      }else{
+        iniciarMicrofono();
+        escuchando=true;
+        btn.textContent='⏹ Detener micrófono';
+        status.textContent='Micrófono activado – mostrando barras de sonido en directo';
+      }
+    };
+  </script>
+</body>
+</html>
+```
