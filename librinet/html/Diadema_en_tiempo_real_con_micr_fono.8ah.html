@@ -1,0 +1,61 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Diadema en tiempo real con micrófono</title>
+  <style>
+    html,body{margin:0;height:100%;background:#111;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    canvas{width:100vw;height:100vh;display:block}
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    let audioCtx, analyser, dataArray, bufferLength, source;
+
+    function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+    addEventListener('resize',resize);resize();
+
+    navigator.mediaDevices.getUserMedia({audio:true})
+      .then(stream=>{
+        audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        draw();
+      })
+      .catch(err=>alert('Micrófono no disponible'));
+
+    function draw(){
+      requestAnimationFrame(draw);
+      analyser.getByteFrequencyData(dataArray);
+      ctx.fillStyle='#000';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      const centerX = canvas.width/2;
+      const centerY = canvas.height/2;
+      const radiusBase = Math.min(centerX,centerY)*0.3;
+      const barCount = bufferLength;
+      for(let i=0;i<barCount;i++){
+        const value = dataArray[i];
+        const percent = value/255;
+        const angle = (i/barCount)*Math.PI*2;
+        const barHeight = percent*radiusBase;
+        ctx.save();
+        ctx.translate(centerX,centerY);
+        ctx.rotate(angle);
+        const hue = (i/barCount)*360;
+        ctx.fillStyle=`hsl(${hue},100%,50%)`;
+        ctx.fillRect(radiusBase, -2, barHeight, 4);
+        ctx.restore();
+      }
+    }
+  </script>
+</body>
+</html>
+```
