@@ -1,0 +1,103 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mandala reactivo al micrófono</title>
+    <style>
+        body{margin:0;background:#000;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;}
+        canvas{background:#000;}
+        #noiseBar{position:fixed;left:0;top:0;width:30px;height:100vh;background:#111;}
+        #noiseBar::after{content:'';position:absolute;bottom:0;left:0;width:100%;background:#0f0;transition:height .05s linear;}
+    </style>
+</head>
+<body>
+    <div id="noiseBar"></div>
+    <canvas id="mandala"></canvas>
+    <script>
+        const canvas=document.getElementById('mandala');
+        const ctx=canvas.getContext('2d');
+        canvas.width=window.innerWidth;
+        canvas.height=window.innerHeight;
+        const cx=canvas.width/2,cy=canvas.height/2;
+        const bar=document.getElementById('noiseBar');
+
+        let audioCtx,analyser,dataArray,bufferLength;
+
+        navigator.mediaDevices.getUserMedia({audio:true})
+            .then(stream=>{
+                audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+                analyser=audioCtx.createAnalyser();
+                analyser.fftSize=1024;
+                const source=audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                bufferLength=analyser.frequencyBinCount;
+                dataArray=new Uint8Array(bufferLength);
+                draw();
+            })
+            .catch(err=>alert('Micrófono no accesible: '+err));
+
+        function draw(){
+            requestAnimationFrame(draw);
+            if(!analyser)return;
+            analyser.getByteFrequencyData(dataArray);
+
+            const level=dataArray.reduce((a,b)=>a+b,0)/bufferLength/255;
+            const low=dataArray.slice(0,bufferLength/3).reduce((a,b)=>a+b,0)/(bufferLength/3)/255;
+            const mid=dataArray.slice(bufferLength/3,2*bufferLength/3).reduce((a,b)=>a+b,0)/(bufferLength/3)/255;
+            const high=dataArray.slice(2*bufferLength/3).reduce((a,b)=>a+b,0)/(bufferLength/3)/255;
+
+            bar.style.setProperty('--level',level);
+            bar.style.setProperty('--low',low);
+            bar.style.setProperty('--mid',mid);
+            bar.style.setProperty('--high',high);
+
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+
+            const petals=3+Math.floor(low*12);
+            const layers=2+Math.floor(mid*8);
+            const twist=Date.now()*0.0002*(1+high);
+            const maxRadius=Math.min(cx,cy)*0.9*(0.3+level*0.7);
+
+            ctx.save();
+            ctx.translate(cx,cy);
+            ctx.rotate(twist);
+
+            for(let l=0;l<layers;l++){
+                const radius=(l+1)*maxRadius/layers;
+                const hue=(low*360+mid*180+high*90+Date.now()*0.1)%360;
+                const sat=50+mid*50;
+                const light=30+level*50;
+                ctx.strokeStyle=`hsla(${hue},${sat}%,${light}%,${1-l/layers})`;
+                ctx.lineWidth=1+level*6;
+
+                ctx.beginPath();
+                for(let i=0;i<=360;i++){
+                    const angle=i*Math.PI/180;
+                    const petal=1+0.4*Math.sin(petals*angle+l+low*Math.PI);
+                    const noise=1+0.3*Math.sin(i*0.1+Date.now()*0.005)*level;
+                    const r=radius*petal*noise;
+                    const x=r*Math.cos(angle);
+                    const y=r*Math.sin(angle);
+                    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            bar.style.setProperty('--h',`${level*100}%`);
+            bar.style.setProperty('--bg',`hsl(${level*120},100%,50%)`);
+        }
+
+        window.addEventListener('resize',()=>{
+            canvas.width=window.innerWidth;
+            canvas.height=window.innerHeight;
+        });
+    </script>
+    <style>
+        #noiseBar::after{height:var(--h,0%);background:var(--bg,#0f0);}
+    </style>
+</body>
+</html>
+```
