@@ -1,0 +1,152 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>¿Cuánto te pareces?</title>
+  <style>
+    :root{
+      --glass:linear-gradient(120deg,rgba(255,255,255,.1),rgba(255,255,255,.05));
+      --radius:18px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
+    body{
+      min-height:100vh;
+      background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+      color:#fff;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:20px;
+    }
+    .card{
+      width:100%;
+      max-width:700px;
+      background:var(--glass);
+      backdrop-filter:blur(12px);
+      border-radius:var(--radius);
+      box-shadow:0 20px 40px rgba(0,0,0,.4);
+      padding:40px;
+      text-align:center;
+    }
+    h1{
+      font-size:2.2rem;
+      margin-bottom:8px;
+      background:linear-gradient(90deg,#00dbde,#fc00ff);
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
+    .subtitle{font-size:1rem;opacity:.7;margin-bottom:30px}
+    .dropzone{
+      position:relative;
+      width:100%;
+      height:160px;
+      border:2px dashed rgba(255,255,255,.3);
+      border-radius:var(--radius);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      cursor:pointer;
+      transition:.3s;
+      margin-bottom:20px;
+      overflow:hidden;
+    }
+    .dropzone:hover{border-color:#00dbde;background:linear-gradient(135deg,rgba(0,219,222,.1),rgba(252,0,255,.1))}
+    .dropzone input[type=file]{position:absolute;width:100%;height:100%;opacity:0;cursor:pointer}
+    .dropzone img{width:100%;height:100%;object-fit:cover;border-radius:var(--radius);display:none}
+    .preview img{display:block}
+    .row{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+    .col{flex:1 1 260px}
+    button{
+      margin-top:25px;
+      padding:14px 36px;
+      border:none;
+      border-radius:50px;
+      background:linear-gradient(90deg,#00dbde,#fc00ff);
+      color:#fff;
+      font-size:1rem;
+      font-weight:600;
+      cursor:pointer;
+      transition:.3s;
+      box-shadow:0 6px 20px rgba(0,219,222,.3)
+    }
+    button:disabled{background:#333;color:#666;box-shadow:none;cursor:not-allowed}
+    button:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(252,0,255,.45)}
+    #status{margin-top:20px;font-size:1.1rem;letter-spacing:.5px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>¿Cuánto te pareces?</h1>
+    <p class="subtitle">Sube dos fotos y descubre el parecido facial</p>
+
+    <div class="row">
+      <div class="col">
+        <div class="dropzone" id="zone1">
+          <input type="file" id="img1" accept="image/*"/>
+          <img id="pic1" alt="imagen1"/>
+          <span>Arrastra o selecciona imagen 1</span>
+        </div>
+      </div>
+      <div class="col">
+        <div class="dropzone" id="zone2">
+          <input type="file" id="img2" accept="image/*"/>
+          <img id="pic2" alt="imagen2"/>
+          <span>Arrastra o selecciona imagen 2</span>
+        </div>
+      </div>
+    </div>
+
+    <button id="compare" disabled>Comparar</button>
+    <div id="status">Esperando imágenes…</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.min.js"></script>
+  <script>
+    const img1=document.getElementById('img1');
+    const img2=document.getElementById('img2');
+    const pic1=document.getElementById('pic1');
+    const pic2=document.getElementById('pic2');
+    const compareBtn=document.getElementById('compare');
+    const status=document.getElementById('status');
+    let desc1=null,desc2=null;
+
+    async function loadModels(){
+      await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+      await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+    }
+    loadModels().then(()=>status.textContent='Modelos listos. Sube ambas imágenes.');
+
+    function handleFile(input,imgEl,store){
+      return async(e)=>{
+        const file=e.target.files[0];
+        if(!file)return;
+        imgEl.src=URL.createObjectURL(file);
+        imgEl.style.display='block';
+        imgEl.parentElement.classList.add('preview');
+        imgEl.onload=async()=>{
+          const detect=await faceapi.detectSingleFace(imgEl,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+          if(!detect){status.textContent='No se encontró rostro en una de las imágenes.';return;}
+          if(store===1)desc1=detect.descriptor;
+          if(store===2)desc2=detect.descriptor;
+          if(desc1&&desc2){compareBtn.disabled=false;status.textContent='Ambas caras detectadas. Presiona "Comparar".';}
+        };
+      };
+    }
+
+    img1.addEventListener('change',handleFile(img1,pic1,1));
+    img2.addEventListener('change',handleFile(img2,pic2,2));
+
+    compareBtn.addEventListener('click',()=>{
+      if(!desc1||!desc2)return;
+      const dist=faceapi.euclideanDistance(desc1,desc2);
+      const pct=Math.round((1-dist)*100);
+      status.textContent=`Parecido: ${pct}% (distancia: ${dist.toFixed(2)})`;
+    });
+  </script>
+</body>
+</html>
+```
