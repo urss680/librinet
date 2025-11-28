@@ -1,0 +1,105 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mandala interactivo</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        svg {
+            width: 90vmin;
+            height: 90vmin;
+            cursor: pointer;
+        }
+        .petalo {
+            fill: #ff7f50;
+            stroke: #fff;
+            stroke-width: 1.5;
+            transform-origin: center;
+            transition: fill .3s;
+        }
+        .petalo:hover {
+            fill: #ffd700;
+        }
+        .centro {
+            fill: #4b0082;
+            stroke: #fff;
+            stroke-width: 2;
+        }
+    </style>
+</head>
+<body>
+
+<svg viewBox="0 0 400 400">
+    <defs>
+        <!-- Patrón de rayos para el fondo -->
+        <pattern id="rayos" patternUnits="userSpaceOnUse" width="400" height="400">
+            <g stroke="#ffffff20" stroke-width="1">
+                <line x1="200" y1="200" x2="200" y2="0"/>
+                <line x1="200" y1="200" x2="200" y2="400"/>
+                <line x1="200" y1="200" x2="0" y2="200"/>
+                <line x1="200" y1="200" x2="400" y2="200"/>
+                <line x1="200" y1="200" x2="343" y2="57"/>
+                <line x1="200" y1="200" x2="57" y2="343"/>
+                <line x1="200" y1="200" x2="343" y2="343"/>
+                <line x1="200" y1="200" x2="57" y2="57"/>
+            </g>
+        </pattern>
+    </defs>
+
+    <!-- Fondo con rayos -->
+    <rect width="100%" height="100%" fill="url(#rayos)"/>
+
+    <!-- Círculo guía (opcional) -->
+    <circle cx="200" cy="200" r="180" fill="none" stroke="#ffffff30" stroke-width="1"/>
+
+    <!-- Pétalos -->
+    <g id="petalos"></g>
+
+    <!-- Centro -->
+    <circle class="centro" cx="200" cy="200" r="40"/>
+</svg>
+
+<script>
+    const svg = document.querySelector('svg');
+    const petalos = document.getElementById('petalos');
+    const numPetalo = 12;
+    const radio = 120;
+
+    for (let i = 0; i < numPetalo; i++) {
+        const ang = (i * 360 / numPetalo) * Math.PI / 180;
+        const x = 200 + radio * Math.cos(ang);
+        const y = 200 + radio * Math.sin(ang);
+
+        const el = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+        el.setAttribute("cx", x);
+        el.setAttribute("cy", y);
+        el.setAttribute("rx", 30);
+        el.setAttribute("ry", 70);
+        el.setAttribute("class", "petalo");
+        el.setAttribute("transform", `rotate(${i * 360 / numPetalo}, 200, 200)`);
+        petalos.appendChild(el);
+    }
+
+    // Cambiar colores al hacer clic
+    let hue = 0;
+    svg.addEventListener('click', () => {
+        hue = (hue + 45) % 360;
+        document.querySelectorAll('.petalo').forEach(p => {
+            p.setAttribute('fill', `hsl(${hue}, 80%, 65%)`);
+        });
+        document.querySelector('.centro').setAttribute('fill', `hsl(${(hue + 180) % 360}, 80%, 40%)`);
+    });
+</script>
+
+</body>
+</html>
+```
