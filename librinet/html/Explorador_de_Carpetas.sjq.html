@@ -1,0 +1,116 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Explorador de Carpetas</title>
+<style>
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#111;color:#eee;display:flex;flex-direction:column;height:100vh}
+    header{background:#222;padding:10px;display:flex;gap:10px}
+    header input{flex:1;padding:8px;border:none;border-radius:4px}
+    header button{padding:8px 14px;border:none;border-radius:4px;background:#0af;color:#fff;cursor:pointer}
+    header button:hover{background:#08c}
+    main{flex:1;display:flex}
+    nav{width:250px;background:#1a1a1a;overflow-y:auto;border-right:1px solid #333}
+    nav ul{list-style:none;padding:0;margin:0}
+    nav li{padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px}
+    nav li:hover{background:#222}
+    nav li.folder::before{content:"📁"}
+    nav li.file::before{content:"📄"}
+    section#content{flex:1;padding:15px;overflow-y:auto}
+    section#content h2{margin-top:0}
+    section#content ul{list-style:none;padding:0}
+    section#content li{padding:6px 0;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center}
+    section#content li span{cursor:pointer}
+    section#content li span:hover{text-decoration:underline}
+    section#content button{margin-left:6px;padding:4px 8px;border:none;border-radius:3px;background:#e55;color:#fff;cursor:pointer;font-size:12px}
+    section#content button.rename{background:#5a5}
+    footer{background:#222;padding:10px;text-align:center;font-size:12px;color:#888}
+</style>
+</head>
+<body>
+
+<header>
+    <input id="pathInput" type="text" placeholder="Carpeta actual (por defecto: C:\)">
+    <button onclick="openPath()">Abrir</button>
+    <button onclick="createFolder()">Nueva Carpeta</button>
+    <button onclick="createFile()">Nuevo Archivo</button>
+</header>
+
+<main>
+    <nav id="tree"></nav>
+    <section id="content">
+        <h2 id="currentDir">C:\</h2>
+        <ul id="fileList"></ul>
+    </section>
+</main>
+
+<footer>Explorador de Carpetas ‑ Control total sin salir del navegador</footer>
+
+<script>
+    const { ipcRenderer } = require('electron');
+    let currentPath = 'C:\\';
+
+    function renderPath(path){
+        currentPath = path;
+        document.getElementById('currentDir').textContent = path;
+        document.getElementById('pathInput').value = path;
+        ipcRenderer.send('list-dir', path);
+    }
+    function openPath(){
+        const p = document.getElementById('pathInput').value || 'C:\\';
+        renderPath(p);
+    }
+    function createFolder(){
+        const name = prompt('Nombre de la carpeta:');
+        if(name) ipcRenderer.send('create-folder', {path:currentPath, name});
+    }
+    function createFile(){
+        const name = prompt('Nombre del archivo:');
+        if(name) ipcRenderer.send('create-file', {path:currentPath, name});
+    }
+    function deleteItem(name){
+        if(confirm('¿Borrar '+name+'?')) ipcRenderer.send('delete', {path:currentPath, name});
+    }
+    function renameItem(oldName){
+        const n = prompt('Renombrar:', oldName);
+        if(n && n!==oldName) ipcRenderer.send('rename', {path:currentPath, oldName, newName:n});
+    }
+    function openFolder(name){
+        renderPath(currentPath.endsWith('\\') ? currentPath+name : currentPath+'\\'+name);
+    }
+
+    ipcRenderer.on('list-dir-reply', (e, items)=>{
+        const list = document.getElementById('fileList');
+        list.innerHTML = '';
+        items.forEach(it=>{
+            const li = document.createElement('li');
+            const span = document.createElement('span');
+            span.textContent = it.name;
+            if(it.type==='folder'){
+                span.onclick = ()=>openFolder(it.name);
+                li.className = 'folder';
+            } else {
+                li.className = 'file';
+            }
+            li.appendChild(span);
+            const del = document.createElement('button');
+            del.textContent = 'Borrar';
+            del.onclick = ()=>deleteItem(it.name);
+            const ren = document.createElement('button');
+            ren.textContent = 'Renombrar';
+            ren.className = 'rename';
+            ren.onclick = ()=>renameItem(it.name);
+            li.appendChild(ren);
+            li.appendChild(del);
+            list.appendChild(li);
+        });
+    });
+    ipcRenderer.on('operation-complete', ()=>renderPath(currentPath));
+
+    renderPath(currentPath);
+</script>
+
+</body>
+</html>
+```
