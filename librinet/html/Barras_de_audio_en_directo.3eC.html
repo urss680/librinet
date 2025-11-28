@@ -1,0 +1,76 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Barras de audio en directo</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0a0a0a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .bars {
+            display: flex;
+            gap: 4px;
+            height: 200px;
+            align-items: flex-end;
+        }
+        .bar {
+            width: 20px;
+            background: linear-gradient(to top, #00f2fe, #4facfe);
+            border-radius: 4px 4px 0 0;
+            transform-origin: bottom;
+            transition: height .05s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="bars" id="bars"></div>
+
+    <script>
+        const barCount = 64;
+        const barsContainer = document.getElementById('bars');
+        const bars = [];
+
+        // Crear barras
+        for (let i = 0; i < barCount; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            barsContainer.appendChild(bar);
+            bars.push(bar);
+        }
+
+        // Obtener micrófono
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 128;
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                function updateBars() {
+                    analyser.getByteFrequencyData(dataArray);
+                    bars.forEach((bar, i) => {
+                        const height = (dataArray[i] / 255) * 200;
+                        bar.style.height = `${height}px`;
+                    });
+                    requestAnimationFrame(updateBars);
+                }
+                updateBars();
+            })
+            .catch(err => {
+                alert('No se pudo acceder al micrófono: ' + err);
+            });
+    </script>
+</body>
+</html>
+```
