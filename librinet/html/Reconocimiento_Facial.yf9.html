@@ -1,0 +1,123 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reconocimiento Facial</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    video, canvas {
+      border: 2px solid #0ff;
+      border-radius: 8px;
+      background: #000;
+    }
+    button {
+      margin: 10px 5px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      background: #0ff;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #555;
+      color: #888;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reconocimiento Facial</h1>
+  <video id="video" width="640" height="480" autoplay muted></video>
+  <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+  <div>
+    <button id="startBtn">Iniciar cámara</button>
+    <button id="captureBtn" disabled>Capturar rostro</button>
+  </div>
+  <div id="status">Presiona "Iniciar cámara" para comenzar.</div>
+
+  <!-- face-api.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.min.js"></script>
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const status = document.getElementById('status');
+
+    let stream;
+    let detectInterval;
+
+    // Cargar modelos
+    async function loadModels() {
+      status.textContent = 'Cargando modelos...';
+      await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+      status.textContent = 'Modelos cargados.';
+    }
+
+    // Iniciar cámara
+    startBtn.addEventListener('click', async () => {
+      await loadModels();
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        status.textContent = 'Cámara activa. Detectando rostros...';
+        startBtn.disabled = true;
+        captureBtn.disabled = false;
+        detectFaces();
+      };
+    });
+
+    // Detección continua
+    function detectFaces() {
+      detectInterval = setInterval(async () => {
+        ctx.drawImage(video, 0, 0);
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks();
+        // Dibujar resultados
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0);
+        faceapi.draw.drawDetections(canvas, detections);
+        faceapi.draw.drawFaceLandmarks(canvas, detections);
+      }, 100);
+    }
+
+    // Capturar imagen
+    captureBtn.addEventListener('click', () => {
+      clearInterval(detectInterval);
+      ctx.drawImage(video, 0, 0);
+      status.textContent = 'Imagen capturada. Puedes guardarla o reiniciar.';
+      captureBtn.disabled = true;
+    });
+
+    // Limpiar al salir
+    window.addEventListener('beforeunload', () => {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    });
+  </script>
+</body>
+</html>
+```
