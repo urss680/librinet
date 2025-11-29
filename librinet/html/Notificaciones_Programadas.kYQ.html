@@ -1,0 +1,90 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Notificaciones Programadas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; background:#f2f2f2; }
+    h1 { text-align:center; }
+    form { background:#fff; padding:1.5rem; border-radius:8px; max-width:400px; margin:auto; box-shadow:0 2px 6px rgba(0,0,0,.15); }
+    label { display:block; margin:.5rem 0 .2rem; font-weight:bold; }
+    input, select, button { width:100%; padding:.6rem; font-size:1rem; margin-bottom:.8rem; border-radius:4px; border:1px solid #ccc; }
+    button { background:#0077ff; color:#fff; border:none; cursor:pointer; }
+    button:hover { background:#005ccc; }
+    #lista { margin-top:1.5rem; max-width:400px; margin-left:auto; margin-right:auto; }
+    .noti { background:#fff; padding:.8rem; border-radius:4px; margin-bottom:.5rem; display:flex; justify-content:space-between; align-items:center; }
+  </style>
+</head>
+<body>
+
+  <h1>Notificaciones Programadas</h1>
+
+  <form id="formulario">
+    <label>Título</label>
+    <input type="text" id="titulo" required>
+    <label>Cuerpo</label>
+    <input type="text" id="cuerpo" required>
+    <label>Programar en</label>
+    <select id="tiempo">
+      <option value="5">5 segundos</option>
+      <option value="10">10 segundos</option>
+      <option value="30">30 segundos</option>
+      <option value="60">1 minuto</option>
+    </select>
+    <button type="submit">Programar</button>
+  </form>
+
+  <div id="lista"></div>
+
+  <script>
+    if ('Notification' in window && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+
+      const form = document.getElementById('formulario');
+      const lista = document.getElementById('lista');
+
+      const mostrarPendientes = () => {
+        lista.innerHTML = '<h3>Programadas:</h3>';
+        const pendientes = JSON.parse(localStorage.getItem('notis')||'[]');
+        pendientes.forEach((n,i) => {
+          const div = document.createElement('div');
+          div.className = 'noti';
+          div.innerHTML = `<span>${n.titulo} en ${n.tiempo}s</span>
+                         <button onclick="cancelar(${i})">Cancelar</button>`;
+          lista.appendChild(div);
+        });
+      };
+
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const sw = await navigator.serviceWorker.ready;
+        await Notification.requestPermission();
+        const titulo = document.getElementById('titulo').value;
+        const cuerpo = document.getElementById('cuerpo').value;
+        const tiempo = Number(document.getElementById('tiempo').value);
+        const notis = JSON.parse(localStorage.getItem('notis')||'[]');
+        notis.push({titulo,cuerpo,tiempo,time:Date.now()});
+        localStorage.setItem('notis',JSON.stringify(notis));
+        sw.sync.register('noti-programada');
+        mostrarPendientes();
+        form.reset();
+      });
+
+      window.cancelar = idx => {
+        const notis = JSON.parse(localStorage.getItem('notis')||'[]');
+        notis.splice(idx,1);
+        localStorage.setItem('notis',JSON.stringify(notis));
+        mostrarPendientes();
+      };
+
+      mostrarPendientes();
+    } else {
+      alert('Notificaciones o Service Worker no soportados');
+    }
+  </script>
+
+</body>
+</html>
+```
