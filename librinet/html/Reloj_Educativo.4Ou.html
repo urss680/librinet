@@ -1,0 +1,90 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reloj Educativo</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #121212;
+      color: #ffffff;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+    }
+    #reloj {
+      font-size: 5rem;
+      letter-spacing: 2px;
+    }
+    #mensaje {
+      margin-top: 20px;
+      font-size: 1.5rem;
+      max-width: 600px;
+    }
+    #notas {
+      margin-top: 30px;
+      width: 80%;
+      max-width: 500px;
+    }
+    #notas textarea {
+      width: 100%;
+      height: 120px;
+      background: #1e1e1e;
+      color: #ffffff;
+      border: 1px solid #444;
+      padding: 10px;
+      font-size: 1rem;
+      resize: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="reloj">00:00:00</div>
+  <div id="mensaje">¡Toca trabajar! Descansarás cuando llegue el momento.</div>
+  <div id="notas">
+    <textarea id="textoNotas" placeholder="Escribe tus notas aquí..."></textarea>
+  </div>
+
+  <script>
+    let tiempoTrabajo = 25 * 60; // 25 minutos en segundos
+    let tiempoDescanso = 5 * 60; // 5 minutos en segundos
+    let enTrabajo = true;
+    let tiempoRestante = tiempoTrabajo;
+
+    const reloj = document.getElementById('reloj');
+    const mensaje = document.getElementById('mensaje');
+
+    function formatearTiempo(s) {
+      const h = String(Math.floor(s / 3600)).padStart(2, '0');
+      const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const seg = String(s % 60).padStart(2, '0');
+      return `${h}:${m}:${seg}`;
+    }
+
+    function actualizarReloj() {
+      reloj.textContent = formatearTiempo(tiempoRestante);
+      if (tiempoRestante === 0) {
+        if (enTrabajo) {
+          mensaje.textContent = "¡Descanso! Relájate unos minutos.";
+          tiempoRestante = tiempoDescanso;
+        } else {
+          mensaje.textContent = "¡Toca trabajar! Descansarás cuando llegue el momento.";
+          tiempoRestante = tiempoTrabajo;
+        }
+        enTrabajo = !enTrabajo;
+      } else {
+        tiempoRestante--;
+      }
+    }
+
+    setInterval(actualizarReloj, 1000);
+  </script>
+</body>
+</html>
+```
