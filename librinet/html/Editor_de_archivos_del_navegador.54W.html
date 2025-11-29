@@ -1,0 +1,149 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editor de archivos del navegador</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+        #sidebar {
+            width: 250px;
+            background: #f4f4f4;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        #sidebar h3 {
+            margin-top: 0;
+        }
+        #sidebar ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        #sidebar li {
+            cursor: pointer;
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        #sidebar li:hover {
+            background: #eaeaea;
+        }
+        #editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #editor {
+            flex: 1;
+            border: none;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+        }
+        #status {
+            padding: 5px 15px;
+            background: #eee;
+            border-top: 1px solid #ccc;
+            font-size: 12px;
+        }
+        button {
+            margin: 5px;
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h3>Archivos</h3>
+        <input type="file" id="fileInput" multiple>
+        <ul id="fileList"></ul>
+    </div>
+
+    <div id="editor-container">
+        <div>
+            <button id="btnNew">Nuevo</button>
+            <button id="btnOpen">Abrir</button>
+            <button id="btnSave">Guardar</button>
+            <button id="btnSaveAs">Guardar como</button>
+        </div>
+        <textarea id="editor" placeholder="Aquí se mostrará el contenido del archivo..."></textarea>
+        <div id="status">Listo</div>
+    </div>
+
+    <script>
+        let currentFileHandle = null;
+        const editor = document.getElementById('editor');
+        const status = document.getElementById('status');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+
+        document.getElementById('btnNew').addEventListener('click', () => {
+            currentFileHandle = null;
+            editor.value = '';
+            status.textContent = 'Nuevo archivo';
+        });
+
+        document.getElementById('btnOpen').addEventListener('click', async () => {
+            try {
+                [currentFileHandle] = await window.showOpenFilePicker({ mode: 'readwrite' });
+                const file = await currentFileHandle.getFile();
+                editor.value = await file.text();
+                status.textContent = `Abierto: ${file.name}`;
+            } catch (err) {
+                status.textContent = 'No se abrió ningún archivo';
+            }
+        });
+
+        document.getElementById('btnSave').addEventListener('click', async () => {
+            if (!currentFileHandle) {
+                return document.getElementById('btnSaveAs').click();
+            }
+            try {
+                const writable = await currentFileHandle.createWritable();
+                await writable.write(editor.value);
+                await writable.close();
+                status.textContent = 'Archivo guardado';
+            } catch (err) {
+                status.textContent = 'Error al guardar';
+            }
+        });
+
+        document.getElementById('btnSaveAs').addEventListener('click', async () => {
+            try {
+                currentFileHandle = await window.showSaveFilePicker({ mode: 'readwrite' });
+                const writable = await currentFileHandle.createWritable();
+                await writable.write(editor.value);
+                await writable.close();
+                status.textContent = 'Archivo guardado como';
+            } catch (err) {
+                status.textContent = 'No se guardó el archivo';
+            }
+        });
+
+        // Carga rápida de archivos desde el input
+        fileInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            fileList.innerHTML = '';
+            files.forEach(file => {
+                const li = document.createElement('li');
+                li.textContent = file.name;
+                li.addEventListener('click', async () => {
+                    editor.value = await file.text();
+                    status.textContent = `Abierto: ${file.name}`;
+                });
+                fileList.appendChild(li);
+            });
+        });
+    </script>
+</body>
+</html>
+```
