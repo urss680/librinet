@@ -1,0 +1,166 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Notificador 10s</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg-start: #0f0c29;
+      --bg-mid: #302b63;
+      --bg-end: #24243e;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --glass: rgba(255, 255, 255, .08);
+      --border: rgba(255, 255, 255, .1);
+      --text: #e0e0ff;
+      --radius: 16px;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--bg-start), var(--bg-mid), var(--bg-end));
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .panel {
+      background: var(--glass);
+      border-radius: var(--radius);
+      padding: 40px 30px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .3);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 1.6rem;
+      letter-spacing: .5px;
+    }
+    p {
+      margin: 0 0 24px;
+      font-size: .95rem;
+      opacity: .85;
+    }
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    button {
+      flex: 1;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 0;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .25s, transform .15s;
+      user-select: none;
+    }
+    button:active {
+      transform: scale(.96);
+    }
+    #btnIniciar {
+      background: var(--accent);
+      color: #fff;
+    }
+    #btnIniciar:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+    #btnDetener {
+      background: var(--glass);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    #btnDetener:hover:not(:disabled) {
+      background: rgba(255, 255, 255, .12);
+    }
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    #estado {
+      margin-top: 24px;
+      font-size: .9rem;
+      opacity: .8;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>🔔 Notificador 10s</h1>
+    <p>Envia uma notificação a cada 10 segundos</p>
+
+    <div class="buttons">
+      <button id="btnIniciar">Iniciar</button>
+      <button id="btnDetener" disabled>Detener</button>
+    </div>
+
+    <div id="estado">Presiona «Iniciar» para comenzar.</div>
+  </div>
+
+  <script>
+    let intervalo = null;
+    let contador = 0;
+
+    const btnIniciar = document.getElementById('btnIniciar');
+    const btnDetener = document.getElementById('btnDetener');
+    const estado = document.getElementById('estado');
+
+    const actualizarEstado = (mensaje, activo) => {
+      estado.textContent = mensaje;
+      btnIniciar.disabled = activo;
+      btnDetener.disabled = !activo;
+    };
+
+    const iniciar = async () => {
+      if (!('Notification' in window)) {
+        actualizarEstado('Tu navegador no admite notificaciones.', false);
+        return;
+      }
+      if (Notification.permission === 'denied') {
+        actualizarEstado('Permiso denegado. Actívalo desde la configuración del navegador.', false);
+        return;
+      }
+      if (Notification.permission !== 'granted') {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+          actualizarEstado('Permiso no concedido.', false);
+          return;
+        }
+      }
+
+      contador = 0;
+      actualizarEstado('Enviando notificaciones...', true);
+      intervalo = setInterval(() => {
+        contador++;
+        new Notification('Recordatorio', {
+          body: `Notificación número ${contador}`,
+          icon: 'https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/light/notification.svg'
+        });
+      }, 10000);
+    };
+
+    const detener = () => {
+      clearInterval(intervalo);
+      intervalo = null;
+      actualizarEstado('Notificaciones detenidas.', false);
+    };
+
+    btnIniciar.addEventListener('click', iniciar);
+    btnDetener.addEventListener('click', detener);
+  </script>
+</body>
+</html>
+```
