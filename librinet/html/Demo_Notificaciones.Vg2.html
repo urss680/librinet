@@ -1,0 +1,88 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Demo Notificaciones</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: #f2f2f2;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background .3s;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #status {
+      margin-top: 16px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Permisos de Notificación</h1>
+  <button id="enableBtn">Activar Notificaciones</button>
+  <div id="status"></div>
+
+  <script>
+    const btn = document.getElementById('enableBtn');
+    const status = document.getElementById('status');
+
+    btn.addEventListener('click', async () => {
+      // Si el navegador no soporta notificaciones
+      if (!('Notification' in window)) {
+        status.textContent = 'Tu navegador no soporta notificaciones.';
+        return;
+      }
+
+      // Si ya tenemos permiso
+      if (Notification.permission === 'granted') {
+        showNotification();
+        status.textContent = 'Notificación enviada.';
+        return;
+      }
+
+      // Si el permiso está bloqueado/denegado
+      if (Notification.permission === 'denied') {
+        status.textContent = 'Permiso denegado. Actívelo manualmente en la configuración del navegador.';
+        return;
+      }
+
+      // Solicitar permiso
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        showNotification();
+        status.textContent = 'Notificación enviada.';
+      } else {
+        status.textContent = 'Permiso rechazado.';
+      }
+    });
+
+    function showNotification() {
+      new Notification('¡Hola!', {
+        body: 'Gracias por activar las notificaciones.',
+        icon: 'https://cdn-icons-png.flaticon.com/512/1177/1177568.png'
+      });
+    }
+  </script>
+
+</body>
+</html>
+```
