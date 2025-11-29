@@ -1,0 +1,190 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Demo completa Window Management API</title>
+  <style>
+    :root{
+      --gap:10px;
+      --pad:12px;
+      --radius:6px;
+      --bg:#111;
+      --fg:#eee;
+      --accent:#00c2ff;
+    }
+    html,body{
+      margin:0;
+      height:100%;
+      font-family:system-ui, sans-serif;
+      background:var(--bg);
+      color:var(--fg);
+    }
+    body{
+      display:flex;
+      flex-direction:column;
+      padding:var(--gap);
+      box-sizing:border-box;
+    }
+    header{
+      display:flex;
+      align-items:center;
+      gap:var(--gap);
+    }
+    button{
+      padding:var(--pad);
+      border:none;
+      border-radius:var(--radius);
+      background:var(--accent);
+      color:#000;
+      font-weight:700;
+      cursor:pointer;
+    }
+    button:disabled{
+      opacity:.5;
+      cursor:not-allowed;
+    }
+    #log{
+      flex:1;
+      overflow:auto;
+      background:#000;
+      padding:var(--pad);
+      border-radius:var(--radius);
+      white-space:pre-wrap;
+      font-size:13px;
+      line-height:1.4;
+    }
+    #screens{
+      display:flex;
+      gap:var(--gap);
+      flex-wrap:wrap;
+      margin-top:var(--gap);
+    }
+    .screen{
+      background:#222;
+      padding:var(--pad);
+      border-radius:var(--radius);
+      min-width:180px;
+    }
+    .screen h3{
+      margin:0 0 6px 0;
+      font-size:15px;
+    }
+    ul{
+      margin:0;
+      padding-left:18px;
+      font-size:13px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="permiso">Solicitar permisos</button>
+    <button id="abrir">Abrir ventanas en cada pantalla</button>
+    <button id="cerrar">Cerrar todas</button>
+  </header>
+
+  <div id="screens"></div>
+  <pre id="log">Log:\n</pre>
+
+  <script>
+    const log=(...m)=>document.getElementById('log').textContent+=m.join(' ')+'\n';
+    let granted=false;
+    const ventanas=[];
+
+    /* ---------- PERMISOS ---------- */
+    document.getElementById('permiso').onclick=async()=>{
+      try{
+        const res=await navigator.permissions.query({name:'window-management'});
+        log('Estado permisos:',res.state);
+        if(res.state==='granted') granted=true;
+        else if(res.state==='prompt'){
+          /* El primer acceso a getScreenDetails() fuerza el prompt */
+          await window.getScreenDetails();
+          granted=true;
+        }else{
+          log('Permisos denegados');
+        }
+      }catch(e){log('Error permisos:',e.message);}
+      if(granted) listarPantallas();
+    };
+
+    /* ---------- LISTAR PANTALLAS ---------- */
+    async function listarPantallas(){
+      try{
+        const d=await window.getScreenDetails();
+        log('Dispositivos detectados:',d.screens.length);
+        const c=document.getElementById('screens');
+        c.innerHTML='';
+        for(const s of d.screens){
+          const div=document.createElement('div');
+          div.className='screen';
+          div.innerHTML=`
+            <h3>${s.label||'Pantalla'}</h3>
+            <ul>
+              <li>left:${s.left} top:${s.top}</li>
+              <li>width:${s.width} height:${s.height}</li>
+              <li>scale:${s.devicePixelRatio}</li>
+              <li>primary:${s.isPrimary}</li>
+              <li>internal:${s.isInternal}</li>
+            </ul>`;
+          c.appendChild(div);
+        }
+      }catch(e){log('Error listando:',e.message);}
+    }
+
+    /* ---------- ABRIR VENTANAS ---------- */
+    document.getElementById('abrir').onclick=async()=>{
+      if(!granted){log('Primero otorga permisos');return;}
+      try{
+        const d=await window.getScreenDetails();
+        for(const s of d.screens){
+          const left=s.left+50;
+          const top=s.top+50;
+          const w=400;
+          const h=300;
+          const f=`left=${left},top=${top},width=${w},height=${h},menubar=no,toolbar=no`;
+          const v=window.open('', '_blank', f);
+          if(!v){log('Bloqueador de ventanas activo');return;}
+          v.document.write(htmlVentana(s));
+          ventanas.push(v);
+        }
+        log('Ventanas abiertas:',ventanas.length);
+      }catch(e){log('Error abriendo:',e.message);}
+    };
+
+    /* ---------- CERRAR TODAS ---------- */
+    document.getElementById('cerrar').onclick=()=>{
+      let c=0;
+      for(const v of ventanas){
+        if(!v.closed){v.close();c++;}
+      }
+      ventanas.length=0;
+      log('Cerradas:',c);
+    };
+
+    /* ---------- HTML INTERIOR VENTANA ---------- */
+    function htmlVentana(s){
+      return`<html>
+<head>
+<meta charset="utf-8"/>
+<title>Ventana ${s.label||'hija'}</title>
+<style>
+body{margin:0;font-family:system-ui;background:#0d0;color:#000;display:flex;align-items:center;justify-content:center;height:100vh}
+.box{background:#fff;padding:20px;border-radius:8px;text-align:center}
+button{padding:8px 14px;border:none;border-radius:4px;background:#000;color:#0d0;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="box">
+  <h3>Pantalla: ${s.label||'sin nombre'}</h3>
+  <p>Resolución: ${s.width}×${s.height}</p>
+  <button onclick="window.close()">Cerrar</button>
+</div>
+</body>
+</html>`;
+    }
+  </script>
+</body>
+</html>
+```
