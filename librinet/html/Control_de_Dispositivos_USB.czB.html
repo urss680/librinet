@@ -1,0 +1,166 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Control de Dispositivos USB</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --accent: #0066ff;
+      --accent-light: #e6f0ff;
+      --radius: 8px;
+      --shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, Arial, Helvetica;
+    }
+    body {
+      background: #f5f7fa;
+      padding: 2rem;
+      color: #222;
+    }
+    h1 {
+      margin-bottom: 1.2rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .device {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #eee;
+    }
+    .device:last-child {
+      border-bottom: none;
+    }
+    .device-name {
+      font-weight: 600;
+    }
+    .device-status {
+      font-size: 0.85rem;
+      color: #555;
+    }
+    .btn {
+      padding: 0.4rem 0.8rem;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: 0.2s;
+    }
+    .btn-enable {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-disable {
+      background: #ccc;
+      color: #222;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+    .refresh {
+      margin-bottom: 1rem;
+    }
+    .request-permission {
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Control de Dispositivos USB</h1>
+
+  <div class="card">
+    <button class="btn btn-enable request-permission" onclick="requestUSBPermission()">
+      Permitir acceso USB
+    </button>
+    <button class="btn btn-enable refresh" onclick="refreshDevices()">
+      Actualizar lista
+    </button>
+    <div id="deviceList">
+      <!-- Los dispositivos se llenarán dinámicamente -->
+    </div>
+  </div>
+
+  <script>
+    let devices = [];
+
+    async function requestUSBPermission() {
+      try {
+        const grantedDevices = await navigator.usb.requestDevice({ filters: [] });
+        alert('Permisos otpecidos para: ' + grantedDevices.productName);
+        await enumerateDevices();
+      } catch (err) {
+        alert('Error al otorgar permisos: ' + err);
+      }
+    }
+
+    async function enumerateDevices() {
+      const grantedDevices = await navigator.usb.getDevices();
+      devices = grantedDevices;
+      renderDevices();
+    }
+
+    function renderDevices() {
+      const list = document.getElementById('deviceList');
+      list.innerHTML = '';
+      devices.forEach(dev => {
+        const div = document.createElement('div');
+        div.className = 'device';
+        div.innerHTML = `
+          <div>
+            <div class="device-name">${dev.productName || 'Dispositivo USB'}</div>
+            <div class="device-status">Conectado</div>
+          </div>
+          <button class="btn btn-disable" onclick="toggleDevice(this)">Deshabilitar</button>
+        `;
+        list.appendChild(div);
+      });
+      if (devices.length === 0) {
+        list.innerHTML = '<p style="color:#777">No hay dispositivos USB con permisos.</p>';
+      }
+    }
+
+    function toggleDevice(btn) {
+      const device = btn.closest('.device');
+      const status = device.querySelector('.device-status');
+      const enabled = btn.textContent === 'Deshabilitar';
+      if (enabled) {
+        status.textContent = 'Deshabilitado';
+        btn.textContent = 'Habilitar';
+        btn.classList.remove('btn-disable');
+        btn.classList.add('btn-enable');
+      } else {
+        status.textContent = 'Conectado';
+        btn.textContent = 'Deshabilitar';
+        btn.classList.remove('btn-enable');
+        btn.classList.add('btn-disable');
+      }
+    }
+
+    function refreshDevices() {
+      enumerateDevices();
+    }
+
+    // Al cargar la página intenta enumerar dispositivos ya autorizados
+    window.addEventListener('load', () => {
+      if (navigator.usb) {
+        enumerateDevices();
+      } else {
+        alert('WebUSB no está soportado en este navegador.');
+      }
+    });
+  </script>
+</body>
+</html>
+```
