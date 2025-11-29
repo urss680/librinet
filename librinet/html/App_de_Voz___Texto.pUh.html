@@ -1,0 +1,194 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>App de Voz ↔ Texto</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg:#121212;
+      --card:#1e1e1e;
+      --accent:#00e5ff;
+      --accent-dark:#00acc1;
+      --text:#e0e0e0;
+      --sub:#888;
+      --error:#ff5252;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
+    body{
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      padding:1rem;
+    }
+    .container{
+      width:100%;
+      max-width:480px;
+      background:var(--card);
+      border-radius:16px;
+      padding:2rem;
+      box-shadow:0 10px 30px rgba(0,0,0,.5);
+    }
+    h1{
+      text-align:center;
+      margin-bottom:1.5rem;
+      font-size:1.8rem;
+      letter-spacing:1px;
+    }
+    .area{
+      width:100%;
+      min-height:140px;
+      background:#181818;
+      border:2px solid transparent;
+      border-radius:8px;
+      padding:.75rem 1rem;
+      color:var(--text);
+      font-size:1rem;
+      resize:none;
+      transition:border-color .3s;
+    }
+    .area:focus{
+      outline:none;
+      border-color:var(--accent);
+    }
+    .controls{
+      display:flex;
+      gap:.75rem;
+      margin-top:1.25rem;
+      flex-wrap:wrap;
+    }
+    button{
+      flex:1 1 120px;
+      background:var(--accent);
+      border:none;
+      border-radius:8px;
+      padding:.75rem 0;
+      font-weight:600;
+      color:#000;
+      cursor:pointer;
+      transition:background .3s, transform .1s;
+    }
+    button:hover{background:var(--accent-dark)}
+    button:active{transform:scale(.97)}
+    select{
+      background:#181818;
+      color:var(--text);
+      border:1px solid #333;
+      border-radius:6px;
+      padding:.5rem .75rem;
+      font-size:.95rem;
+      cursor:pointer;
+    }
+    .errorMsg{
+      color:var(--error);
+      font-size:.85rem;
+      margin-top:.5rem;
+      height:1rem;
+    }
+    @media (max-width:480px){
+      h1{font-size:1.5rem}
+      button{flex:1 1 100%}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Voz ↔ Texto</h1>
+    <textarea id="texto" class="area" placeholder="Tu texto aparecerá aquí..."></textarea>
+    <div class="controls">
+      <button id="btnSTT">🎤 Dictar</button>
+      <button id="btnTTS">🔊 Escuchar</button>
+      <select id="voiceSelect"></select>
+    </div>
+    <div id="error" class="errorMsg"></div>
+  </div>
+
+<script>
+(()=>{
+  const texto=document.getElementById('texto');
+  const btnSTT=document.getElementById('btnSTT');
+  const btnTTS=document.getElementById('btnTTS');
+  const voiceSelect=document.getElementById('voiceSelect');
+  const error=document.getElementById('error');
+
+  let reconocimiento=null;
+  let sintetizador=null;
+  let escuchando=false;
+
+  /* 1) INICIALIZAR RECONOCIMIENTO */
+  function initSTT(){
+    const SR=window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){error.textContent="Tu navegador no soporta reconocimiento de voz";return}
+    reconocimiento=new SR();
+    reconocimiento.lang='es-ES';
+    reconocimiento.interimResults=true;
+    reconocimiento.continuous=false;
+
+    reconocimiento.onresult=e=>{
+      let trans=e.results[e.results.length-1][0].transcript;
+      texto.value+=trans+' ';
+    };
+    reconocimiento.onerror=e=>{error.textContent="Error al escuchar: "+e.error;btnSTT.textContent='🎤 Dictar';escuchando=false};
+    reconocimiento.onend=()=>{btnSTT.textContent='🎤 Dictar';escuchando=false};
+  }
+
+  /* 2) INICIALIZAR SÍNTESIS */
+  function initTTS(){
+    sintetizador=window.speechSynthesis;
+    if(!sintetizador){error.textContent="Tu navegador no soporta síntesis de voz";return}
+    cargarVoces();
+    sintetizador.onvoiceschanged=cargarVoces;
+  }
+  function cargarVoces(){
+    voiceSelect.innerHTML='';
+    const voces=sintetizador.getVoices();
+    voces.forEach((v,i)=>{
+      const op=document.createElement('option');
+      op.value=i;
+      op.textContent=v.name+' ('+v.lang+')';
+      voiceSelect.appendChild(op);
+    });
+    // Seleccionar voz en español si existe
+    const esp=voces.findIndex(v=>v.lang.startsWith('es'));
+    if(esp!==-1)voiceSelect.value=esp;
+  }
+
+  /* 3) BOTONES */
+  btnSTT.addEventListener('click',()=>{
+    if(!reconocimiento)initSTT();
+    if(escuchando){
+      reconocimiento.stop();
+    }else{
+      texto.value='';
+      error.textContent='';
+      reconocimiento.start();
+      btnSTT.textContent='⏹ Detener';
+      escuchando=true;
+    }
+  });
+
+  btnTTS.addEventListener('click',()=>{
+    if(!sintetizador)initTTS();
+    if(sintetizador.speaking)sintetizador.cancel();
+    if(texto.value.trim()===''){error.textContent='No hay texto para leer';return}
+    error.textContent='';
+    const utter=new SpeechSynthesisUtterance(texto.value);
+    const voces=sintetizador.getVoices();
+    utter.voice=voces[voiceSelect.value];
+    sintetizador.speak(utter);
+  });
+
+  /* Arrancar al cargar */
+  window.addEventListener('load',()=>{
+    initSTT();
+    initTTS();
+  });
+})();
+</script>
+</body>
+</html>
+```
