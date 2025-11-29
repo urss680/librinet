@@ -1,0 +1,95 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Transcriptor de archivos de audio</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;margin:0;padding:2rem;}
+    h1{color:#333;text-align:center;}
+    .box{max-width:640px;margin:auto;background:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);padding:2rem;}
+    input[type=file]{display:block;margin:0 auto 1rem;}
+    button{background:#007bff;color:#fff;border:none;padding:.6rem 1.2rem;border-radius:4px;font-size:1rem;cursor:pointer;margin:.25rem;}
+    button:disabled{opacity:.5;cursor:not-allowed;}
+    #progress{margin-top:1rem;font-size:.9rem;color:#555;}
+    #output{width:100%;min-height:120px;margin-top:1rem;padding:.6rem;border:1px solid #ccc;border-radius:4px;resize:vertical;font-family:monospace;font-size:.95rem;}
+    #copyBtn{background:#28a745;}
+    .note{font-size:.8rem;color:#666;margin-top:.5rem;}
+  </style>
+</head>
+<body>
+  <h1>Transcriptor de archivos de audio</h1>
+  <div class="box">
+    <input type="file" id="audioFile" accept="audio/*">
+    <div>
+      <button id="transcribeBtn">Transcribir archivo</button>
+      <button id="copyBtn">Copiar texto</button>
+    </div>
+    <div id="progress"></div>
+    <textarea id="output" placeholder="Aquí aparecerá el texto transcrito..."></textarea>
+    <div class="note">Usa la API de reconocimiento de voz sobre el archivo cargado (Chrome recomendado).</div>
+  </div>
+
+  <script>
+    const audioFile = document.getElementById('audioFile');
+    const transcribeBtn = document.getElementById('transcribeBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const progress = document.getElementById('progress');
+    const output = document.getElementById('output');
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      progress.textContent = 'Tu navegador no soporta Web Speech API';
+      transcribeBtn.disabled = true;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SpeechRecognition();
+    rec.lang = 'es-ES';
+    rec.continuous = true;
+    rec.interimResults = true;
+
+    rec.onresult = e => {
+      let transcript = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript;
+      }
+      output.value = transcript;
+    };
+
+    rec.onerror = e => progress.textContent = 'Error: ' + e.error;
+    rec.onend = () => {
+      progress.textContent = 'Transcripción finalizada.';
+      transcribeBtn.disabled = false;
+    };
+
+    transcribeBtn.onclick = () => {
+      if (!audioFile.files.length) {
+        progress.textContent = 'Por favor selecciona un archivo de audio.';
+        return;
+      }
+      output.value = '';
+      progress.textContent = 'Transcribiendo...';
+      transcribeBtn.disabled = true;
+
+      const file = audioFile.files[0];
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(file);
+
+      audio.onended = () => rec.stop();
+      audio.play().catch(err => {
+        progress.textContent = 'Error al reproducir el archivo: ' + err;
+        transcribeBtn.disabled = false;
+      });
+
+      rec.start();
+    };
+
+    copyBtn.onclick = () => {
+      output.select();
+      document.execCommand('copy');
+      progress.textContent = 'Texto copiado al portapapeles.';
+    };
+  </script>
+</body>
+</html>
+```
