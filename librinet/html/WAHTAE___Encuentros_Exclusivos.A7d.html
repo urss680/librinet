@@ -1,0 +1,307 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAHTAE - Encuentros Exclusivos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #fff;
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(90deg, #8b0000 0%, #dc143c 100%);
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(220,20,60,0.3);
+        }
+
+        h1 {
+            font-size: 3em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            letter-spacing: 3px;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .escorts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .escort-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(220,20,60,0.3);
+        }
+
+        .escort-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(220,20,60,0.4);
+        }
+
+        .escort-image {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            border-bottom: 3px solid #dc143c;
+        }
+
+        .escort-info {
+            padding: 20px;
+        }
+
+        .escort-name {
+            font-size: 1.8em;
+            color: #ff6b6b;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .escort-details {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+
+        .detail-item {
+            background: rgba(220,20,60,0.2);
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        .escort-description {
+            margin: 15px 0;
+            color: #ccc;
+            line-height: 1.5;
+        }
+
+        .contact-btn {
+            background: linear-gradient(90deg, #dc143c 0%, #8b0000 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .contact-btn:hover {
+            background: linear-gradient(90deg, #ff1744 0%, #dc143c 100%);
+            box-shadow: 0 5px 20px rgba(220,20,60,0.5);
+        }
+
+        .services {
+            margin: 15px 0;
+        }
+
+        .service-tag {
+            display: inline-block;
+            background: rgba(255,107,107,0.2);
+            color: #ff6b6b;
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            margin: 2px;
+        }
+
+        footer {
+            background: #0a0a0a;
+            text-align: center;
+            padding: 30px;
+            margin-top: 60px;
+            border-top: 2px solid #dc143c;
+        }
+
+        .warning {
+            background: rgba(220,20,60,0.1);
+            border: 1px solid #dc143c;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            .escorts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>WAHTAE</h1>
+        <p class="subtitle">Elite Escorts - Encuentros Exclusivos</p>
+    </header>
+
+    <div class="container">
+        <div class="warning">
+            <h3>🔞 Contenido para Adultos 🔞</h3>
+            <p>Esta página contiene contenido para mayores de 18 años. Al continuar, confirmas que eres mayor de edad.</p>
+        </div>
+
+        <div class="escorts-grid">
+            <div class="escort-card">
+                <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=600&fit=crop" alt="Scarlett" class="escort-image">
+                <div class="escort-info">
+                    <h3 class="escort-name">Scarlett</h3>
+                    <div class="escort-details">
+                        <span class="detail-item">25 años</span>
+                        <span class="detail-item">1.70m</span>
+                        <span class="detail-item">60kg</span>
+                    </div>
+                    <p class="escort-description">Morena de infarto con curvas peligrosas. Te haré vivir una experiencia inolvidable con mi dulzura y pasión.</p>
+                    <div class="services">
+                        <span class="service-tag">GFE</span>
+                        <span class="service-tag">BDSM</span>
+                        <span class="service-tag">Viajes</span>
+                    </div>
+                    <button class="contact-btn">Contactar Ahora</button>
+                </div>
+            </div>
+
+            <div class="escort-card">
+                <img src="https://images.unsplash.com/photo-1519699047748-de8e457a99e4?w=400&h=600&fit=crop" alt="Valentina" class="escort-image">
+                <div class="escort-info">
+                    <h3 class="escort-name">Valentina</h3>
+                    <div class="escort-details">
+                        <span class="detail-item">23 años</span>
+                        <span class="detail-item">1.68m</span>
+                        <span class="detail-item">55kg</span>
+                    </div>
+                    <p class="escort-description">Rubia explosiva con mirada intensa. Mi compañía es exquisita y mi trato impecable. Te conquistaré en segundos.</p>
+                    <div class="services">
+                        <span class="service-tag">Masajes</span>
+                        <span class="service-tag">Fiestas</span>
+                        <span class="service-tag">Parejas</span>
+                    </div>
+                    <button class="contact-btn">Contactar Ahora</button>
+                </div>
+            </div>
+
+            <div class="escort-card">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=600&fit=crop" alt="Sofía" class="escort-image">
+                <div class="escort-info">
+                    <h3 class="escort-name">Sofía</h3>
+                    <div class="escort-details">
+                        <span class="detail-item">26 años</span>
+                        <span class="detail-item">1.72m</span>
+                        <span class="detail-item">58kg</span>
+                    </div>
+                    <p class="escort-description">Brasileña ardiente con piel de canela. Mi alegría es contagiosa y mi pasión no tiene límites. Te espero.</p>
+                    <div class="services">
+                        <span class="service-tag">Lésbico</span>
+                        <span class="service-tag">Trios</span>
+                        <span class="service-tag">Despedidas</span>
+                    </div>
+                    <button class="contact-btn">Contactar Ahora</button>
+                </div>
+            </div>
+
+            <div class="escort-card">
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop" alt="Catalina" class="escort-image">
+                <div class="escort-info">
+                    <h3 class="escort-name">Catalina</h3>
+                    <div class="escort-details">
+                        <span class="detail-item">24 años</span>
+                        <span class="detail-item">1.65m</span>
+                        <span class="detail-item">52kg</span>
+                    </div>
+                    <p class="escort-description">Colombiana sensual con un cuerpo escultural. Mi ternura te fascinará y mi fuego te quemará de deseo.</p>
+                    <div class="services">
+                        <span class="service-tag">24h</span>
+                        <span class="service-tag">VIP</span>
+                        <span class="service-tag">Eventos</span>
+                    </div>
+                    <button class="contact-btn">Contactar Ahora</button>
+                </div>
+            </div>
+
+            <div class="escort-card">
+                <img src="https://images.unsplash.com/photo-1494790108755-2616b612b5bc?w=400&h=600&fit=crop" alt="Gabriela" class="escort-image">
+                <div class="escort-info">
+                    <h3 class="escort-name">Gabriela</h3>
+                    <div class="escort-details">
+                        <span class="detail-item">22 años</span>
+                        <span class="detail-item">1.70m</span>
+                        <span class="detail-item">54kg</span>
+                    </div>
+                    <p class="escort-description">Venezolana dulce y cariñosa. Mi piel suave y mis besos apasionados te transportarán al paraíso.</p>
+                    <div class="services">
+                        <span class="service-tag">Cenas</span>
+                        <span class="service-tag">Hotel</span>
+                        <span class="service-tag">Fetiches</span>
+                    </div>
+                    <button class="contact-btn">Contactar Ahora</button>
+                </div>
+            </div>
+
+            <div class="escort-card">
+                <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop" alt="Daniela" class="escort-image">
+                <div class="escort-info">
+                    <h3 class="escort-name">Daniela</h3>
+                    <div class="escort-details">
+                        <span class="detail-item">27 años</span>
+                        <span class="detail-item">1.73m</span>
+                        <span class="detail-item">59kg</span>
+                    </div>
+                    <p class="escort-description">Española elegante y sofisticada. Mi clase y mi saber estar te enamorarán. Experiencia de novia garantizada.</p>
+                    <div class="services">
+                        <span class="service-tag">Luxury</span>
+                        <span class="service-tag">Weekend</span>
+                        <span class="service-tag">Secretaria</span>
+                    </div>
+                    <button class="contact-btn">Contactar Ahora</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 WAHTAE - Todos los derechos reservados</p>
+        <p>Servicios exclusivos para mayores de edad</p>
+    </footer>
+
+    <script>
+        // Agregar interactividad
+        document.querySelectorAll('.contact-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                alert('Por seguridad, contacta directamente a través de WhatsApp al número que aparece en la imagen de perfil de cada chica.');
+            });
+        });
+    </script>
+</body>
+</html>
+```
