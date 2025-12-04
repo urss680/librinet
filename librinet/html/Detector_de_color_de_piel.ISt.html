@@ -1,0 +1,115 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Detector de color de piel</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #fff;
+      font-family: Arial, Helvetica, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    #video {
+      width: 320px;
+      height: 240px;
+      border: 2px solid #fff;
+      margin: 10px 0;
+    }
+    #canvas {
+      display: none;
+    }
+    #resultado {
+      margin-top: 10px;
+      font-size: 1.2em;
+      text-align: center;
+    }
+    #colorBox {
+      width: 100px;
+      height: 100px;
+      border: 2px solid #fff;
+      margin-top: 10px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Detector de color de piel</h1>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
+
+  <button id="detectar">Detectar color de piel</button>
+  <div id="resultado"></div>
+  <div id="colorBox"></div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const detectarBtn = document.getElementById('detectar');
+    const resultado = document.getElementById('resultado');
+    const colorBox = document.getElementById('colorBox');
+
+    // Acceder a la cámara
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => {
+        alert('No se pudo acceder a la cámara: ' + err);
+      });
+
+    // Función para obtener el color de piel promedio (tomando el centro de la imagen)
+    function obtenerColorPiel() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const centerX = Math.floor(canvas.width / 2);
+      const centerY = Math.floor(canvas.height / 2);
+      const size = 30; // área central de 30x30 píxeles
+
+      let r = 0, g = 0, b = 0;
+      let count = 0;
+
+      const imageData = ctx.getImageData(centerX - size/2, centerY - size/2, size, size);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        r += data[i];
+        g += data[i+1];
+        b += data[i+2];
+        count++;
+      }
+
+      r = Math.floor(r / count);
+      g = Math.floor(g / count);
+      b = Math.floor(b / count);
+
+      const colorRGB = `rgb(${r}, ${g}, ${b})`;
+      colorBox.style.backgroundColor = colorRGB;
+      resultado.textContent = `Tu color de piel es: ${colorRGB}`;
+    }
+
+    detectarBtn.addEventListener('click', obtenerColorPiel);
+  </script>
+
+</body>
+</html>
+```
