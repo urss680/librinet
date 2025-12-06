@@ -1,0 +1,184 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Convertidor PDF a Word real</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --primary: #0d47a1;
+      --primary-dark: #002171;
+      --secondary: #64b5f6;
+      --background: #f5f7fa;
+      --text: #212121;
+      --light: #ffffff;
+      --success: #2e7d32;
+      --error: #b71c1c;
+    }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--background);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: var(--light);
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      width: 90%;
+      max-width: 420px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+    .drop-area {
+      border: 2px dashed var(--secondary);
+      border-radius: 8px;
+      padding: 40px 20px;
+      margin-bottom: 20px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .drop-area:hover {
+      background: #e3f2fd;
+      border-color: var(--primary);
+    }
+    .drop-area.dragover {
+      background: #bbdefb;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    button {
+      background: var(--primary);
+      color: var(--light);
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: var(--primary-dark);
+    }
+    .result {
+      margin-top: 20px;
+      font-size: 14px;
+      color: var(--success);
+    }
+    .error {
+      color: var(--error);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Convertidor PDF a Word real</h1>
+    
+    <div class="drop-area" id="dropArea">
+      <p>Arrastra aquí tu archivo PDF</p>
+      <p>o</p>
+      <label for="fileInput" style="cursor: pointer; color: var(--secondary);">Selecciona un archivo</label>
+      <input type="file" id="fileInput" accept=".pdf">
+    </div>
+
+    <button id="convertBtn">Convertir a Word</button>
+
+    <div id="result" class="result"></div>
+  </div>
+
+  <!-- LibreOffice Online Viewer para la conversión real -->
+  <script src="https://cdn.jsdelivr.net/npm/libreoffice-online-viewer@1.0.0/dist/libreoffice-viewer.min.js"></script>
+
+  <script>
+    const dropArea = document.getElementById('dropArea');
+    const fileInput = document.getElementById('fileInput');
+    const convertBtn = document.getElementById('convertBtn');
+    const result = document.getElementById('result');
+    let selectedFile = null;
+
+    // Selección manual
+    fileInput.addEventListener('change', () => {
+      selectedFile = fileInput.files[0];
+      updateUI();
+    });
+
+    // Drag & drop
+    dropArea.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropArea.classList.add('dragover');
+    });
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
+    dropArea.addEventListener('drop', e => {
+      e.preventDefault();
+      dropArea.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length && files[0].type === 'application/pdf') {
+        selectedFile = files[0];
+        updateUI();
+      } else {
+        result.textContent = 'Por favor, selecciona un archivo PDF válido.';
+        result.classList.add('error');
+      }
+    });
+
+    function updateUI() {
+      if (selectedFile) {
+        dropArea.innerHTML = `<p>Archivo seleccionado: ${selectedFile.name}</p>`;
+        result.textContent = '';
+        result.classList.remove('error');
+      }
+    }
+
+    // Conversión real con LibreOffice Online
+    convertBtn.addEventListener('click', async () => {
+      if (!selectedFile) {
+        result.textContent = 'Primero selecciona un archivo PDF.';
+        result.classList.add('error');
+        return;
+      }
+      result.textContent = 'Convirtiendo…';
+      result.classList.remove('error');
+
+      try {
+        // Usar LibreOffice Online Viewer para convertir
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('format', 'docx');
+
+        const response = await fetch('https://libreoffice-online-viewer.herokuapp.com/convert', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) throw new Error('Error en la conversión');
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = selectedFile.name.replace(/\.pdf$/i, '.docx');
+        a.click();
+        URL.revokeObjectURL(url);
+
+        result.textContent = '¡Conversión completada! Descargando archivo Word…';
+      } catch (error) {
+        result.textContent = 'Error al convertir: ' + error.message;
+        result.classList.add('error');
+      }
+    });
+  </script>
+</body>
+</html>
+```
