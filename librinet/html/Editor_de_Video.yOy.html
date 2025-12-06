@@ -1,0 +1,243 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Editor de Video</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      background: #1e1e1e;
+      color: #fff;
+    }
+    /* Sidebar */
+    .sidebar {
+      width: 200px;
+      background: #2c2c2c;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+    }
+    .sidebar h3 {
+      margin-bottom: 10px;
+      font-size: 16px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 5px;
+    }
+    .sidebar button {
+      margin-bottom: 10px;
+      padding: 8px;
+      background: #444;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .sidebar button:hover {
+      background: #555;
+    }
+    /* Contenedor principal */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Reproductor */
+    .player {
+      flex: 1;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .player video {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    /* Línea de tiempo fija */
+    .timeline {
+      height: 120px;
+      background: #2c2c2c;
+      border-top: 1px solid #444;
+      position: relative;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .timeline-ruler {
+      height: 20px;
+      background: #1e1e1e;
+      border-bottom: 1px solid #444;
+      position: relative;
+    }
+    .timeline-track {
+      height: 40px;
+      background: #333;
+      margin: 5px 0;
+      position: relative;
+      border: 1px solid #444;
+    }
+    .playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #00f0ff;
+      pointer-events: none;
+    }
+    /* Clips arrastrables */
+    .clip {
+      position: absolute;
+      height: 32px;
+      top: 4px;
+      background: #00aaff;
+      border-radius: 4px;
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      font-size: 12px;
+      color: #000;
+      user-select: none;
+    }
+    .clip.dragging {
+      cursor: grabbing;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <!-- Barra lateral -->
+  <aside class="sidebar">
+    <h3>Medios</h3>
+    <button onclick="addClip()">Añadir Clip</button>
+    <h3>Filtros</h3>
+    <button onclick="alert('Aplicar filtro')">Blanco y negro</button>
+    <button onclick="alert('Aplicar filtro')">Sepia</button>
+    <button onclick="alert('Aplicar filtro')">Contraste</button>
+    <h3>Exportar</h3>
+    <button onclick="exportResult()">Exportar Resultado</button>
+  </aside>
+
+  <!-- Área principal -->
+  <main class="main">
+    <!-- Reproductor -->
+    <section class="player">
+      <video id="preview" controls>
+        <source src="https://raw.githubusercontent.com/ietf-wg-mops/draft-ietf-mops-streaming-opera/master/sample.mp4" type="video/mp4">
+        Tu navegador no soporta video HTML5.
+      </video>
+    </section>
+
+    <!-- Línea de tiempo fija -->
+    <section class="timeline" id="timeline">
+      <div class="timeline-ruler"></div>
+      <div class="timeline-track" id="video-track">
+        <div class="playhead" id="playhead"></div>
+      </div>
+      <div class="timeline-track" id="audio-track"></div>
+    </section>
+  </main>
+
+  <script>
+    const video = document.getElementById('preview');
+    const playhead = document.getElementById('playhead');
+    const ruler = document.querySelector('.timeline-ruler');
+    const videoTrack = document.getElementById('video-track');
+    let clipCount = 0;
+
+    // Crear marcas de tiempo en la regla
+    for (let i = 0; i <= 120; i += 10) {
+      const mark = document.createElement('div');
+      mark.style.position = 'absolute';
+      mark.style.left = (i * 5) + 'px';
+      mark.style.top = '0';
+      mark.style.width = '1px';
+      mark.style.height = '100%';
+      mark.style.background = '#666';
+      ruler.appendChild(mark);
+
+      const label = document.createElement('span');
+      label.style.position = 'absolute';
+      label.style.left = (i * 5 + 2) + 'px';
+      label.style.top = '2px';
+      label.style.fontSize = '10px';
+      label.style.color = '#ccc';
+      label.textContent = i + 's';
+      ruler.appendChild(label);
+    }
+
+    // Sincronizar cabezal con el video
+    video.addEventListener('timeupdate', () => {
+      const percent = (video.currentTime / video.duration) * 100;
+      playhead.style.left = percent + '%';
+    });
+
+    // Añadir clip arrastrable
+    function addClip() {
+      const clip = document.createElement('div');
+      clip.className = 'clip';
+      clip.id = 'clip-' + (++clipCount);
+      clip.textContent = 'Clip ' + clipCount;
+      // Posición aleatoria para ejemplo
+      clip.style.left = (Math.random() * 400) + 'px';
+      clip.style.width = (50 + Math.random() * 100) + 'px';
+      videoTrack.appendChild(clip);
+      makeDraggable(clip);
+    }
+
+    // Hacer elemento arrastrable horizontal dentro del track
+    function makeDraggable(el) {
+      let isDragging = false;
+      let startX = 0;
+      let startLeft = 0;
+
+      el.addEventListener('mousedown', e => {
+        isDragging = true;
+        el.classList.add('dragging');
+        startX = e.clientX;
+        startLeft = parseInt(el.style.left, 10) || 0;
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const newLeft = Math.max(0, startLeft + dx);
+        el.style.left = newLeft + 'px';
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          el.classList.remove('dragging');
+        }
+      });
+    }
+
+    function exportResult() {
+      alert('Exportando resultado… (simulación)');
+    }
+
+    // Atajos de teclado para retroceder y avanzar
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') {
+        video.currentTime = Math.max(0, video.currentTime - 5);
+      } else if (e.key === 'ArrowRight') {
+        video.currentTime = Math.min(video.duration, video.currentTime + 5);
+      }
+    });
+
+    // Añadir un clip de ejemplo al cargar
+    addClip();
+  </script>
+</body>
+</html>
+```
