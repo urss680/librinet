@@ -1,0 +1,250 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>VideoEditor Online</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;}
+    body{background:#111;color:#fff;display:flex;height:100vh;overflow:hidden;}
+    aside{width:280px;background:#1a1a1a;display:flex;flex-direction:column;align-items:center;padding:10px 0;}
+    aside button{width:90%;margin:6px 0;padding:10px;border:none;border-radius:4px;background:#2a2a2a;color:#fff;cursor:pointer;}
+    aside button:hover{background:#3a3a3a;}
+    main{flex:1;display:flex;flex-direction:column;}
+    #preview{flex:1;background:#000;display:flex;align-items:center;justify-content:center;position:relative;}
+    #preview video{max-width:90%;max-height:90%;}
+    #canvas{display:none;}
+    #timeline{height:140px;background:#1a1a1a;display:flex;align-items:center;padding:0 10px;position:relative;}
+    #progressBar{width:100%;height:32px;background:#333;border-radius:4px;position:relative;cursor:pointer;}
+    #progress{height:100%;background:#0af;width:0;border-radius:4px;}
+    #timeTip{position:absolute;top:-22px;background:#000;padding:2px 6px;font-size:12px;border-radius:3px;display:none;}
+    #controls{display:flex;justify-content:center;gap:10px;margin-top:8px;}
+    #controls button{padding:8px 14px;border:none;border-radius:4px;background:#2a2a2a;color:#fff;cursor:pointer;}
+    #controls button:hover{background:#3a3a3a;}
+    #fileInput{display:none;}
+    .track{height:40px;background:#222;margin:4px 0;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-size:13px;}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;}
+    .modal>div{background:#1a1a1a;padding:20px;border-radius:6px;width:320px;display:flex;flex-direction:column;gap:10px;}
+    .modal label{font-size:14px;}
+    .modal input,.modal select{padding:6px;border:none;border-radius:4px;}
+    .modal button{padding:8px;border:none;border-radius:4px;background:#0af;color:#000;cursor:pointer;}
+    .modal button:hover{background:#09c;}
+  </style>
+</head>
+<body>
+  <aside>
+    <button id="btnAddVideo">Agregar Video</button>
+    <button id="btnAddAudio">Agregar Audio</button>
+    <button id="btnCut">Cortar</button>
+    <button id="btnSpeed">Velocidad</button>
+    <button id="btnVolume">Volumen</button>
+    <button id="btnBrightness">Brillo</button>
+    <button id="btnContrast">Contraste</button>
+    <button id="btnExport">Exportar MP4</button>
+  </aside>
+
+  <main>
+    <section id="preview">
+      <video id="player" controls style="display:none;"></video>
+      <canvas id="canvas"></canvas>
+      <div id="overlayText" style="position:absolute;color:#fff;font-size:24px;display:none;"></div>
+    </section>
+
+    <section id="timeline">
+      <div id="progressBar">
+        <div id="progress"></div>
+        <div id="timeTip">0:00</div>
+      </div>
+      <div id="tracks">
+        <div class="track" id="videoTrack">Video</div>
+        <div class="track" id="audioTrack">Audio</div>
+      </div>
+      <div id="controls">
+        <button id="btnPlayPause">Play</button>
+        <button id="btnStop">Stop</button>
+        <button id="btnSplit">Dividir</button>
+        <button id="btnDelete">Eliminar</button>
+      </div>
+    </section>
+  </main>
+
+  <input type="file" id="fileInput" accept="video/*,audio/*">
+
+  <!-- Modal genérico -->
+  <div id="modal" class="modal">
+    <div>
+      <label id="modalLabel">Valor:</label>
+      <input id="modalInput" type="number" step="0.1" value="1">
+      <div style="display:flex;gap:6px;">
+        <button id="modalOk">Aplicar</button>
+        <button id="modalCancel">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const player = document.getElementById('player');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const progress = document.getElementById('progress');
+    const progressBar = document.getElementById('progressBar');
+    const timeTip = document.getElementById('timeTip');
+    const fileInput = document.getElementById('fileInput');
+    const modal = document.getElementById('modal');
+    const modalInput = document.getElementById('modalInput');
+    const modalLabel = document.getElementById('modalLabel');
+
+    let mediaSource = null;
+    let videoBuffer = null;
+    let audioBuffer = null;
+    let segments = [];
+    let currentSeg = 0;
+
+    function $(sel){return document.querySelector(sel);}
+    function showModal(label,value=1,min=-3,max=3,step=0.1){
+      modalLabel.textContent = label;
+      modalInput.min = min;
+      modalInput.max = max;
+      modalInput.step = step;
+      modalInput.value = value;
+      modal.style.display = 'flex';
+      return new Promise(res=>{
+        $('#modalOk').onclick = ()=>{modal.style.display='none';res(parseFloat(modalInput.value));}
+        $('#modalCancel').onclick = ()=>{modal.style.display='none';res(null);}
+      });
+    }
+
+    function updateProgress(){
+      if(player.duration){
+        const pct = (player.currentTime/player.duration)*100;
+        progress.style.width = pct+'%';
+      }
+      requestAnimationFrame(updateProgress);
+    }
+    updateProgress();
+
+    progressBar.addEventListener('mousemove',e=>{
+      const r = progressBar.getBoundingClientRect();
+      const x = e.clientX - r.left;
+      const pct = x/r.width;
+      timeTip.style.display = 'block';
+      timeTip.style.left = x+'px';
+      timeTip.textContent = fmt(pct*(player.duration||0));
+    });
+    progressBar.addEventListener('mouseleave',()=>timeTip.style.display='none');
+    progressBar.addEventListener('click',e=>{
+      const r = progressBar.getBoundingClientRect();
+      const pct = (e.clientX - r.left)/r.width;
+      player.currentTime = pct*(player.duration||0);
+    });
+
+    function fmt(t){
+      const m = Math.floor(t/60);
+      const s = Math.floor(t%60);
+      return m+':'+(s<10?'0':'')+s;
+    }
+
+    $('#btnAddVideo').onclick = ()=>{fileInput.accept='video/*';fileInput.onchange=loadVideo;fileInput.click();};
+    $('#btnAddAudio').onclick = ()=>{fileInput.accept='audio/*';fileInput.onchange=loadAudio;fileInput.click();};
+
+    function loadVideo(e){
+      const file = e.target.files[0];
+      if(!file)return;
+      const url = URL.createObjectURL(file);
+      player.src = url;
+      player.style.display='block';
+      player.onloadedmetadata = ()=>{
+        canvas.width = player.videoWidth;
+        canvas.height = player.videoHeight;
+        segments = [{src:url,start:0,end:player.duration,speed:1}];
+      };
+    }
+    function loadAudio(e){
+      const file = e.target.files[0];
+      if(!file)return;
+      const url = URL.createObjectURL(file);
+      const aud = new Audio(url);
+      aud.onloadedmetadata = ()=>{
+        // Simplemente lo reproducimos sincronizado
+        player.onplay = ()=>aud.play();
+        player.onpause = ()=>aud.pause();
+        player.onseeked = ()=>aud.currentTime=player.currentTime;
+      };
+    }
+
+    $('#btnPlayPause').onclick = ()=>{
+      if(player.paused)player.play();else player.pause();
+    };
+    $('#btnStop').onclick = ()=>{player.pause();player.currentTime=0;};
+
+    $('#btnCut').onclick = async ()=>{
+      const t = await showModal('Cortar en (segundos)',player.currentTime,0,player.duration||1,0.01);
+      if(t==null)return;
+      const seg = segments[currentSeg];
+      const newSeg = JSON.parse(JSON.stringify(seg));
+      seg.end = t;
+      newSeg.start = t;
+      segments.splice(currentSeg+1,0,newSeg);
+    };
+
+    $('#btnSpeed').onclick = async ()=>{
+      const s = await showModal('Velocidad',segments[currentSeg].speed,0.25,4,0.25);
+      if(s==null)return;
+      segments[currentSeg].speed = s;
+      player.playbackRate = s;
+    };
+
+    $('#btnVolume').onclick = async ()=>{
+      const v = await showModal('Volumen',player.volume,0,1,0.05);
+      if(v==null)return;
+      player.volume = v;
+    };
+
+    $('#btnBrightness').onclick = async ()=>{
+      const b = await showModal('Brillo',1,0,2,0.05);
+      if(b==null)return;
+      player.style.filter = `brightness(${b})`;
+    };
+
+    $('#btnContrast').onclick = async ()=>{
+      const c = await showModal('Contraste',1,0,2,0.05);
+      if(c==null)return;
+      player.style.filter += ` contrast(${c})`;
+    };
+
+    $('#btnSplit').onclick = ()=>$('#btnCut').onclick();
+    $('#btnDelete').onclick = ()=>{
+      segments.splice(currentSeg,1);
+      if(segments.length===0){player.src='';player.style.display='none';}
+      else{player.src=segments[0].src;currentSeg=0;}
+    };
+
+    // Exportar MP4 usando MediaRecorder
+    $('#btnExport').onclick = async ()=>{
+      if(!player.src){alert('No hay video');return;}
+      const stream = canvas.captureStream(30);
+      const rec = new MediaRecorder(stream,{mimeType:'video/webm'});
+      const chunks=[];
+      rec.ondataavailable=e=>chunks.push(e.data);
+      rec.onstop=()=>{
+        const blob = new Blob(chunks,{type:'video/webm'});
+        const url = URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=url;
+        a.download='editado.webm';
+        a.click();
+      };
+      rec.start();
+      player.currentTime=0;
+      player.play();
+      const draw=()=>{
+        ctx.drawImage(player,0,0,canvas.width,canvas.height);
+        if(!player.paused && !player.ended)requestAnimationFrame(draw);
+        else{rec.stop();}
+      };
+      draw();
+    };
+  </script>
+</body>
+</html>
+```
