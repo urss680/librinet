@@ -1,0 +1,54 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Generador PDF 27k palabras</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;background:#f2f2f2;margin:0;padding:2rem;display:flex;flex-direction:column;align-items:center}
+    h1{color:#333}
+    textarea{width:90%;max-width:600px;height:120px;font-size:1rem;padding:.5rem;border:1px solid #ccc;border-radius:4px;resize:vertical}
+    button{margin-top:1rem;padding:.7rem 1.4rem;font-size:1rem;background:#0077cc;color:#fff;border:none;border-radius:4px;cursor:pointer}
+    button:hover{background:#005fa3}
+  </style>
+</head>
+<body>
+  <h1>Generador de PDF con 27 000 palabras</h1>
+  <textarea id="semillas" placeholder="Introduce hasta 50 palabras (separadas por espacio o coma)">palabra1 palabra2 palabra3 palabra4 palabra5</textarea>
+  <button onclick="generarPDF()">Crear PDF</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    function palabraAleatoria(lista){
+      return lista[Math.floor(Math.random()*lista.length)];
+    }
+    function generarPDF(){
+      const { jsPDF } = window.jspdf;
+      const doc=new jsPDF({lineHeight:1.5});
+      const semillas=document.getElementById('semillas').value.split(/[\s,]+/).filter(w=>w.length>0);
+      if(semillas.length===0){alert('Introduce al menos una palabra');return;}
+      const palabrasPorLinea=20;
+      const lineasPorPagina=40;
+      const totalPalabras=27000;
+      let contador=0;
+      let x=10,y=20;
+      doc.setFontSize(11);
+      while(contador<totalPalabras){
+        let linea=[];
+        for(let i=0;i<palabrasPorLinea&&contador<totalPalabras;i++){
+          linea.push(palabraAleatoria(semillas));
+          contador++;
+        }
+        doc.text(linea.join(' '),x,y);
+        y+=7;
+        if(y>lineasPorPagina*7){
+          doc.addPage();
+          y=20;
+        }
+      }
+      doc.save('27000_palabras.pdf');
+    }
+  </script>
+</body>
+</html>
+```
