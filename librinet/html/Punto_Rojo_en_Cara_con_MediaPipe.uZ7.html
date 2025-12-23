@@ -1,0 +1,230 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Punto Rojo en Cara con MediaPipe</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a1a, #333);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+        }
+        .container {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            margin-top: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            background: #000;
+            display: none;
+            border: 2px solid #4CAF50;
+        }
+        video, canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: contrast(1.1) brightness(1.05);
+        }
+        button {
+            margin-top: 20px;
+            padding: 14px 28px;
+            font-size: 18px;
+            cursor: pointer;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        button:hover {
+            background: linear-gradient(45deg, #45a049, #3d8b40);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        h1 {
+            color: #fff;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            font-size: 2.2em;
+        }
+        p#message {
+            color: #ddd;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.5;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #4CAF50;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Detecta tu Cara y Pon un Punto Rojo</h1>
+    <p id="message">Haz clic en "Iniciar Cámara" para comenzar.</p>
+    <button id="startButton">Iniciar Cámara</button>
+    <div class="container" id="videoContainer">
+        <video id="webcam" playsinline style="display: none;"></video>
+        <canvas id="output_canvas"></canvas>
+    </div>
+
+    <script type="module">
+        import { FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.js";
+
+        const video = document.getElementById("webcam");
+        const canvasElement = document.getElementById("output_canvas");
+        const canvasCtx = canvasElement.getContext("2d");
+        const startButton = document.getElementById("startButton");
+        const videoContainer = document.getElementById("videoContainer");
+        const messageElement = document.getElementById("message");
+
+        let faceLandmarker;
+        let runningMode = "VIDEO";
+        let lastVideoTime = -1;
+        let drawingUtils;
+        let stream;
+
+        async function createFaceLandmarker() {
+            messageElement.innerHTML = '<span class="loading"></span> Cargando modelo de MediaPipe...';
+            const filesetResolver = await FilesetResolver.forVisionTasks(
+                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+            );
+            faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+                baseOptions: {
+                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker_full.task`,
+                    delegate: "GPU"
+                },
+                outputFaceBlendshapes: true,
+                runningMode,
+                numFaces: 1
+            });
+            drawingUtils = new DrawingUtils(canvasCtx);
+            messageElement.textContent = "Modelo cargado. Listo para iniciar cámara.";
+            startButton.disabled = false;
+        }
+
+        async function enableCam() {
+            if (!faceLandmarker) {
+                messageElement.textContent = "Error: El FaceLandmarker no se ha cargado correctamente.";
+                return;
+            }
+
+            messageElement.textContent = "Iniciando cámara...";
+            startButton.disabled = true;
+            videoContainer.style.display = 'block';
+
+            const constraints = {
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: "user"
+                }
+            };
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                video.addEventListener("loadeddata", predictWebcam);
+                messageElement.textContent = "Cámara iniciada. Detectando cara...";
+                startButton.style.display = 'none';
+            } catch (error) {
+                console.error("Error al acceder a la cámara:", error);
+                messageElement.textContent = "No se pudo acceder a la cámara. Asegúrate de haber dado permiso. (" + error.name + ")";
+                startButton.disabled = false;
+                videoContainer.style.display = 'none';
+            }
+        }
+
+        let results = undefined;
+        async function predictWebcam() {
+            canvasElement.width = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+
+            let startTimeMs = performance.now();
+            if (lastVideoTime !== video.currentTime) {
+                lastVideoTime = video.currentTime;
+                results = faceLandmarker.detectForVideo(video, startTimeMs);
+            }
+
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1);
+            canvasCtx.translate(-canvasElement.width, 0);
+            canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.restore();
+
+            if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+                const landmarks = results.faceLandmarks[0];
+                
+                // Punto en la punta de la nariz (landmark 4)
+                if (landmarks && landmarks[4]) {
+                    const originalX = landmarks[4].x * canvasElement.width;
+                    const y = landmarks[4].y * canvasElement.height;
+                    const mirroredX = canvasElement.width - originalX;
+
+                    // Efecto de brillo para el punto
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(mirroredX, y, 12, 0, 2 * Math.PI);
+                    canvasCtx.fillStyle = "rgba(255, 0, 0, 0.3)";
+                    canvasCtx.fill();
+
+                    // Punto principal
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(mirroredX, y, 6, 0, 2 * Math.PI);
+                    canvasCtx.fillStyle = "red";
+                    canvasCtx.fill();
+                }
+            } else {
+                messageElement.textContent = "Cámara iniciada. No se ha detectado ninguna cara.";
+            }
+
+            window.requestAnimationFrame(predictWebcam);
+        }
+
+        startButton.addEventListener("click", () => {
+            if (!faceLandmarker) {
+                messageElement.textContent = "El modelo de MediaPipe aún se está cargando, por favor espera...";
+                return;
+            }
+            enableCam();
+        });
+
+        startButton.disabled = true;
+        createFaceLandmarker();
+    </script>
+</body>
+</html>
+```
