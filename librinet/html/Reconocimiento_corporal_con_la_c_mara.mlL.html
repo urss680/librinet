@@ -1,0 +1,131 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reconocimiento corporal con la cámara</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    #video, #canvas {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 8px;
+    }
+    #video {
+      z-index: 1;
+    }
+    #canvas {
+      z-index: 2;
+    }
+    .info {
+      position: absolute;
+      bottom: 20px;
+      text-align: center;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Reconocimiento corporal por cámara</h1>
+
+  <video id="video" width="640" height="480" autoplay muted playsinline></video>
+  <canvas id="canvas" width="640" height="480"></canvas>
+
+  <div class="info">Permite el acceso a la cámara y mantente frente a ella para ver los puntos clave corporales.</div>
+
+  <!-- TensorFlow.js y PoseNet -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js"></script>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    async function iniciarCamara() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      return new Promise(resolve => video.onloadedmetadata = resolve);
+    }
+
+    async function iniciarPoseNet() {
+      const net = await posenet.load({
+        architecture: 'MobileNetV1',
+        outputStride: 16,
+        inputResolution: { width: 640, height: 480 },
+        multiplier: 0.75
+      });
+
+      async function detectar() {
+        const pose = await net.estimateSinglePose(video, {
+          flipHorizontal: true
+        });
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+        ctx.restore();
+
+        // Dibujar puntos clave
+        pose.keypoints.forEach(punto => {
+          if (punto.score > 0.5) {
+            ctx.beginPath();
+            ctx.arc(punto.position.x, punto.position.y, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = "#0ff";
+            ctx.fill();
+          }
+        });
+
+        // Dibujar esqueleto
+        const adyacentes = [
+          ['leftHip', 'leftShoulder'], ['leftShoulder', 'leftElbow'],
+          ['leftElbow', 'leftWrist'], ['leftHip', 'leftKnee'],
+          ['leftKnee', 'leftAnkle'], ['rightHip', 'rightShoulder'],
+          ['rightShoulder', 'rightElbow'], ['rightElbow', 'rightWrist'],
+          ['rightHip', 'rightKnee'], ['rightKnee', 'rightAnkle'],
+          ['leftShoulder', 'rightShoulder'], ['leftHip', 'rightHip']
+        ];
+
+        ctx.strokeStyle = "#0ff";
+        ctx.lineWidth = 2;
+        adyacentes.forEach(([p1, p2]) => {
+          const kp1 = pose.keypoints.find(k => k.part === p1);
+          const kp2 = pose.keypoints.find(k => k.part === p2);
+          if (kp1.score > 0.5 && kp2.score > 0.5) {
+            ctx.beginPath();
+            ctx.moveTo(kp1.position.x, kp1.position.y);
+            ctx.lineTo(kp2.position.x, kp2.position.y);
+            ctx.stroke();
+          }
+        });
+
+        requestAnimationFrame(detectar);
+      }
+
+      detectar();
+    }
+
+    (async () => {
+      await iniciarCamara();
+      await iniciarPoseNet();
+    })();
+  </script>
+</body>
+</html>
+```
