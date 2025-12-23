@@ -1,0 +1,137 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>App de Reconocimiento de Gestos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h1 {
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+    }
+    #video {
+      width: 90vw;
+      max-width: 640px;
+      border-radius: 8px;
+      background: #000;
+    }
+    #gesto {
+      margin-top: 15px;
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #00e676;
+    }
+    canvas {
+      display: none;
+    }
+    .btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      background: #00e676;
+      color: #000;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #00c853;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Reconocimiento de Gestos</h1>
+  <video id="video" autoplay muted playsinline></video>
+  <canvas id="canvas"></canvas>
+  <div id="gesto">Esperando gesto...</div>
+  <button id="toggle" class="btn">Detener</button>
+
+  <!-- TensorFlow.js y HandPose -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection@2.0.0/dist/hand-pose-detection.min.js"></script>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const gestoText = document.getElementById('gesto');
+    const toggleBtn = document.getElementById('toggle');
+
+    let detector;
+    let running = true;
+
+    // Acceder a la cámara
+    async function initCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      return new Promise(resolve => video.onloadedmetadata = resolve);
+    }
+
+    // Cargar modelo
+    async function createDetector() {
+      const model = handPoseDetection.SupportedModels.MediaPipeHands;
+      const config = {
+        runtime: 'tfjs',
+        modelType: 'lite',
+        maxHands: 1
+      };
+      detector = await handPoseDetection.createDetector(model, config);
+    }
+
+    // Detectar gesto simple (pulguar arriba/abajo)
+    function detectarGestos(keypoints) {
+      const pulgar = keypoints[4]; // punto del pulgar
+      const muneca = keypoints[0]; // muñeca
+      const diffY = pulgar.y - muneca.y;
+      const umbral = 50;
+      if (diffY < -umbral) return "Pulgar Arriba";
+      if (diffY > umbral) return "Pulgar Abajo";
+      return "Mano detectada";
+    }
+
+    // Loop de detección
+    async function detectFrame() {
+      if (!running) return;
+      ctx.drawImage(video, 0, 0);
+      const hands = await detector.estimateHands(video, { flipHorizontal: false });
+      if (hands.length > 0) {
+        const gesto = detectarGestos(hands[0].keypoints);
+        gestoText.textContent = gesto;
+      } else {
+        gestoText.textContent = "Esperando gesto...";
+      }
+      requestAnimationFrame(detectFrame);
+    }
+
+    // Inicializar
+    (async () => {
+      await initCamera();
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      await createDetector();
+      detectFrame();
+    })();
+
+    // Botón toggle
+    toggleBtn.onclick = () => {
+      running = !running;
+      toggleBtn.textContent = running ? "Detener" : "Iniciar";
+      if (running) detectFrame();
+    };
+  </script>
+</body>
+</html>
+```
