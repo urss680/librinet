@@ -1,0 +1,149 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reconocimiento de dibujo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    canvas {
+      border: 2px solid #444;
+      background: #000;
+      cursor: crosshair;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      margin: 0.3rem;
+      border: none;
+      border-radius: 4px;
+      background: #1e88e5;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #1565c0;
+    }
+    #resultado {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      color: #90caf9;
+    }
+    #clase {
+      font-weight: bold;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Dibuja algo y lo reconozco</h1>
+  <canvas id="lienzo" width="400" height="400"></canvas>
+
+  <div>
+    <button id="reconocer">Reconocer dibujo</button>
+    <button id="borrar">Borrar</button>
+  </div>
+
+  <div id="resultado">
+    Predicción: <span id="clase">-</span> (confianza: <span id="confianza">-</span>)
+  </div>
+
+  <!-- TensorFlow.js y modelo -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/quick-draw@1.0.0/dist/quick-draw.min.js"></script>
+
+  <script>
+    const canvas = document.getElementById('lienzo');
+    const ctx = canvas.getContext('2d');
+    const reconocerBtn = document.getElementById('reconocer');
+    const borrarBtn = document.getElementById('borrar');
+    const claseSpan = document.getElementById('clase');
+    const confianzaSpan = document.getElementById('confianza');
+
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#fff';
+
+    let modelo = null;
+    let dibujando = false;
+
+    // Cargar el modelo Quick, Draw!
+    (async () => {
+      modelo = await quickdraw.load();
+      reconocerBtn.disabled = false;
+    })();
+
+    function empezar(e) {
+      dibujando = true;
+      ctx.beginPath();
+      ctx.moveTo(e.offsetX, e.offsetY);
+    }
+
+    function mover(e) {
+      if (!dibujando) return;
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+    }
+
+    function parar() {
+      dibujando = false;
+    }
+
+    canvas.addEventListener('mousedown', empezar);
+    canvas.addEventListener('mousemove', mover);
+    canvas.addEventListener('mouseup', parar);
+    canvas.addEventListener('mouseleave', parar);
+
+    // Reconocimiento
+    reconocerBtn.addEventListener('click', async () => {
+      if (!modelo) return;
+      reconocerBtn.disabled = true;
+      reconocerBtn.textContent = 'Pensando...';
+
+      // Convertir canvas a imagen 28x28 en escala de grises
+      const img = tf.tidy(() => {
+        const tensor = tf.browser.fromPixels(canvas, 1)
+          .resizeNearestNeighbor([28, 28])
+          .toFloat()
+          .div(255.0)
+          .expandDims(0);
+        return tensor;
+      });
+
+      const pred = await modelo.predict(img);
+      const { className, probability } = pred;
+
+      claseSpan.textContent = className;
+      confianzaSpan.textContent = (probability * 100).toFixed(1) + '%';
+
+      img.dispose();
+      reconocerBtn.disabled = false;
+      reconocerBtn.textContent = 'Reconocer dibujo';
+    });
+
+    // Limpiar canvas
+    borrarBtn.addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      claseSpan.textContent = '-';
+      confianzaSpan.textContent = '-';
+    });
+
+    // Deshabilitar botón hasta que esté listo
+    reconocerBtn.disabled = true;
+  </script>
+
+</body>
+</html>
+```
