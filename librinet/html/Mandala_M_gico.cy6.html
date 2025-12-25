@@ -1,0 +1,46 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mandala Mágico</title>
+  <style>
+    html,body{margin:0;height:100%;background:#000;overflow:hidden;}
+    canvas{display:block;}
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <script>
+    const c=document.getElementById('c'),x=c.getContext('2d');
+    let w=c.width=innerWidth,h=c.height=innerHeight;
+    let t=0,maxLayers=1;
+    function mandala(){
+      x.fillStyle='rgba(0,0,0,0.02)';
+      x.fillRect(0,0,w,h);
+      const cx=w/2,cy=h/2;
+      const layers=maxLayers;
+      const dots=36;
+      for(let i=0;i<layers;i++){
+        const r=20+i*20;
+        for(let j=0;j<dots;j++){
+          const a=(j/dots)*Math.PI*2 + t*(0.02+i/200);
+          const px=cx+r*Math.cos(a);
+          const py=cy+r*Math.sin(a);
+          const size=5+Math.sin(t+i)*3;
+          x.beginPath();
+          x.arc(px,py,size,0,Math.PI*2);
+          x.fillStyle=`hsl(${(a*180/Math.PI+200+t*30)%360},100%,60%)`;
+          x.fill();
+        }
+      }
+      t+=0.03;
+      if(t%1<0.02&&maxLayers<50)maxLayers+=0.2;
+      requestAnimationFrame(mandala);
+    }
+    mandala();
+    addEventListener('resize',()=>{w=c.width=innerWidth;h=c.height=innerHeight;});
+  </script>
+</body>
+</html>
+```
