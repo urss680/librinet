@@ -1,0 +1,93 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dibujo con micrófono</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+    }
+    canvas {
+      display: block;
+      cursor: crosshair;
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #fff;
+      font-family: sans-serif;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 8px;
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="info">
+    <div>Haz clic en «Permitir» cuando el navegador lo solicite.</div>
+    <button id="btnMic">Activar micrófono</button>
+    <button id="btnClear">Borrar lienzo</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const btnMic = document.getElementById('btnMic');
+    const btnClear = document.getElementById('btnClear');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    let audioCtx, analyser, source, dataArray;
+    let isDrawing = false;
+    let x = 0;
+
+    btnMic.addEventListener('click', async () => {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        isDrawing = true;
+        draw();
+        btnMic.disabled = true;
+      }
+    });
+
+    btnClear.addEventListener('click', () => {
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    });
+
+    function draw() {
+      if (!isDrawing) return;
+      requestAnimationFrame(draw);
+      analyser.getByteFrequencyData(dataArray);
+      const v = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+      const hue = (v * 2) % 360;
+      ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+      ctx.fillRect(x, canvas.height - v, 2, v);
+      x += 2;
+      if (x > canvas.width) x = 0;
+    }
+  </script>
+</body>
+</html>
+```
