@@ -1,0 +1,63 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Música de fondo</title>
+  <style>
+    /* Ocultar el reproductor visualmente */
+    #reproductor {
+      position: absolute;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+    }
+    /* Opcional: botón para pausar/reanudar */
+    #control {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 8px 14px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Reproductor oculto -->
+  <iframe id="reproductor"
+          src="https://www.youtube.com/embed/VIDEO_ID?autoplay=1&loop=1&playlist=VIDEO_ID"
+          frameborder="0"
+          allow="autoplay; encrypted-media"
+          allowfullscreen>
+  </iframe>
+
+  <!-- Botón para pausar/reanudar -->
+  <button id="control" onclick="toggleMusica()">Pausar música</button>
+
+  <script>
+    let sonando = true;
+    const reproductor = document.getElementById('reproductor');
+    const boton = document.getElementById('control');
+
+    function toggleMusica() {
+      if (sonando) {
+        reproductor.src = '';
+        boton.textContent = 'Reanudar música';
+        sonando = false;
+      } else {
+        reproductor.src = 'https://www.youtube.com/embed/VIDEO_ID?autoplay=1&loop=1&playlist=VIDEO_ID';
+        boton.textContent = 'Pausar música';
+        sonando = true;
+      }
+    }
+  </script>
+
+</body>
+</html>
+```
