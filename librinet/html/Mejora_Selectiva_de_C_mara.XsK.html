@@ -1,0 +1,240 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mejora Selectiva de Cámara</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            margin: 0 auto 20px;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        #mainVideo {
+            width: 100%;
+            display: block;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .start { background-color: #4CAF50; color: white; }
+        .start:hover { background-color: #45a049; }
+        
+        .clear { background-color: #ff9800; color: white; }
+        .clear:hover { background-color: #e68900; }
+        
+        .reset { background-color: #2196F3; color: white; }
+        .reset:hover { background-color: #0b7dda; }
+        
+        .info {
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #555;
+            text-align: center;
+        }
+        
+        .brush-size {
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .brush-size input {
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mejora Selectiva de Cámara</h1>
+        
+        <div class="video-container">
+            <video id="mainVideo" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+        </div>
+        
+        <div class="brush-size">
+            <label>Tamaño del pincel: <span id="brushSizeValue">30</span>px</label><br>
+            <input type="range" id="brushSize" min="10" max="100" value="30">
+        </div>
+        
+        <div class="controls">
+            <button class="start" onclick="startCamera()">Iniciar Cámara</button>
+            <button class="clear" onclick="clearEnhancements()">Limpiar Mejoras</button>
+            <button class="reset" onclick="location.reload()">Reiniciar</button>
+        </div>
+        
+        <div class="info">
+            <p><strong>Instrucciones:</strong> Haz clic y arrastra sobre el video para aplicar mejoras solo en las zonas seleccionadas.</p>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('mainVideo');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const brushSizeInput = document.getElementById('brushSize');
+        const brushSizeValue = document.getElementById('brushSizeValue');
+        
+        let isDrawing = false;
+        let brushSize = 30;
+        let enhancements = [];
+        
+        // Actualizar tamaño del pincel
+        brushSizeInput.addEventListener('input', (e) => {
+            brushSize = e.target.value;
+            brushSizeValue.textContent = brushSize;
+        });
+        
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480 }
+                });
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    drawVideo();
+                };
+            } catch (err) {
+                console.error('Error al acceder a la cámara:', err);
+            }
+        }
+        
+        function drawVideo() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar video
+            ctx.drawImage(video, 0, 0);
+            
+            // Aplicar mejoras en zonas seleccionadas
+            enhancements.forEach(point => {
+                const x = point.x;
+                const y = point.y;
+                const radius = point.size;
+                
+                // Crear gradiente para suavizar el borde
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, 'rgba(255,255,255,0.3)');
+                gradient.addColorStop(1, 'rgba(255,255,255,0)');
+                
+                // Aplicar mejora (brillo y contraste)
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.clip();
+                
+                ctx.filter = 'brightness(1.3) contrast(1.2)';
+                ctx.drawImage(video, 0, 0);
+                
+                ctx.restore();
+                
+                // Dibujar borde suave
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            requestAnimationFrame(drawVideo);
+        }
+        
+        // Eventos de dibujo
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            draw(e);
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+                draw(e);
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+        });
+        
+        function draw(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            
+            enhancements.push({
+                x: x,
+                y: y,
+                size: brushSize
+            });
+        }
+        
+        function clearEnhancements() {
+            enhancements = [];
+        }
+        
+        // Iniciar automáticamente
+        startCamera();
+    </script>
+</body>
+</html>
+```
