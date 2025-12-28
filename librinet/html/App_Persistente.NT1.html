@@ -1,0 +1,84 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>App Persistente</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;margin:2rem}
+    button{padding:.6rem 1rem;font-size:1rem;margin-right:.5rem}
+    #log{margin-top:1rem;height:150px;overflow-y:auto;border:1px solid #ccc;padding:.5rem;background:#f9f9f9}
+  </style>
+</head>
+<body>
+  <h1>Permanecer en segundo plano</h1>
+  <button id="btnActivar">Activar permanencia</button>
+  <button id="btnDesactivar" disabled>Desactivar</button>
+  <div id="log"></div>
+
+  <script>
+    const log=txt=>{
+      const d=document.createElement('div');
+      d.textContent=new Date().toLocaleTimeString()+' - '+txt;
+      document.getElementById('log').appendChild(d);
+      document.getElementById('log').scrollTop=1e9;
+    };
+
+    let swReg;
+    const btnActivar=document.getElementById('btnActivar');
+    const btnDesactivar=document.getElementById('btnDesactivar');
+
+    // Registrar Service Worker
+    navigator.serviceWorker.register(
+      URL.createObjectURL(new Blob([`
+        const BG_SYNC_TAG='keep-alive';
+        let count=0;
+        self.addEventListener('install',()=>self.skipWaiting());
+        self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+        self.addEventListener('sync',e=>{
+          if(e.tag===BG_SYNC_TAG){
+            e.waitUntil(doWork());
+          }
+        });
+        async function doWork(){
+          count++;
+          await self.registration.showNotification('App Segundo Plano',{body:'Tick '+count});
+          // Re-programar
+          await self.registration.sync.register(BG_SYNC_TAG);
+        }
+      `],{type:'application/javascript'})
+    )).then(reg=>{
+      swReg=reg;
+      log('Service Worker registrado');
+    }).catch(err=>log('Error SW: '+err));
+
+    btnActivar.onclick=async()=>{
+      // 1) Notificaciones
+      if(Notification.permission!=='granted'){
+        const perm=await Notification.requestPermission();
+        if(perm!=='granted'){log('Permiso de notificaciones denegado');return;}
+      }
+      // 2) Background Sync
+      if('sync' in swReg){
+        await swReg.sync.register('keep-alive');
+        log('Permanencia activada (cerrar pestaña no detiene la tarea)');
+        btnActivar.disabled=true;
+        btnDesactivar.disabled=false;
+      }else{
+        log('Background Sync no soportado');
+      }
+    };
+
+    btnDesactivar.onclick=async()=>{
+      if(swReg&&'sync' in swReg){
+        // Cancelar sync
+        await swReg.sync.register(''); // limpia cola
+        log('Permanencia desactivada');
+        btnActivar.disabled=false;
+        btnDesactivar.disabled=true;
+      }
+    };
+  </script>
+</body>
+</html>
+```
