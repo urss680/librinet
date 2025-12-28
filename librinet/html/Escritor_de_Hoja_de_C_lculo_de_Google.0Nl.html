@@ -1,0 +1,125 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Escritor de Hoja de Cálculo de Google</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; background: #f7f7f7; }
+    h1 { color: #333; }
+    label, input, textarea, button { display: block; margin: .5rem 0; width: 100%; max-width: 400px; }
+    input, textarea { padding: .5rem; }
+    button { padding: .6rem; background: #1a73e8; color: #fff; border: none; cursor: pointer; }
+    button:hover { background: #0d62c9; }
+    #status { margin-top: 1rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h1>Escritor de Hoja de Cálculo de Google</h1>
+
+  <label>URL completa de la hoja:</label>
+  <input id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/1BxiMV2.../edit" />
+
+  <label>Celda (ej. A1):</label>
+  <input id="celda" placeholder="A1" />
+
+  <label>Valor a escribir:</label>
+  <textarea id="value" rows="3"></textarea>
+
+  <button onclick="escribir()">Escribir en la hoja</button>
+
+  <p id="status"></p>
+
+  <script>
+    async function escribir() {
+      const urlFull = document.getElementById('sheetUrl').value.trim();
+      const celda = document.getElementById('celda').value.trim();
+      const value = document.getElementById('value').value;
+
+      if (!urlFull || !celda || !value) {
+        mostrarEstado('Completa todos los campos.', 'red');
+        return;
+      }
+
+      const match = urlFull.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (!match) {
+        mostrarEstado('URL no válida.', 'red');
+        return;
+      }
+      const sheetId = match[1];
+
+      const token = await gapiAuth();
+      if (!token) return;
+
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Hoja1!${celda}?valueInputOption=RAW`;
+
+      try {
+        const res = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ values: [[value]] })
+        });
+
+        if (res.ok) {
+          mostrarEstado('¡Escrito con éxito!', 'green');
+        } else {
+          const err = await res.json();
+          mostrarEstado('Error: ' + err.error.message, 'red');
+        }
+      } catch (e) {
+        mostrarEstado('Error de red.', 'red');
+      }
+    }
+
+    function mostrarEstado(msg, color) {
+      const s = document.getElementById('status');
+      s.textContent = msg;
+      s.style.color = color;
+    }
+
+    async function gapiAuth() {
+      return new Promise((resolve) => {
+        const clientId = 'TU_CLIENTE_ID.apps.googleusercontent.com'; // Cambia por tu CLIENT ID
+        const scope = 'https://www.googleapis.com/auth/spreadsheets';
+        let token = gapi?.auth?.getToken()?.access_token;
+
+        if (token) { resolve(token); return; }
+
+        if (!window.gapi) {
+          const script = document.createElement('script');
+          script.src = 'https://apis.google.com/js/api.js';
+          script.onload = () => loadGapi(clientId, scope, resolve);
+          document.head.appendChild(script);
+        } else {
+          loadGapi(clientId, scope, resolve);
+        }
+      });
+    }
+
+    function loadGapi(clientId, scope, resolve) {
+      gapi.load('client:auth2', () => {
+        gapi.client.init({
+          apiKey: null,
+          clientId: clientId,
+          scope: scope
+        }).then(() => {
+          if (gapi.auth2.getAuthInstance().isSignedIn.get()) {
+            resolve(gapi.auth.getToken().access_token);
+          } else {
+            gapi.auth2.getAuthInstance().signIn().then(() => {
+              resolve(gapi.auth.getToken().access_token);
+            });
+          }
+        });
+      });
+    }
+  </script>
+
+</body>
+</html>
+```
