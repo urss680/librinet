@@ -1,0 +1,413 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Calidad de Cámara - Auto-Mejora</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .video-container {
+            position: relative;
+            margin-bottom: 30px;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        label {
+            font-weight: bold;
+            color: #555;
+        }
+        
+        select, input[type="range"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+        }
+        
+        .quality-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .improve {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .improve:hover {
+            background-color: #45a049;
+        }
+        
+        .worsen {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        .worsen:hover {
+            background-color: #da190b;
+        }
+        
+        .reset {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .reset:hover {
+            background-color: #0b7dda;
+        }
+        
+        .auto-improve {
+            background-color: #FF9800;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+        
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Control de Calidad de Cámara - Auto-Mejora</h1>
+        
+        <div class="video-container">
+            <video id="video" autoplay playsinline></video>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="videoSource">Seleccionar Cámara:</label>
+                <select id="videoSource"></select>
+            </div>
+            
+            <div class="control-group">
+                <label for="brightness">Brillo: <span id="brightnessValue">100</span>%</label>
+                <input type="range" id="brightness" min="0" max="200" value="100">
+            </div>
+            
+            <div class="control-group">
+                <label for="contrast">Contraste: <span id="contrastValue">100</span>%</label>
+                <input type="range" id="contrast" min="0" max="200" value="100">
+            </div>
+            
+            <div class="control-group">
+                <label for="saturate">Saturación: <span id="saturateValue">100</span>%</label>
+                <input type="range" id="saturate" min="0" max="200" value="100">
+            </div>
+            
+            <div class="control-group">
+                <label for="sharpness">Nitidez: <span id="sharpnessValue">0</span>px</label>
+                <input type="range" id="sharpness" min="0" max="5" value="0" step="0.1">
+            </div>
+            
+            <div class="control-group">
+                <label for="exposure">Exposición: <span id="exposureValue">100</span>%</label>
+                <input type="range" id="exposure" min="50" max="150" value="100">
+            </div>
+        </div>
+        
+        <div class="quality-buttons">
+            <button class="auto-improve" onclick="autoImproveQuality()">🚀 Auto-Mejorar</button>
+            <button class="improve" onclick="improveQuality()">Mejorar Calidad</button>
+            <button class="worsen" onclick="worsenQuality()">Empeorar Calidad</button>
+            <button class="reset" onclick="resetFilters()">Restablecer</button>
+        </div>
+        
+        <div class="info">
+            <p><strong>Características:</strong></p>
+            <ul>
+                <li>🤖 <strong>Auto-Mejora:</strong> Ajusta automáticamente todos los parámetros para obtener la mejor calidad</li>
+                <li>🎨 Ajustes en tiempo real con controles deslizantes</li>
+                <li>📷 Selección de cámara múltiple</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const videoSelect = document.getElementById('videoSource');
+        const brightnessSlider = document.getElementById('brightness');
+        const contrastSlider = document.getElementById('contrast');
+        const saturateSlider = document.getElementById('saturate');
+        const sharpnessSlider = document.getElementById('sharpness');
+        const exposureSlider = document.getElementById('exposure');
+        
+        // Auto-mejora inteligente
+        let autoImproveInterval;
+        let isAutoImproving = false;
+        
+        // Actualizar valores mostrados
+        brightnessSlider.oninput = () => {
+            document.getElementById('brightnessValue').textContent = brightnessSlider.value;
+            applyFilters();
+        };
+        
+        contrastSlider.oninput = () => {
+            document.getElementById('contrastValue').textContent = contrastSlider.value;
+            applyFilters();
+        };
+        
+        saturateSlider.oninput = () => {
+            document.getElementById('saturateValue').textContent = saturateSlider.value;
+            applyFilters();
+        };
+        
+        sharpnessSlider.oninput = () => {
+            document.getElementById('sharpnessValue').textContent = sharpnessSlider.value;
+            applyFilters();
+        };
+        
+        exposureSlider.oninput = () => {
+            document.getElementById('exposureValue').textContent = exposureSlider.value;
+            applyFilters();
+        };
+        
+        // Obtener dispositivos de video
+        async function getVideoDevices() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            videoSelect.innerHTML = '';
+            videoDevices.forEach((device, index) => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Cámara ${index + 1}`;
+                videoSelect.appendChild(option);
+            });
+        }
+        
+        // Iniciar video
+        async function startVideo() {
+            const deviceId = videoSelect.value;
+            const constraints = {
+                video: {
+                    deviceId: deviceId ? { exact: deviceId } : undefined,
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    frameRate: { ideal: 30 }
+                }
+            };
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                
+                // Aplicar auto-mejora después de iniciar el video
+                setTimeout(() => {
+                    autoImproveQuality();
+                }, 1000);
+            } catch (err) {
+                console.error('Error al acceder a la cámara:', err);
+            }
+        }
+        
+        // Aplicar filtros CSS
+        function applyFilters() {
+            const brightness = brightnessSlider.value;
+            const contrast = contrastSlider.value;
+            const saturate = saturateSlider.value;
+            const sharpness = sharpnessSlider.value;
+            const exposure = exposureSlider.value;
+            
+            video.style.filter = `
+                brightness(${brightness}%)
+                contrast(${contrast}%)
+                saturate(${saturate}%)
+                drop-shadow(0 0 ${sharpness}px rgba(255,255,255,0.5))
+            `;
+        }
+        
+        // Auto-mejorar calidad con animación suave
+        function autoImproveQuality() {
+            if (isAutoImproving) return;
+            
+            isAutoImproving = true;
+            const autoButton = document.querySelector('.auto-improve');
+            autoButton.textContent = '🔄 Mejorando...';
+            autoButton.disabled = true;
+            
+            const targetValues = {
+                brightness: 130,
+                contrast: 125,
+                saturate: 135,
+                sharpness: 2,
+                exposure: 115
+            };
+            
+            const steps = 30;
+            let currentStep = 0;
+            
+            const initialValues = {
+                brightness: parseFloat(brightnessSlider.value),
+                contrast: parseFloat(contrastSlider.value),
+                saturate: parseFloat(saturateSlider.value),
+                sharpness: parseFloat(sharpnessSlider.value),
+                exposure: parseFloat(exposureSlider.value)
+            };
+            
+            autoImproveInterval = setInterval(() => {
+                currentStep++;
+                const progress = currentStep / steps;
+                
+                // Interpolación suave (ease-out)
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                
+                brightnessSlider.value = initialValues.brightness + (targetValues.brightness - initialValues.brightness) * easeOut;
+                contrastSlider.value = initialValues.contrast + (targetValues.contrast - initialValues.contrast) * easeOut;
+                saturateSlider.value = initialValues.saturate + (targetValues.saturate - initialValues.saturate) * easeOut;
+                sharpnessSlider.value = initialValues.sharpness + (targetValues.sharpness - initialValues.sharpness) * easeOut;
+                exposureSlider.value = initialValues.exposure + (targetValues.exposure - initialValues.exposure) * easeOut;
+                
+                // Actualizar displays
+                document.getElementById('brightnessValue').textContent = Math.round(brightnessSlider.value);
+                document.getElementById('contrastValue').textContent = Math.round(contrastSlider.value);
+                document.getElementById('saturateValue').textContent = Math.round(saturateSlider.value);
+                document.getElementById('sharpnessValue').textContent = sharpnessSlider.value.toFixed(1);
+                document.getElementById('exposureValue').textContent = Math.round(exposureSlider.value);
+                
+                applyFilters();
+                
+                if (currentStep >= steps) {
+                    clearInterval(autoImproveInterval);
+                    isAutoImproving = false;
+                    autoButton.textContent = '✅ Mejorado';
+                    setTimeout(() => {
+                        autoButton.textContent = '🚀 Auto-Mejorar';
+                        autoButton.disabled = false;
+                    }, 2000);
+                }
+            }, 50);
+        }
+        
+        // Mejorar calidad manual
+        function improveQuality() {
+            brightnessSlider.value = 130;
+            contrastSlider.value = 125;
+            saturateSlider.value = 135;
+            sharpnessSlider.value = 2;
+            exposureSlider.value = 115;
+            
+            document.getElementById('brightnessValue').textContent = '130';
+            document.getElementById('contrastValue').textContent = '125';
+            document.getElementById('saturateValue').textContent = '135';
+            document.getElementById('sharpnessValue').textContent = '2.0';
+            document.getElementById('exposureValue').textContent = '115';
+            
+            applyFilters();
+        }
+        
+        // Empeorar calidad
+        function worsenQuality() {
+            brightnessSlider.value = 70;
+            contrastSlider.value = 70;
+            saturateSlider.value = 40;
+            sharpnessSlider.value = 0;
+            exposureSlider.value = 60;
+            
+            document.getElementById('brightnessValue').textContent = '70';
+            document.getElementById('contrastValue').textContent = '70';
+            document.getElementById('saturateValue').textContent = '40';
+            document.getElementById('sharpnessValue').textContent = '0.0';
+            document.getElementById('exposureValue').textContent = '60';
+            
+            applyFilters();
+        }
+        
+        // Restablecer filtros
+        function resetFilters() {
+            brightnessSlider.value = 100;
+            contrastSlider.value = 100;
+            saturateSlider.value = 100;
+            sharpnessSlider.value = 0;
+            exposureSlider.value = 100;
+            
+            document.getElementById('brightnessValue').textContent = '100';
+            document.getElementById('contrastValue').textContent = '100';
+            document.getElementById('saturateValue').textContent = '100';
+            document.getElementById('sharpnessValue').textContent = '0.0';
+            document.getElementById('exposureValue').textContent = '100';
+            
+            applyFilters();
+        }
+        
+        // Event listeners
+        videoSelect.onchange = startVideo;
+        
+        // Inicializar
+        getVideoDevices().then(() => startVideo());
+    </script>
+</body>
+</html>
+```
