@@ -1,0 +1,601 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Personalizado</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .login-container {
+            width: 90%;
+            max-width: 400px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 50px;
+            text-align: center;
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .login-header {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+        
+        .login-subtitle {
+            color: #718096;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+        
+        .name-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        
+        .name-input:focus {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .enter-button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .enter-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .enter-button:active {
+            transform: translateY(0);
+        }
+        
+        .chat-container {
+            width: 90%;
+            max-width: 1100px;
+            height: 85vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .chat-title {
+            font-size: 22px;
+            font-weight: 600;
+        }
+        
+        .users-table {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 15px;
+            min-width: 250px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .table-header {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        
+        .user-count {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .online-indicator {
+            width: 8px;
+            height: 8px;
+            background: #48bb78;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .typing-dot {
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-5px);
+            }
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+            background: #f7fafc;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            animation: messageSlide 0.3s ease-out;
+        }
+        
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .message.own {
+            flex-direction: row-reverse;
+        }
+        
+        .message.own .message-content {
+            align-items: flex-end;
+        }
+        
+        .message-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            margin: 0 15px;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+        }
+        
+        .message-content {
+            max-width: 70%;
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+        
+        .message-author {
+            font-weight: 600;
+            margin-right: 10px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            color: #a0aec0;
+        }
+        
+        .message-text {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 20px;
+            font-size: 15px;
+            line-height: 1.5;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            word-wrap: break-word;
+        }
+        
+        .message.own .message-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .typing-indicator-main {
+            padding: 0 25px;
+            font-size: 13px;
+            color: #a0aec0;
+            font-style: italic;
+            min-height: 25px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .input-container {
+            padding: 25px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 15px 25px;
+            border: 2px solid #e2e8f0;
+            border-radius: 30px;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .message-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .send-button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* Scrollbar personalizada */
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .messages-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 10px;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Pantalla de inicio personalizada -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-header">¡Hola! 👋</div>
+        <div class="login-subtitle">¿Cómo quieres que te llame?</div>
+        <input 
+            type="text" 
+            class="name-input" 
+            id="nameInput" 
+            placeholder="Escribe tu nombre aquí..."
+            maxlength="20"
+            autocomplete="off"
+        >
+        <button class="enter-button" id="enterButton">Entrar al Chat</button>
+    </div>
+
+    <!-- Contenedor del chat -->
+    <div class="chat-container" id="chatContainer">
+        <div class="chat-header">
+            <div class="chat-title">💬 That</div>
+            <div class="users-table">
+                <div class="table-header">Estado del chat</div>
+                <div class="user-count">
+                    <div class="online-indicator"></div>
+                    <span id="connectedUsers">1 usuario conectado</span>
+                </div>
+                <div class="typing-indicator" id="typingIndicator">
+                    <span id="typingText"></span>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="messages-container" id="messagesContainer">
+            <!-- Los mensajes aparecerán aquí -->
+        </div>
+        
+        <div class="typing-indicator-main" id="typingIndicatorMain"></div>
+        
+        <div class="input-container">
+            <input 
+                type="text" 
+                class="message-input" 
+                id="messageInput" 
+                placeholder="Escribe un mensaje..."
+                maxlength="500"
+            >
+            <button class="send-button" id="sendButton">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let currentUser = '';
+        let typingUsers = new Set();
+        let messages = [
+            { author: 'Sistema', text: '¡Bienvenido al chat grupal That! 🎉', time: getCurrentTime() },
+            { author: 'Sistema', text: 'Aquí puedes charlar con otros usuarios', time: getCurrentTime() }
+        ];
+
+        // Elementos del DOM
+        const loginContainer = document.getElementById('loginContainer');
+        const chatContainer = document.getElementById('chatContainer');
+        const nameInput = document.getElementById('nameInput');
+        const enterButton = document.getElementById('enterButton');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const typingIndicatorMain = document.getElementById('typingIndicatorMain');
+        const connectedUsersElement = document.getElementById('connectedUsers');
+        const typingTextElement = document.getElementById('typingText');
+
+        // Función para obtener la hora actual
+        function getCurrentTime() {
+            const now = new Date();
+            return now.getHours().toString().padStart(2, '0') + ':' + 
+                   now.getMinutes().toString().padStart(2, '0');
+        }
+
+        // Función para obtener iniciales del nombre
+        function getInitials(name) {
+            return name.charAt(0).toUpperCase();
+        }
+
+        // Función para generar color basado en el nombre
+        function generateUserColor(name) {
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const hue = hash % 360;
+            return `hsl(${hue}, 70%, 60%)`;
+        }
+
+        // Función para actualizar contador de usuarios conectados
+        function updateConnectedUsers() {
+            const count = Math.floor(Math.random() * 10) + 1; // Simulación
+            connectedUsersElement.textContent = `${count} usuario${count !== 1 ? 's' : ''} conectado${count !== 1 ? 's' : ''}`;
+        }
+
+        // Función para renderizar mensajes
+        function renderMessages() {
+            messagesContainer.innerHTML = '';
+            messages.forEach(message => {
+                const messageElement = createMessageElement(message);
+                messagesContainer.appendChild(messageElement);
+            });
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Función para crear elemento de mensaje
+        function createMessageElement(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            if (message.author === currentUser) {
+                messageDiv.classList.add('own');
+            }
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.style.background = message.author === 'Sistema' 
+                ? '#718096' 
+                : generateUserColor(message.author);
+            avatar.textContent = message.author === 'Sistema' 
+                ? '🤖' 
+                : getInitials(message.author);
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'message-header';
+
+            const authorSpan = document.createElement('span');
+            authorSpan.className = 'message-author';
+            authorSpan.textContent = message.author;
+            authorSpan.style.color = message.author === 'Sistema' 
+                ? '#718096' 
+                : generateUserColor(message.author);
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'message-time';
+            timeSpan.textContent = message.time;
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'message-text';
+            textDiv.textContent = message.text;
+
+            headerDiv.appendChild(authorSpan);
+            headerDiv.appendChild(timeSpan);
+            contentDiv.appendChild(headerDiv);
+            contentDiv.appendChild(textDiv);
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(contentDiv);
+
+            return messageDiv;
+        }
+
+        // Función para enviar mensaje
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (text && currentUser) {
+                const newMessage = {
+                    author: currentUser,
+                    text: text,
+                    time: getCurrentTime()
+                };
+                messages.push(newMessage);
+                messageInput.value = '';
+                renderMessages();
+            }
+        }
+
+        // Función para actualizar indicador de escritura
+        function updateTypingIndicator() {
+            if (typingUsers.size > 0) {
+                let text = '';
+                if (typingUsers.size === 1) {
+                    text = 'Alguien está escribiendo';
+                } else if (typingUsers.size === 2) {
+                    text = '2 personas están escribiendo';
+                } else {
+                    text = `${typingUsers.size} personas están escribiendo`;
+                }
+                
+                typingTextElement.textContent = text;
+                typingIndicator.style.display = 'flex';
+            } else {
+                typingIndicator.style.display = 'none';
+            }
+        }
+
+        // Función para entrar al chat
+        function enterChat() {
+            const name = nameInput.value.trim();
+            if (name) {
+                currentUser = name;
+                loginContainer.style.display = 'none';
+                chatContainer.style.display = 'flex';
+                updateConnectedUsers();
+                renderMessages();
+                messageInput.focus();
+            }
+        }
+
+        // Event Listeners
+        enterButton.addEventListener('click', enterChat);
+        
+        nameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                enterChat();
+            }
+        });
+        
+        sendButton.addEventListener('click', sendMessage);
+        
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            } else {
+                // Indicador de escritura
+                typingUsers.add(currentUser);
+                updateTypingIndicator();
+                clearTimeout(window.typingTimeout);
+                window.typingTimeout = setTimeout(() => {
+                    typingUsers.delete(currentUser);
+                    updateTypingIndicator();
+                }, 1000);
+            }
+        });
+
+        // Actualizar usuarios conectados cada 5 segundos
+        setInterval(updateConnectedUsers, 5000);
+
+        // Auto-focus en el input de nombre
+        nameInput.focus();
+    </script>
+</body>
+</html>
+```
