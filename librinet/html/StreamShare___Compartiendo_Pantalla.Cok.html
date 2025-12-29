@@ -1,0 +1,365 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamShare - Compartiendo Pantalla</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: #111;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #fff;
+        }
+        #screenShare {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            border: 2px solid #0ff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #0ff;
+            position: relative;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+        .neon-btn {
+            padding: .6rem 1.2rem;
+            font-size: 1rem;
+            background: #0ff;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .neon-btn:hover {
+            background: #0aa;
+            box-shadow: 0 0 15px #0ff;
+        }
+        .sidebar {
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+        }
+        .room-card {
+            background: #222;
+            border: 1px solid #0ff3;
+            transition: 0.2s;
+        }
+        .room-card:hover {
+            border-color: #0ff;
+            background: #2a2a2a;
+        }
+        .chat-container {
+            background: #1a1a1a;
+            border-left: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            max-height: 300px;
+        }
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #333;
+        }
+        .chat-input input {
+            flex: 1;
+            background: #222;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+        .message {
+            margin-bottom: 8px;
+            padding: 6px 10px;
+            background: #222;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        .message-author {
+            color: #0ff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Sidebar de Salas -->
+    <aside class="sidebar w-full md:w-80 h-48 md:h-full flex flex-col p-4 z-10">
+        <h1 class="text-xl font-black text-cyan-400 mb-4 tracking-tighter uppercase">StreamShare</h1>
+        
+        <div class="mb-6">
+            <input type="text" id="username" placeholder="Tu Apodo" class="w-full bg-neutral-800 border border-neutral-700 rounded p-2 text-sm text-cyan-400 outline-none focus:border-cyan-500">
+        </div>
+
+        <div class="flex-1 overflow-y-auto">
+            <h2 class="text-xs font-bold text-gray-500 uppercase mb-3">Salas en Vivo</h2>
+            <div id="rooms-list" class="space-y-2">
+                <p class="text-xs text-gray-600 italic">Buscando señales...</p>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-neutral-800">
+            <button id="shareBtn" class="neon-btn w-full">Transmitir Pantalla</button>
+            <button id="stopBtn" class="hidden w-full p-2 bg-red-600 text-white rounded font-bold">Detener</button>
+        </div>
+    </aside>
+
+    <!-- Área de Visualización -->
+    <main class="flex-1 p-4 md:p-8 flex flex-col gap-4">
+        <div id="screenShare">
+            <div id="placeholder" class="text-center">
+                <p class="mb-4">Haz clic en Transmitir o únete a una sala</p>
+                <div class="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto opacity-20"></div>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center px-2">
+            <div>
+                <span id="current-status" class="text-xs font-bold text-cyan-500 uppercase tracking-widest">Espectador</span>
+                <h2 id="room-title" class="text-lg font-bold">Sin señal activa</h2>
+            </div>
+            <div id="viewer-count" class="text-xs text-gray-500">0 viendo</div>
+        </div>
+    </main>
+
+    <!-- Chat Panel -->
+    <aside class="chat-container w-full md:w-80 h-64 md:h-full">
+        <div class="p-4 border-b border-neutral-800">
+            <h3 class="text-sm font-bold text-cyan-400 uppercase tracking-tighter">Chat de la Sala</h3>
+        </div>
+        <div id="chat-messages" class="chat-messages">
+            <p class="text-xs text-gray-600 italic">Conéctate a una sala para chatear</p>
+        </div>
+        <div id="chat-input-container" class="chat-input hidden">
+            <input type="text" id="chat-input" placeholder="Escribe un mensaje..." maxlength="200">
+            <button id="send-btn" class="neon-btn px-4 py-2 text-sm">Enviar</button>
+        </div>
+    </aside>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, onChildAdded, remove, update } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDuzW2fxNBAbXAajDeYlluI9xp6mlau1w8",
+            authDomain: "chat-1e83b.firebaseapp.com",
+            databaseURL: "https://chat-1e83b-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "chat-1e83b",
+            storageBucket: "chat-1e83b.firebasestorage.app",
+            messagingSenderId: "803748270514",
+            appId: "1:803748270514:web:b462c4a53f44e61d6a14ab"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+
+        const btn = document.getElementById('shareBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const container = document.getElementById('screenShare');
+        const roomsList = document.getElementById('rooms-list');
+        const roomTitle = document.getElementById('room-title');
+        const statusLabel = document.getElementById('current-status');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInputContainer = document.getElementById('chat-input-container');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        let localStream;
+        let currentRoomId = null;
+        let chatListener = null;
+
+        // --- LÓGICA TRANSMISOR (HOST) ---
+        btn.addEventListener('click', async () => {
+            try {
+                localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+                
+                // Limpiar contenedor y poner video
+                container.innerHTML = '';
+                const vid = document.createElement('video');
+                vid.srcObject = localStream;
+                vid.autoplay = true;
+                vid.muted = true;
+                container.appendChild(vid);
+
+                // Crear sala en Firebase
+                const user = document.getElementById('username').value || "Usuario";
+                const roomRef = push(ref(db, 'rooms'));
+                currentRoomId = roomRef.key;
+                await set(roomRef, { host: user, active: true });
+
+                // Habilitar chat para el host
+                enableChat(currentRoomId, user);
+
+                // UI
+                btn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+                statusLabel.innerText = "EN VIVO";
+                statusLabel.classList.replace('text-cyan-500', 'text-red-500');
+                roomTitle.innerText = "Compartiendo tu pantalla";
+
+                // Escuchar conexiones entrantes
+                const callsRef = ref(db, `calls/${currentRoomId}`);
+                onChildAdded(callsRef, async (snapshot) => {
+                    const callId = snapshot.key;
+                    const callData = snapshot.val();
+                    if (callData.offer) {
+                        const pc = new RTCPeerConnection(servers);
+                        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+                        
+                        pc.onicecandidate = (e) => e.candidate && push(ref(db, `calls/${currentRoomId}/${callId}/hostCandidates`), e.candidate.toJSON());
+                        
+                        await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        await update(ref(db, `calls/${currentRoomId}/${callId}`), { answer: { type: answer.type, sdp: answer.sdp } });
+                        
+                        onChildAdded(ref(db, `calls/${currentRoomId}/${callId}/clientCandidates`), (snap) => pc.addIceCandidate(new RTCIceCandidate(snap.val())));
+                    }
+                });
+
+                localStream.getVideoTracks()[0].addEventListener('ended', stopStreaming);
+
+            } catch (err) {
+                alert('Error al compartir: ' + err.message);
+            }
+        });
+
+        function stopStreaming() {
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
+            if (currentRoomId) {
+                remove(ref(db, `rooms/${currentRoomId}`));
+                remove(ref(db, `calls/${currentRoomId}`));
+                remove(ref(db, `chat/${currentRoomId}`));
+            }
+            location.reload();
+        }
+
+        stopBtn.onclick = stopStreaming;
+
+        // --- LÓGICA CHAT ---
+        function enableChat(roomId, username) {
+            chatInputContainer.classList.remove('hidden');
+            
+            // Cargar mensajes existentes
+            chatMessages.innerHTML = '';
+            
+            // Escuchar nuevos mensajes
+            if (chatListener) {
+                chatListener();
+            }
+            
+            chatListener = onChildAdded(ref(db, `chat/${roomId}`), (snapshot) => {
+                const message = snapshot.val();
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message';
+                messageDiv.innerHTML = `<span class="message-author">${message.author}:</span> ${message.text}`;
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+            
+            // Enviar mensaje
+            sendBtn.onclick = () => sendMessage(roomId, username);
+            chatInput.onkeypress = (e) => {
+                if (e.key === 'Enter') sendMessage(roomId, username);
+            };
+        }
+
+        function sendMessage(roomId, username) {
+            const text = chatInput.value.trim();
+            if (text) {
+                push(ref(db, `chat/${roomId}`), {
+                    author: username,
+                    text: text,
+                    timestamp: Date.now()
+                });
+                chatInput.value = '';
+            }
+        }
+
+        // --- LÓGICA ESPECTADOR ---
+        async function joinRoom(roomId, hostName) {
+            currentRoomId = roomId;
+            container.innerHTML = '<div class="animate-pulse text-cyan-500 italic">Sincronizando señal...</div>';
+            roomTitle.innerText = `Viendo a: ${hostName}`;
+            
+            // Unirse al chat como espectador
+            const username = document.getElementById('username').value || "Anónimo";
+            enableChat(roomId, username);
+            
+            const pc = new RTCPeerConnection(servers);
+            pc.ontrack = (event) => {
+                container.innerHTML = '';
+                const vid = document.createElement('video');
+                vid.srcObject = event.streams[0];
+                vid.autoplay = true;
+                vid.controls = true;
+                container.appendChild(vid);
+            };
+
+            const callRef = push(ref(db, `calls/${roomId}`));
+            pc.onicecandidate = (e) => e.candidate && push(ref(db, `calls/${roomId}/${callRef.key}/clientCandidates`), e.candidate.toJSON());
+
+            const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+            await pc.setLocalDescription(offer);
+            await update(callRef, { offer: { type: offer.type, sdp: offer.sdp } });
+
+            onValue(callRef, async (snapshot) => {
+                const data = snapshot.val();
+                if (!pc.currentRemoteDescription && data?.answer) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                }
+            });
+
+            onChildAdded(ref(db, `calls/${roomId}/${callRef.key}/hostCandidates`), (snap) => pc.addIceCandidate(new RTCIceCandidate(snap.val())));
+        }
+
+        // --- ACTUALIZACIÓN DE SALAS ---
+        onValue(ref(db, 'rooms'), (snapshot) => {
+            roomsList.innerHTML = '';
+            const rooms = snapshot.val();
+            if (!rooms) {
+                roomsList.innerHTML = '<p class="text-xs text-gray-600 italic">No hay transmisiones.</p>';
+                return;
+            }
+            Object.keys(rooms).forEach(id => {
+                const room = rooms[id];
+                const card = document.createElement('div');
+                card.className = "room-card p-3 rounded cursor-pointer flex justify-between items-center";
+                card.innerHTML = `
+                    <div class="overflow-hidden">
+                        <div class="text-sm font-bold truncate text-white">${room.host}</div>
+                        <div class="text-[10px] text-cyan-600 font-mono uppercase tracking-tighter">ID:${id.substring(0,6)}</div>
+                    </div>
+                    <div class="w-2 h-2 bg-cyan-500 rounded-full shadow-[0_0_8px_#0ff]"></div>
+                `;
+                card.onclick = () => joinRoom(id, room.host);
+                roomsList.appendChild(card);
+            });
+        });
+
+    </script>
+</body>
+</html>
+```
