@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limón Gigante Multiplayer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0d1117;
+            color: white;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            z-index: 100;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        #loginScreen {
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+        }
+
+        #loadingScreen {
+            background: #000;
+            z-index: 200;
+            overflow: hidden;
+        }
+
+        .loading-container {
+            position: relative;
+            z-index: 210;
+            background: rgba(0,0,0,0.6);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+        }
+
+        .loader-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            animation: bounce 1.5s ease-in-out infinite;
+            display: inline-block;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1) rotate(0); }
+            50% { transform: scale(1.2) rotate(15deg); }
+        }
+
+        .loading-text {
+            color: #ccff00;
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .branding-text {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            font-style: italic;
+            text-shadow: 0 0 10px rgba(204, 255, 0, 0.3);
+        }
+
+        .floating-fruit {
+            position: absolute;
+            font-size: 2rem;
+            pointer-events: none;
+            animation: float-around linear infinite;
+            opacity: 0.6;
+        }
+
+        @keyframes float-around {
+            from { transform: translate(0, 0) rotate(0deg); }
+            to { transform: translate(var(--tx), var(--ty)) rotate(360deg); }
+        }
+
+        .login-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 50px;
+            border-radius: 30px;
+            border: 2px solid #ccff00;
+            box-shadow: 0 0 50px rgba(204, 255, 0, 0.15);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #ccff00;
+            text-shadow: 0 0 20px rgba(204, 255, 0, 0.5);
+        }
+
+        input {
+            padding: 15px;
+            font-size: 1.2rem;
+            border-radius: 12px;
+            border: 2px solid #333;
+            background: #111;
+            color: white;
+            margin-bottom: 25px;
+            width: 280px;
+            text-align: center;
+            outline: none;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background: linear-gradient(45deg, #ccff00, #99cc00);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        #gameScreen {
+            background-color: #050505;
+        }
+
+        .player-list {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.85);
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            border: 1px solid #ccff00;
+            z-index: 1000;
+            min-width: 150px;
+        }
+       
+        #minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 160px;
+            height: 160px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ccff00;
+            border-radius: 12px;
+            z-index: 1000;
+        }
+
+        #onlineList li {
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .is-me { color: #ccff00; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="loginScreen" class="screen active">
+    <div class="login-box">
+        <h1>Limón Gigante</h1>
+        <p style="color: #ccff00; margin-bottom: 30px;">¡Come para crecer!</p>
+        <input type="text" id="playerNameInput" placeholder="Tu nombre" maxlength="12">
+        <br>
+        <button id="joinBtn">Empezar a Crecer</button>
+    </div>
+</div>
+
+<div id="loadingScreen" class="screen">
+    <div id="loadingFruits"></div>
+    <div class="loading-container">
+        <div class="loader-icon">🍋</div>
+        <div class="loading-text">Cosechando el Mundo...</div>
+        <div class="branding-text">Creado con el poder de nube de limones</div>
+    </div>
+</div>
+
+<div id="gameScreen" class="screen">
+    <div class="player-list">
+        <h2 style="font-size: 0.8rem; color: #ccff00; margin-top:0;">RANKING</h2>
+        <ul id="onlineList" style="list-style:none; padding:0; margin:0;"></ul>
+    </div>
+    <canvas id="minimap"></canvas>
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Configuración obligatoria del entorno
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'limon-gigante-mp';
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const minimapCanvas = document.getElementById("minimap");
+    const mCtx = minimapCanvas.getContext("2d");
+    const nameInput = document.getElementById('playerNameInput');
+    const joinBtn = document.getElementById('joinBtn');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const fruitContainer = document.getElementById('loadingFruits');
+
+    // Estado del Juego
+    const worldWidth = 3000;
+    const worldHeight = 3000;
+    const baseRadius = 25;
+    const moveSpeed = 5;
+   
+    let user = null;
+    let myPos = { x: Math.random() * 2000 + 500, y: Math.random() * 2000 + 500 };
+    let myScore = 0;
+    let playerName = "";
+    let myColor = "#ccff00";
+    let players = {};
+    let allFood = {};
+    let keys = {};
+    let camera = { x: 0, y: 0 };
+
+    // Autenticación Inicial
+    const initAuth = async () => {
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch (error) {
+            console.error("Error de autenticación:", error);
+        }
+    };
+
+    onAuthStateChanged(auth, (u) => {
+        user = u;
+    });
+
+    initAuth();
+
+    // Rutas de Colecciones
+    const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'jugadores');
+    const foodRef = collection(db, 'artifacts', appId, 'public', 'data', 'comida');
+
+    function createLoadingFruits() {
+        const fruits = ['🍋', '🍊', '🍇', '🍒', '🍎', '🍓'];
+        for(let i=0; i<25; i++) {
+            const fruit = document.createElement('div');
+            fruit.className = 'floating-fruit';
+            fruit.innerText = fruits[Math.floor(Math.random() * fruits.length)];
+            fruit.style.left = Math.random() * 100 + 'vw';
+            fruit.style.top = Math.random() * 100 + 'vh';
+            fruit.style.setProperty('--tx', (Math.random() * 200 - 100) + 'px');
+            fruit.style.setProperty('--ty', (Math.random() * 200 - 100) + 'px');
+            fruit.style.animationDuration = (3 + Math.random() * 5) + 's';
+            fruitContainer.appendChild(fruit);
+        }
+    }
+
+    joinBtn.addEventListener('click', () => {
+        if (!nameInput.value.trim() || !user) return;
+        playerName = nameInput.value.trim();
+        document.getElementById('loginScreen').classList.remove('active');
+        loadingScreen.classList.add('active');
+        createLoadingFruits();
+       
+        setTimeout(() => {
+            loadingScreen.classList.remove('active');
+            gameScreen.classList.add('active');
+            initGame();
+        }, 3000);
+    });
+
+    function initGame() {
+        resize();
+        window.addEventListener('resize', resize);
+        window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+        startListeners();
+        gameLoop();
+       
+        setInterval(updateFirebase, 100);
+        setInterval(ensureFood, 5000);
+    }
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        minimapCanvas.width = 160;
+        minimapCanvas.height = 160;
+    }
+
+    async function updateFirebase() {
+        if (!playerName || !user) return;
+        try {
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'jugadores', user.uid), {
+                id: user.uid,
+                nombre: playerName,
+                x: myPos.x,
+                y: myPos.y,
+                color: myColor,
+                puntos: myScore,
+                lastSeen: Date.now()
+            });
+        } catch(e) {}
+    }
+
+    async function ensureFood() {
+        if (!user) return;
+        if (Object.keys(allFood).length < 40) {
+            const types = ['#ccff00', '#ff9900', '#ff3300', '#9933ff'];
+            for (let i = 0; i < 15; i++) {
+                const fid = "f_" + Math.random().toString(36).substr(2, 9);
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'comida', fid), {
+                        x: Math.random() * (worldWidth - 100) + 50,
+                        y: Math.random() * (worldHeight - 100) + 50,
+                        color: types[Math.floor(Math.random() * types.length)]
+                    });
+                } catch(e) {}
+            }
+        }
+    }
+
+    function startListeners() {
+        if (!user) return;
+
+        onSnapshot(foodRef, (snap) => {
+            allFood = {};
+            snap.forEach(d => allFood[d.id] = d.data());
+        }, (err) => console.error("Food Sync Error:", err));
+
+        onSnapshot(playersRef, (snap) => {
+            players = {};
+            const list = document.getElementById('onlineList');
+            list.innerHTML = "";
+            const sorted = [];
+            const now = Date.now();
+
+            snap.forEach(d => {
+                const data = d.data();
+                if (now - data.lastSeen < 10000) {
+                    players[data.id] = data;
+                    sorted.push(data);
+                }
+            });
+
+            sorted.sort((a,b) => b.puntos - a.puntos).slice(0, 10).forEach(p => {
+                const li = document.createElement('li');
+                if (p.id === user.uid) li.className = 'is-me';
+                li.innerHTML = `<span>${p.nombre}</span><span>${p.puntos}</span>`;
+                list.appendChild(li);
+            });
+        }, (err) => console.error("Players Sync Error:", err));
+    }
+
+    function updateMovement() {
+        let dx = 0;
+        let dy = 0;
+
+        if (keys['arrowup'] || keys['w']) dy -= 1;
+        if (keys['arrowdown'] || keys['s']) dy += 1;
+        if (keys['arrowleft'] || keys['a']) dx -= 1;
+        if (keys['arrowright'] || keys['d']) dx += 1;
+
+        if (dx !== 0 || dy !== 0) {
+            const length = Math.sqrt(dx * dx + dy * dy);
+            myPos.x += (dx / length) * moveSpeed;
+            myPos.y += (dy / length) * moveSpeed;
+
+            const myRadius = baseRadius + (myScore * 0.5);
+           
+            if (myPos.x < myRadius) myPos.x = myRadius;
+            if (myPos.y < myRadius) myPos.y = myRadius;
+            if (myPos.x > worldWidth - myRadius) myPos.x = worldWidth - myRadius;
+            if (myPos.y > worldHeight - myRadius) myPos.y = worldHeight - myRadius;
+           
+            checkCollisions(myRadius);
+        }
+    }
+
+    async function checkCollisions(radius) {
+        for (const id in allFood) {
+            const f = allFood[id];
+            const dist = Math.sqrt((myPos.x - f.x)**2 + (myPos.y - f.y)**2);
+            if (dist < radius + 10) {
+                myScore++;
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'comida', id));
+                } catch(e) {}
+            }
+        }
+    }
+
+    function gameLoop() {
+        if (!gameScreen.classList.contains('active')) return;
+
+        updateMovement();
+       
+        camera.x = myPos.x - canvas.width / 2;
+        camera.y = myPos.y - canvas.height / 2;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+       
+        ctx.save();
+        ctx.translate(-camera.x, -camera.y);
+
+        // Grid
+        ctx.strokeStyle = "#161b22";
+        ctx.lineWidth = 1;
+        for(let i=0; i<=worldWidth; i+=100) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, worldHeight); ctx.stroke();
+        }
+        for(let i=0; i<=worldHeight; i+=100) {
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(worldWidth, i); ctx.stroke();
+        }
+
+        // Borde
+        ctx.strokeStyle = "#ccff00";
+        ctx.lineWidth = 10;
+        ctx.strokeRect(0, 0, worldWidth, worldHeight);
+
+        // Comida
+        Object.values(allFood).forEach(f => {
+            ctx.fillStyle = f.color;
+            ctx.beginPath(); ctx.arc(f.x, f.y, 8, 0, Math.PI*2); ctx.fill();
+        });
+
+        // Jugadores
+        Object.values(players).forEach(p => {
+            const radius = baseRadius + (p.puntos * 0.5);
+            ctx.save();
+            ctx.translate(p.x, p.y);
+           
+            ctx.fillStyle = p.color;
+            if (p.id === user?.uid) {
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = p.color;
+            }
+           
+            // Cuerpo Limón
+            ctx.beginPath();
+            ctx.ellipse(0, 0, radius * 1.15, radius, 0, 0, Math.PI*2);
+            ctx.fill();
+
+            // Hoja
+            ctx.fillStyle = "#2d5a27";
+            ctx.beginPath();
+            ctx.ellipse(0, -radius, radius/3, radius/6, Math.PI/4, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "white";
+            ctx.font = `bold ${Math.max(12, radius/2)}px sans-serif`;
+            ctx.textAlign = "center";
+            ctx.fillText(p.nombre, 0, -radius - 15);
+           
+            ctx.restore();
+        });
+
+        ctx.restore();
+        drawMinimap();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function drawMinimap() {
+        mCtx.fillStyle = "rgba(0,0,0,0.85)";
+        mCtx.fillRect(0,0,160,160);
+       
+        const s = 160 / worldWidth;
+
+        // Dibujar comida en minimapa (puntos pequeños grises)
+        mCtx.fillStyle = "rgba(255, 255, 255, 0.2)";
+        Object.values(allFood).forEach(f => {
+            mCtx.fillRect(f.x * s, f.y * s, 1.5, 1.5);
+        });
+
+        // Dibujar jugadores
+        Object.values(players).forEach(p => {
+            mCtx.fillStyle = (user && p.id === user.uid) ? "#fff" : p.color;
+            mCtx.beginPath();
+            mCtx.arc(p.x * s, p.y * s, (user && p.id === user.uid) ? 4 : 2, 0, Math.PI*2);
+            mCtx.fill();
+        });
+    }
+
+    window.addEventListener("beforeunload", () => {
+        if (user) deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'jugadores', user.uid));
+    });
+</script>
+</body>
+</html>
