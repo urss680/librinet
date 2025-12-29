@@ -1,0 +1,115 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ultra Reloj</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #000;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #0ff;
+      overflow: hidden;
+      position: relative;
+    }
+    /* Fondo con imágenes de relojes cayendo */
+    .falling-clock {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      background-image: url(https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Alarm%20clock/3D/alarm_clock_3d.png);
+      background-size: contain;
+      background-repeat: no-repeat;
+      animation: fall linear infinite;
+      opacity: 0.7;
+    }
+    @keyframes fall {
+      0% { transform: translateY(-100px) rotate(0deg); }
+      100% { transform: translateY(calc(100vh + 100px)) rotate(360deg); }
+    }
+    #clock {
+      font-size: 4rem;
+      letter-spacing: 0.1em;
+      text-shadow: 0 0 5px #0ff, 0 0 10px #0ff, 0 0 20px #0ff;
+      display: flex;
+      align-items: baseline;
+      position: relative;
+      z-index: 10;
+    }
+    .seconds {
+      font-size: 6rem;
+      margin-left: 0.2em;
+      color: #fff;
+      text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #0ff;
+    }
+    .millis {
+      font-size: 3.5rem;
+      margin-left: 0.3em;
+      color: #ff0;
+      text-shadow: 0 0 5px #ff0, 0 0 10px #ff0, 0 0 20px #ff0;
+    }
+    .micros {
+      font-size: 2.5rem;
+      margin-left: 0.3em;
+      color: #0f0;
+      text-shadow: 0 0 5px #0f0, 0 0 10px #0f0, 0 0 20px #0f0;
+    }
+    .nanos {
+      font-size: 2rem;
+      margin-left: 0.3em;
+      color: #f0f;
+      text-shadow: 0 0 5px #f0f, 0 0 10px #f0f, 0 0 20px #f0f;
+    }
+  </style>
+</head>
+<body>
+  <div id="clock">
+    <span id="hms">--:--:--</span>
+    <span class="seconds">--</span>
+    <span class="millis">---</span>
+    <span class="micros">---</span>
+    <span class="nanos">---</span>
+  </div>
+
+  <script>
+    // Crear relojes cayendo
+    function createFallingClock() {
+      const clock = document.createElement('div');
+      clock.className = 'falling-clock';
+      clock.style.left = Math.random() * window.innerWidth + 'px';
+      clock.style.animationDuration = (Math.random() * 4 + 3) + 's';
+      clock.style.opacity = Math.random() * 0.5 + 0.3;
+      document.body.appendChild(clock);
+      setTimeout(() => {
+        clock.remove();
+      }, 7000);
+    }
+    // Generar relojes periódicamente
+    setInterval(createFallingClock, 800);
+
+    function updateClock() {
+      const t0 = performance.now();
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const millis = String(now.getMilliseconds()).padStart(3, '0');
+      const micros = String(Math.floor((t0 % 1) * 1000)).padStart(3, '0');
+      const nanos = String(Math.floor((t0 % 1) * 1000000 % 1000)).padStart(3, '0');
+      document.getElementById('hms').textContent = `${hours}:${minutes}:`;
+      document.querySelector('.seconds').textContent = seconds;
+      document.querySelector('.millis').textContent = `.${millis}`;
+      document.querySelector('.micros').textContent = `${micros}`;
+      document.querySelector('.nanos').textContent = `${nanos}`;
+      requestAnimationFrame(updateClock);
+    }
+    updateClock();
+  </script>
+</body>
+</html>
+```
