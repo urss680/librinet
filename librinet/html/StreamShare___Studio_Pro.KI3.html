@@ -1,0 +1,426 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamShare - Studio Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: #111;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #fff;
+        }
+        #screenShare {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            border: 2px solid #0ff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #0ff;
+            position: relative;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+        .secondary-video {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 250px;
+            height: 150px;
+            border: 2px solid #0ff;
+            border-radius: 8px;
+            background: #000;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        .neon-btn {
+            padding: .6rem 1.2rem;
+            font-size: 0.9rem;
+            background: #0ff;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+        .neon-btn:hover {
+            background: #0aa;
+            box-shadow: 0 0 15px #0ff;
+        }
+        .sidebar {
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+        }
+        .room-card {
+            background: #222;
+            border: 1px solid #0ff3;
+            transition: 0.2s;
+        }
+        .room-card:hover {
+            border-color: #0ff;
+            background: #2a2a2a;
+        }
+        .control-group {
+            background: #252525;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .live-indicator {
+            width: 8px;
+            height: 8px;
+            background: #f00;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            box-shadow: 0 0 8px #f00;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Sidebar de Salas y Controles -->
+    <aside class="sidebar w-full md:w-96 h-auto md:h-full flex flex-col p-4 z-10 overflow-y-auto">
+        <h1 class="text-xl font-black text-cyan-400 mb-6 tracking-tighter uppercase">StreamShare Studio</h1>
+        
+        <!-- Perfil -->
+        <div class="mb-6">
+            <label class="text-[10px] uppercase text-gray-500 font-bold mb-1 block">Tu Identidad</label>
+            <input type="text" id="username" placeholder="Nombre de usuario" class="w-full bg-neutral-800 border border-neutral-700 rounded p-2 text-sm text-cyan-400 outline-none focus:border-cyan-500">
+        </div>
+
+        <!-- Controles de Transmisión -->
+        <div class="control-group border border-cyan-900/50">
+            <h2 class="text-xs font-bold text-cyan-500 uppercase mb-4 tracking-widest">Fuentes en tiempo real</h2>
+            
+            <div class="space-y-3 mb-4 text-sm">
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="useScreen" checked class="accent-cyan-500 w-4 h-4">
+                    <span class="group-hover:text-cyan-400 transition-colors">Compartir Pantalla</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="useCamera" class="accent-cyan-500 w-4 h-4">
+                    <span class="group-hover:text-cyan-400 transition-colors">Activar Cámara</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="useMic" checked class="accent-cyan-500 w-4 h-4">
+                    <span class="group-hover:text-cyan-400 transition-colors">Activar Micrófono</span>
+                </label>
+            </div>
+
+            <button id="shareBtn" class="neon-btn w-full mb-2">Iniciar Transmisión</button>
+            <button id="stopBtn" class="hidden w-full p-2 bg-red-600 text-white rounded font-bold uppercase text-xs">Finalizar Stream</button>
+        </div>
+
+        <!-- Salas -->
+        <div class="flex-1">
+            <h2 class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-widest">Señales Activas</h2>
+            <div id="rooms-list" class="space-y-2">
+                <p class="text-xs text-gray-600 italic">Buscando fuentes de video...</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Visualización -->
+    <main class="flex-1 p-4 md:p-8 flex flex-col gap-4 relative">
+        <div id="screenShare">
+            <div id="placeholder" class="text-center p-6">
+                <p class="mb-4 text-lg">Configura y pulsa "Iniciar"</p>
+                <div class="text-xs text-cyan-900 font-mono italic">Esperando señal de origen...</div>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center px-2">
+            <div>
+                <span id="current-status" class="text-[10px] font-bold text-cyan-500 uppercase tracking-widest px-2 py-0.5 border border-cyan-500/30 rounded">Modo Espectador</span>
+                <h2 id="room-title" class="text-lg font-bold mt-1 text-white uppercase tracking-tight">Sin señal activa</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="viewer-count" class="text-[10px] text-gray-500 font-mono tracking-widest">SESSIONS: 0</div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, onChildAdded, remove, update } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDuzW2fxNBAbXAajDeYlluI9xp6mlau1w8",
+            authDomain: "chat-1e83b.firebaseapp.com",
+            databaseURL: "https://chat-1e83b-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "chat-1e83b",
+            storageBucket: "chat-1e83b.firebasestorage.app",
+            messagingSenderId: "803748270514",
+            appId: "1:803748270514:web:b462c4a53f44e61d6a14ab"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+
+        const btn = document.getElementById('shareBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const container = document.getElementById('screenShare');
+        const roomsList = document.getElementById('rooms-list');
+        const roomTitle = document.getElementById('room-title');
+        const statusLabel = document.getElementById('current-status');
+        const viewerCount = document.getElementById('viewer-count');
+
+        const useScreen = document.getElementById('useScreen');
+        const useCamera = document.getElementById('useCamera');
+        const useMic = document.getElementById('useMic');
+
+        let isStreaming = false;
+        let mainStream = new MediaStream();
+        let currentRoomId = null;
+        let activePCs = [];
+
+        const updateTracks = async () => {
+            if (!isStreaming) return;
+
+            const audioTrack = mainStream.getAudioTracks()[0];
+            if (useMic.checked && !audioTrack) {
+                const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mainStream.addTrack(mic.getAudioTracks()[0]);
+            } else if (!useMic.checked && audioTrack) {
+                audioTrack.stop();
+                mainStream.removeTrack(audioTrack);
+            }
+
+            let camVid = container.querySelector('.secondary-video');
+            const camTrack = mainStream.getVideoTracks().find(t => !t.label.toLowerCase().includes('screen'));
+            
+            if (useCamera.checked) {
+                if (!camTrack) {
+                    const cam = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const newTrack = cam.getVideoTracks()[0];
+                    mainStream.addTrack(newTrack);
+                    
+                    if (useScreen.checked) {
+                        if (!camVid) {
+                            camVid = document.createElement('video');
+                            camVid.className = 'secondary-video';
+                            camVid.autoplay = true;
+                            camVid.muted = true;
+                            container.appendChild(camVid);
+                        }
+                        camVid.srcObject = new MediaStream([newTrack]);
+                    } else {
+                        refreshMainVideo();
+                    }
+                }
+            } else {
+                if (camTrack) {
+                    camTrack.stop();
+                    mainStream.removeTrack(camTrack);
+                }
+                if (camVid) camVid.remove();
+                if (!useScreen.checked) refreshMainVideo();
+            }
+
+            if (currentRoomId) {
+                update(ref(db, `rooms/${currentRoomId}`), {
+                    hasCamera: useCamera.checked && useScreen.checked
+                });
+            }
+        };
+
+        const refreshMainVideo = () => {
+            const screenTrack = mainStream.getVideoTracks().find(t => t.label.toLowerCase().includes('screen'));
+            const camTrack = mainStream.getVideoTracks().find(t => !t.label.toLowerCase().includes('screen'));
+            
+            const targetTrack = screenTrack || camTrack;
+            
+            let mainVid = container.querySelector('video:not(.secondary-video)');
+            if (targetTrack) {
+                if (!mainVid) {
+                    container.innerHTML = '';
+                    mainVid = document.createElement('video');
+                    mainVid.autoplay = true;
+                    mainVid.muted = true;
+                    container.appendChild(mainVid);
+                }
+                mainVid.srcObject = new MediaStream([targetTrack]);
+            } else {
+                container.innerHTML = '<div class="text-cyan-900 text-sm">NO_SIGNAL</div>';
+            }
+        };
+
+        [useScreen, useCamera, useMic].forEach(el => {
+            el.addEventListener('change', updateTracks);
+        });
+
+        btn.addEventListener('click', async () => {
+            try {
+                isStreaming = true;
+                container.innerHTML = '';
+                
+                if (useMic.checked) {
+                    const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mainStream.addTrack(mic.getAudioTracks()[0]);
+                }
+
+                if (useScreen.checked) {
+                    const screen = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const screenTrack = screen.getVideoTracks()[0];
+                    mainStream.addTrack(screenTrack);
+                    screenTrack.addEventListener('ended', stopStreaming);
+                }
+
+                if (useCamera.checked) {
+                    const cam = await navigator.mediaDevices.getUserMedia({ video: true });
+                    mainStream.addTrack(cam.getVideoTracks()[0]);
+                }
+
+                refreshMainVideo();
+                if (useCamera.checked && useScreen.checked) {
+                    const camTrack = mainStream.getVideoTracks().find(t => !t.label.toLowerCase().includes('screen'));
+                    const camVid = document.createElement('video');
+                    camVid.className = 'secondary-video';
+                    camVid.srcObject = new MediaStream([camTrack]);
+                    camVid.autoplay = true;
+                    camVid.muted = true;
+                    container.appendChild(camVid);
+                }
+
+                const user = document.getElementById('username').value || "Studio_User";
+                const roomRef = push(ref(db, 'rooms'));
+                currentRoomId = roomRef.key;
+                await set(roomRef, { host: user, active: true, hasCamera: useCamera.checked && useScreen.checked });
+
+                btn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+                statusLabel.innerHTML = '<span class="live-indicator"></span> EN VIVO';
+                statusLabel.className = "text-[10px] font-bold text-red-500 uppercase tracking-widest px-2 py-0.5 border border-red-500/30 rounded";
+                roomTitle.innerText = `EMISIÓN: ${user}`;
+
+                const callsRef = ref(db, `calls/${currentRoomId}`);
+                onChildAdded(callsRef, async (snapshot) => {
+                    const callId = snapshot.key;
+                    const data = snapshot.val();
+                    if (data.offer) {
+                        const pc = new RTCPeerConnection(servers);
+                        activePCs.push(pc);
+                        
+                        mainStream.getTracks().forEach(track => pc.addTrack(track, mainStream));
+                        
+                        pc.onicecandidate = (e) => e.candidate && push(ref(db, `calls/${currentRoomId}/${callId}/hostCandidates`), e.candidate.toJSON());
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        await update(ref(db, `calls/${currentRoomId}/${callId}`), { answer: { type: answer.type, sdp: answer.sdp } });
+                        onChildAdded(ref(db, `calls/${currentRoomId}/${callId}/clientCandidates`), (snap) => pc.addIceCandidate(new RTCIceCandidate(snap.val())));
+                    }
+                });
+
+            } catch (err) {
+                alert('Error Studio: ' + err.message);
+                location.reload();
+            }
+        });
+
+        function stopStreaming() {
+            mainStream.getTracks().forEach(t => t.stop());
+            if (currentRoomId) {
+                remove(ref(db, `rooms/${currentRoomId}`));
+                remove(ref(db, `calls/${currentRoomId}`));
+            }
+            location.reload();
+        }
+
+        stopBtn.onclick = stopStreaming;
+
+        async function joinRoom(roomId, hostName) {
+            currentRoomId = roomId;
+            container.innerHTML = '<div class="text-cyan-500 animate-pulse text-sm font-mono">CONNECTING_TO_SIGNAL...</div>';
+            roomTitle.innerText = `RECIBIENDO: ${hostName}`;
+            
+            const pc = new RTCPeerConnection(servers);
+            const streams = {};
+
+            pc.ontrack = (event) => {
+                const sid = event.streams[0].id;
+                if (streams[sid]) return;
+                streams[sid] = event.streams[0];
+
+                if (Object.keys(streams).length === 1) {
+                    container.innerHTML = '';
+                    const v = document.createElement('video');
+                    v.srcObject = event.streams[0];
+                    v.autoplay = true;
+                    v.controls = true;
+                    container.appendChild(v);
+                } else {
+                    const v = document.createElement('video');
+                    v.className = 'secondary-video';
+                    v.srcObject = event.streams[0];
+                    v.autoplay = true;
+                    container.appendChild(v);
+                }
+                
+                event.track.onmute = () => {
+                    const vid = Array.from(container.querySelectorAll('video')).find(v => v.srcObject.id === sid);
+                    if (vid) vid.remove();
+                };
+            };
+
+            const callRef = push(ref(db, `calls/${roomId}`));
+            pc.onicecandidate = (e) => e.candidate && push(ref(db, `calls/${roomId}/${callRef.key}/clientCandidates`), e.candidate.toJSON());
+            const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+            await pc.setLocalDescription(offer);
+            await update(callRef, { offer: { type: offer.type, sdp: offer.sdp } });
+
+            onValue(callRef, (snapshot) => {
+                const d = snapshot.val();
+                if (!pc.currentRemoteDescription && d?.answer) pc.setRemoteDescription(new RTCSessionDescription(d.answer));
+            });
+            onChildAdded(ref(db, `calls/${roomId}/${callRef.key}/hostCandidates`), (snap) => pc.addIceCandidate(new RTCIceCandidate(snap.val())));
+        }
+
+        onValue(ref(db, 'rooms'), (snapshot) => {
+            roomsList.innerHTML = '';
+            const rooms = snapshot.val();
+            if (!rooms) {
+                roomsList.innerHTML = '<p class="text-[10px] text-gray-600 italic">No hay señales disponibles.</p>';
+                return;
+            }
+            Object.keys(rooms).forEach(id => {
+                const r = rooms[id];
+                const card = document.createElement('div');
+                card.className = "room-card p-3 rounded cursor-pointer flex justify-between items-center";
+                card.innerHTML = `
+                    <div class="overflow-hidden">
+                        <div class="text-sm font-bold truncate text-white uppercase">${r.host}</div>
+                        <div class="text-[9px] text-cyan-600 font-mono">LOCK_ID:${id.substring(0,6)}</div>
+                    </div>
+                    <div class="flex gap-1">
+                        ${r.hasCamera ? '<div class="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"></div>' : ''}
+                        <div class="w-1.5 h-1.5 bg-cyan-500 rounded-full shadow-[0_0_5px_#0ff]"></div>
+                    </div>`;
+                card.onclick = () => joinRoom(id, r.host);
+                roomsList.appendChild(card);
+            });
+        });
+    </script>
+</body>
+</html>
+```
