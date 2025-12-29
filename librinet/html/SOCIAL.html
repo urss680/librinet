@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamShare - Studio Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: #0a0a0a;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+        #onboarding {
+            position: fixed;
+            inset: 0;
+            background: #0a0a0a;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+        #screenShare {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            border: 2px solid #0ff;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .sidebar {
+            background: #111;
+            border-right: 1px solid #222;
+        }
+        .mode-btn {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #888;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .mode-btn.active {
+            border-color: #0ff;
+            color: #0ff;
+            background: rgba(0, 255, 255, 0.05);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+        }
+        .action-btn {
+            background: #0ff;
+            color: #000;
+            font-weight: 900;
+            padding: 12px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s;
+        }
+        .action-btn:hover:not(:disabled) {
+            background: #00cccc;
+            transform: translateY(-2px);
+        }
+        .room-card {
+            background: #1a1a1a;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .room-card:hover {
+            background: #222;
+            border-left-color: #0ff;
+        }
+        .live-tag {
+            background: #f00;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* Estilos de Reacciones */
+        .reaction-emoji {
+            position: absolute;
+            bottom: 20px;
+            font-size: 2rem;
+            pointer-events: none;
+            z-index: 50;
+            animation: floatAndFade 2s ease-out forwards;
+        }
+        @keyframes floatAndFade {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            20% { opacity: 1; transform: translateY(-20px) scale(1.2); }
+            100% { transform: translateY(-300px) translateX(var(--tx)) scale(1); opacity: 0; }
+        }
+        .reaction-btn {
+            font-size: 1.5rem;
+            transition: transform 0.2s;
+        }
+        .reaction-btn:hover {
+            transform: scale(1.3);
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen">
+
+    <!-- Pantalla de Inicio -->
+    <div id="onboarding">
+        <div class="max-w-md w-full p-8 bg-neutral-900 border border-cyan-900/50 rounded-2xl shadow-2xl text-center">
+            <h1 class="text-4xl font-black text-cyan-400 tracking-tighter italic mb-2">STREAMSHARE</h1>
+            <p class="text-gray-500 text-xs mb-8 uppercase tracking-widest font-mono">Acceso al Sistema</p>
+            
+            <div class="text-left mb-6">
+                <label class="text-[10px] text-cyan-500 uppercase font-bold mb-2 block">Tu Nombre</label>
+                <input type="text" id="username-input" placeholder="Escribe tu nombre..." 
+                    class="w-full bg-black border border-neutral-700 rounded-lg p-4 text-cyan-400 outline-none focus:border-cyan-500 transition-all">
+            </div>
+
+            <button id="enter-btn" class="action-btn w-full py-4 text-lg">Entrar</button>
+        </div>
+    </div>
+
+    <!-- Panel Lateral -->
+    <aside class="sidebar w-full md:w-80 flex flex-col p-6 space-y-6">
+        <div>
+            <h1 class="text-2xl font-black text-cyan-400 tracking-tighter italic">STUDIO</h1>
+            <p id="display-name" class="text-[10px] text-cyan-600 font-mono mt-1 uppercase tracking-widest">USUARIO: ---</p>
+        </div>
+
+        <div class="space-y-4">
+            <div class="space-y-2">
+                <label class="text-[10px] text-gray-400 uppercase font-bold block">Modo de Imagen</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btnModeScreen" class="mode-btn active">Pantalla</button>
+                    <button id="btnModeCamera" class="mode-btn">Cámara</button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between p-3 bg-neutral-900 rounded border border-neutral-800">
+                <span class="text-xs font-bold text-gray-300">Audio Micrófono</span>
+                <input type="checkbox" id="useMic" checked class="accent-cyan-500 w-4 h-4">
+            </div>
+
+            <button id="startBtn" class="action-btn w-full">Transmitir</button>
+            <button id="stopBtn" class="hidden w-full bg-red-600 text-white font-bold p-3 rounded uppercase text-sm">Detener Señal</button>
+        </div>
+
+        <!-- Audiencia en tiempo real -->
+        <div id="audience-panel" class="hidden bg-black/40 p-4 rounded-lg border border-cyan-900/30 flex flex-col min-h-0">
+            <h3 class="text-[10px] text-cyan-500 font-bold uppercase tracking-widest mb-3 flex justify-between">
+                Espectadores <span id="viewer-count" class="bg-cyan-500 text-black px-2 rounded-full">0</span>
+            </h3>
+            <div id="viewer-list" class="flex-1 overflow-y-auto space-y-2 text-[11px] font-mono text-gray-300 pr-2">
+                <!-- Lista de usuarios -->
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col min-h-0">
+            <h2 class="text-[10px] text-gray-500 uppercase font-bold mb-3">Salas en Directo</h2>
+            <div id="rooms-list" class="flex-1 overflow-y-auto space-y-2 pr-2 font-mono">
+                <!-- Salas dinámicas -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- Monitor Principal -->
+    <main class="flex-1 p-6 flex flex-col">
+        <div id="screenShare">
+            <div id="status-overlay" class="absolute top-4 left-4 z-20 flex items-center gap-2"></div>
+            <!-- Contenedor para reacciones animadas -->
+            <div id="reaction-container" class="absolute inset-0 pointer-events-none z-40"></div>
+            
+            <div id="placeholder" class="text-center opacity-30 select-none">
+                <div class="text-6xl mb-4 text-cyan-900">⧉</div>
+                <p class="font-mono text-xs tracking-[0.2em]">WAITING_FOR_SOURCE</p>
+            </div>
+        </div>
+
+        <div class="mt-4 flex flex-col lg:flex-row justify-between items-center gap-4">
+            <div class="w-full lg:w-auto">
+                <h2 id="viewing-name" class="text-xl font-bold text-white italic">Modo Espectador</h2>
+                <p id="room-info" class="text-xs text-gray-500 font-mono uppercase mt-1">Ninguna conexión activa</p>
+            </div>
+
+            <!-- Barra de Reacciones -->
+            <div id="reaction-bar" class="hidden flex items-center gap-3 bg-neutral-900/80 p-2 rounded-full border border-neutral-700">
+                <button class="reaction-btn" data-emoji="❤️">❤️</button>
+                <button class="reaction-btn" data-emoji="👍">👍</button>
+                <button class="reaction-btn" data-emoji="🔥">🔥</button>
+                <button class="reaction-btn" data-emoji="😮">😮</button>
+                <button class="reaction-btn" data-emoji="😂">😂</button>
+            </div>
+
+            <div id="stats" class="text-[10px] font-mono text-cyan-800 tracking-tighter hidden lg:block">DATA_SYNC: ACTIVE</div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, onChildAdded, remove, update, onDisconnect } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDuzW2fxNBAbXAajDeYlluI9xp6mlau1w8",
+            authDomain: "chat-1e83b.firebaseapp.com",
+            databaseURL: "https://chat-1e83b-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "chat-1e83b",
+            storageBucket: "chat-1e83b.firebasestorage.app",
+            messagingSenderId: "803748270514",
+            appId: "1:803748270514:web:b462c4a53f44e61d6a14ab"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+
+        // UI
+        const onboarding = document.getElementById('onboarding');
+        const usernameInput = document.getElementById('username-input');
+        const enterBtn = document.getElementById('enter-btn');
+        const displayName = document.getElementById('display-name');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const btnModeScreen = document.getElementById('btnModeScreen');
+        const btnModeCamera = document.getElementById('btnModeCamera');
+        const container = document.getElementById('screenShare');
+        const viewingName = document.getElementById('viewing-name');
+        const useMic = document.getElementById('useMic');
+        const statusOverlay = document.getElementById('status-overlay');
+        const audiencePanel = document.getElementById('audience-panel');
+        const viewerCount = document.getElementById('viewer-count');
+        const viewerList = document.getElementById('viewer-list');
+        const placeholder = document.getElementById('placeholder');
+        const reactionBar = document.getElementById('reaction-bar');
+        const reactionContainer = document.getElementById('reaction-container');
+
+        let currentUser = "";
+        let currentMode = 'screen'; 
+        let isBroadcasting = false;
+        let mainStream = null;
+        let currentRoomId = null;
+        let activePeerConnections = new Map();
+        let connectedViewers = {}; 
+
+        // Ingreso
+        enterBtn.onclick = () => {
+            const val = usernameInput.value.trim();
+            if (val.length < 2) return;
+            currentUser = val;
+            displayName.innerText = `USUARIO: ${currentUser}`;
+            onboarding.style.display = 'none';
+        };
+
+        const updateAudienceUI = () => {
+            viewerCount.innerText = Object.keys(connectedViewers).length;
+            viewerList.innerHTML = '';
+            Object.values(connectedViewers).forEach(name => {
+                const div = document.createElement('div');
+                div.className = "flex items-center gap-2 border-b border-neutral-800 pb-1";
+                div.innerHTML = `<span class="w-1 h-1 bg-green-500 rounded-full"></span><span>${name}</span>`;
+                viewerList.appendChild(div);
+            });
+        };
+
+        // Lógica de Reacciones
+        const spawnReaction = (emoji) => {
+            const el = document.createElement('div');
+            el.className = 'reaction-emoji';
+            el.innerText = emoji;
+            const randomX = Math.floor(Math.random() * 100) - 50; // Desviación lateral
+            el.style.setProperty('--tx', `${randomX}px`);
+            el.style.left = `${Math.floor(Math.random() * 60) + 20}%`; // Posición inicial aleatoria
+            reactionContainer.appendChild(el);
+            setTimeout(() => el.remove(), 2000);
+        };
+
+        const sendReaction = (emoji) => {
+            if (!currentRoomId) return;
+            const reactRef = push(ref(db, `reactions/${currentRoomId}`));
+            set(reactRef, { emoji, from: currentUser, t: Date.now() });
+        };
+
+        document.querySelectorAll('.reaction-btn').forEach(btn => {
+            btn.onclick = () => sendReaction(btn.dataset.emoji);
+        });
+
+        // Cambiar modo
+        const setMode = (mode) => {
+            currentMode = mode;
+            btnModeScreen.className = `mode-btn ${mode === 'screen' ? 'active' : ''}`;
+            btnModeCamera.className = `mode-btn ${mode === 'camera' ? 'active' : ''}`;
+            if (isBroadcasting) switchSource();
+        };
+
+        btnModeScreen.onclick = () => setMode('screen');
+        btnModeCamera.onclick = () => setMode('camera');
+
+        const switchSource = async () => {
+            try {
+                if(mainStream) mainStream.getVideoTracks().forEach(t => t.stop());
+                let newStream = (currentMode === 'screen') 
+                    ? await navigator.mediaDevices.getDisplayMedia({ video: true })
+                    : await navigator.mediaDevices.getUserMedia({ video: true });
+                const newVideoTrack = newStream.getVideoTracks()[0];
+                
+                if (mainStream) {
+                    mainStream.addTrack(newVideoTrack);
+                    activePeerConnections.forEach(pc => {
+                        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                        if (sender) sender.replaceTrack(newVideoTrack);
+                    });
+                }
+                
+                const videoElement = container.querySelector('video');
+                if (videoElement) videoElement.srcObject = new MediaStream([newVideoTrack]);
+                
+                newVideoTrack.onended = () => { if(isBroadcasting) stopBroadcasting(); };
+            } catch (e) { console.error(e); }
+        };
+
+        // Emitir
+        startBtn.onclick = async () => {
+            try {
+                isBroadcasting = true;
+                placeholder.classList.add('hidden');
+                audiencePanel.classList.remove('hidden');
+                reactionBar.classList.remove('hidden');
+                
+                let stream;
+                if (currentMode === 'screen') {
+                    stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                } else {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
+                
+                mainStream = new MediaStream(stream.getVideoTracks());
+                stream.getVideoTracks()[0].onended = () => { if(isBroadcasting) stopBroadcasting(); };
+
+                if (useMic.checked) {
+                    try {
+                        const audio = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mainStream.addTrack(audio.getAudioTracks()[0]);
+                    } catch(e) { console.warn("Micrófono no disponible"); }
+                }
+
+                const localVideo = document.createElement('video');
+                localVideo.srcObject = mainStream;
+                localVideo.autoplay = true;
+                localVideo.muted = true;
+                container.appendChild(localVideo);
+                
+                statusOverlay.innerHTML = '<span class="live-tag">LIVE</span>';
+                startBtn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+                viewingName.innerText = "Emitiendo tu señal";
+
+                const roomRef = push(ref(db, 'rooms'));
+                currentRoomId = roomRef.key;
+                
+                // CRÍTICO: Limpiar si se desconecta
+                onDisconnect(ref(db, `rooms/${currentRoomId}`)).remove();
+                onDisconnect(ref(db, `calls/${currentRoomId}`)).remove();
+                onDisconnect(ref(db, `reactions/${currentRoomId}`)).remove();
+
+                await set(roomRef, { host: currentUser, timestamp: Date.now() });
+
+                // Escuchar reacciones en mi sala
+                onChildAdded(ref(db, `reactions/${currentRoomId}`), (s) => spawnReaction(s.val().emoji));
+
+                onChildAdded(ref(db, `calls/${currentRoomId}`), async (snap) => {
+                    const data = snap.val();
+                    const callId = snap.key;
+                    if (data && data.offer) {
+                        const pc = new RTCPeerConnection(servers);
+                        activePeerConnections.set(callId, pc);
+                        connectedViewers[callId] = data.viewerName || "Espectador";
+                        updateAudienceUI();
+
+                        mainStream.getTracks().forEach(t => pc.addTrack(t, mainStream));
+                        
+                        pc.onicecandidate = (e) => {
+                            if (e.candidate) push(ref(db, `calls/${currentRoomId}/${callId}/hostCandidates`), e.candidate.toJSON());
+                        };
+
+                        pc.onconnectionstatechange = () => {
+                            if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
+                                pc.close();
+                                activePeerConnections.delete(callId);
+                                delete connectedViewers[callId];
+                                updateAudienceUI();
+                            }
+                        };
+
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        await update(ref(db, `calls/${currentRoomId}/${callId}`), { answer: { type: answer.type, sdp: answer.sdp } });
+                        
+                        onChildAdded(ref(db, `calls/${currentRoomId}/${callId}/clientCandidates`), (s) => {
+                            if (s.val()) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e => {});
+                        });
+                    }
+                });
+            } catch (err) { 
+                console.error(err); 
+                isBroadcasting = false; 
+                placeholder.classList.remove('hidden');
+            }
+        };
+
+        function stopBroadcasting() {
+            isBroadcasting = false;
+            if (mainStream) {
+                mainStream.getTracks().forEach(t => t.stop());
+                mainStream = null;
+            }
+            activePeerConnections.forEach(pc => pc.close());
+            activePeerConnections.clear();
+            
+            if (currentRoomId) {
+                remove(ref(db, `rooms/${currentRoomId}`));
+                remove(ref(db, `calls/${currentRoomId}`));
+                remove(ref(db, `reactions/${currentRoomId}`));
+            }
+            
+            container.querySelectorAll('video').forEach(v => v.remove());
+            placeholder.classList.remove('hidden');
+            statusOverlay.innerHTML = '';
+            startBtn.classList.remove('hidden');
+            stopBtn.classList.add('hidden');
+            audiencePanel.classList.add('hidden');
+            reactionBar.classList.add('hidden');
+            viewingName.innerText = "Modo Espectador";
+            connectedViewers = {};
+            updateAudienceUI();
+        }
+
+        stopBtn.onclick = stopBroadcasting;
+
+        // Unirse a sala
+        async function joinRoom(roomId, host) {
+            if (isBroadcasting) return;
+            currentRoomId = roomId;
+            container.innerHTML = '';
+            const loading = document.createElement('div');
+            loading.className = "text-cyan-500 font-mono text-xs animate-pulse";
+            loading.innerText = "CONNECTING_TO_STREAM...";
+            container.appendChild(loading);
+            viewingName.innerText = `Señal de ${host}`;
+            reactionBar.classList.remove('hidden');
+
+            const pc = new RTCPeerConnection(servers);
+            pc.ontrack = (e) => {
+                if (container.querySelector('video')) return;
+                container.innerHTML = '';
+                const v = document.createElement('video');
+                v.srcObject = e.streams[0];
+                v.autoplay = true;
+                v.controls = true;
+                container.appendChild(v);
+            };
+
+            const callRef = push(ref(db, `calls/${roomId}`));
+            onDisconnect(callRef).remove();
+
+            pc.onicecandidate = (e) => {
+                if (e.candidate) push(ref(db, `calls/${roomId}/${callRef.key}/clientCandidates`), e.candidate.toJSON());
+            };
+
+            const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+            await pc.setLocalDescription(offer);
+            await update(callRef, { offer: { type: offer.type, sdp: offer.sdp }, viewerName: currentUser });
+
+            onValue(callRef, (snap) => {
+                const d = snap.val();
+                if (d && d.answer && !pc.currentRemoteDescription) {
+                    pc.setRemoteDescription(new RTCSessionDescription(d.answer));
+                }
+            });
+
+            onChildAdded(ref(db, `calls/${roomId}/${callRef.key}/hostCandidates`), (s) => {
+                if (s.val()) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e => {});
+            });
+
+            // Escuchar reacciones de esta sala
+            onChildAdded(ref(db, `reactions/${roomId}`), (s) => spawnReaction(s.val().emoji));
+        }
+
+        onValue(ref(db, 'rooms'), (snapshot) => {
+            const list = document.getElementById('rooms-list');
+            list.innerHTML = '';
+            const rooms = snapshot.val();
+            if (!rooms) return;
+            Object.keys(rooms).forEach(id => {
+                const r = rooms[id];
+                const card = document.createElement('div');
+                card.className = "room-card p-3 rounded bg-neutral-900 border border-neutral-800";
+                card.innerHTML = `<div class="text-xs font-bold text-white mb-1 uppercase">${r.host}</div><div class="text-[9px] text-cyan-600 font-mono">EN VIVO</div>`;
+                card.onclick = () => joinRoom(id, r.host);
+                list.appendChild(card);
+            });
+        });
+    </script>
+</body>
+</html>
