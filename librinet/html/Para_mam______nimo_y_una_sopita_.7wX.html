@@ -1,0 +1,64 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Para mamá – ¡Ánimo y una sopita!</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff5f0;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      color: #d64545;
+      margin-bottom: 1rem;
+    }
+    button {
+      background: #d64545;
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1.1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 0.5rem;
+    }
+    button:hover {
+      background: #b53a3a;
+    }
+  </style>
+</head>
+<body>
+  <h1>¡Te queremos mucho, mamá!</h1>
+  <p>Haz clic para escuchar tu canción y la receta de la sopita.</p>
+
+  <button id="cancionBtn">Escuchar canción</button>
+  <button id="sopitaBtn">Receta de la sopita</button>
+
+  <script>
+    const cancionBtn = document.getElementById('cancionBtn');
+    const sopitaBtn = document.getElementById('sopitaBtn');
+
+    const cancion = new SpeechSynthesisUtterance(
+      'Querida mamita, eres la luz de nuestra vida. Te mandamos fuerza y abrazos infinitos. ¡Que te mejores pronto!'
+    );
+    cancion.lang = 'es-ES';
+
+    const sopita = new SpeechSynthesisUtterance(
+      'Aquí va tu sopita: en una olla, sofríe cebolla, ajo y tomate. Añade zanahoria, calabacín y papa. Cubre con caldo de verduras y deja hervir 20 minutos. Añade una manita de fideos y un poco de perejil. Sirve calentita y con mucho amor. ¡Que la disfrutes, mamá!'
+    );
+    sopita.lang = 'es-ES';
+
+    cancionBtn.addEventListener('click', () => speechSynthesis.speak(cancion));
+    sopitaBtn.addEventListener('click', () => speechSynthesis.speak(sopita));
+  </script>
+</body>
+</html>
+```
