@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamShare Pro - Ultra Sync</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: #050505;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+        #onboarding {
+            position: fixed;
+            inset: 0;
+            background: #050505;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(15px);
+        }
+        #screenShare {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            border: 1px solid #1a1a1a;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .sidebar {
+            background: #0a0a0a;
+            border-right: 1px solid #1a1a1a;
+        }
+        .right-panel {
+            background: #0a0a0a;
+            border-left: 1px solid #1a1a1a;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .right-panel.closed {
+            transform: translateX(100%);
+            width: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        .mode-btn {
+            background: #111;
+            border: 1px solid #222;
+            color: #666;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .mode-btn.active {
+            border-color: #0ff;
+            color: #0ff;
+            background: rgba(0, 255, 255, 0.05);
+        }
+        .action-btn {
+            background: #0ff;
+            color: #000;
+            font-weight: 900;
+            padding: 12px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            transition: 0.2s;
+        }
+        .action-btn:hover:not(:disabled) {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+        .live-tag {
+            background: #ff0055;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 900;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        .reaction-emoji {
+            position: absolute;
+            bottom: 20px;
+            font-size: 2.5rem;
+            pointer-events: none;
+            z-index: 50;
+            animation: floatUp 2.5s ease-out forwards;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            15% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+            100% { transform: translateY(-400px) translateX(var(--tx)) rotate(var(--tr)); opacity: 0; }
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex h-screen">
+
+    <!-- Acceso -->
+    <div id="onboarding">
+        <div class="max-w-sm w-full p-8 bg-neutral-900 border border-white/5 rounded-3xl shadow-2xl text-center">
+            <div class="w-16 h-16 bg-cyan-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <span class="text-3xl">📡</span>
+            </div>
+            <h1 class="text-3xl font-black text-white italic mb-2 tracking-tighter">STREAM<span class="text-cyan-400">SHARE</span></h1>
+            <p class="text-gray-500 text-[10px] mb-8 uppercase tracking-[0.3em]">Studio Pro v3.0</p>
+            
+            <input type="text" id="username-input" placeholder="Tu alias de usuario..." 
+                class="w-full bg-black border border-neutral-800 rounded-xl p-4 text-white text-center outline-none focus:border-cyan-500 transition-all mb-4">
+
+            <button id="enter-btn" class="action-btn w-full">Entrar al Estudio</button>
+        </div>
+    </div>
+
+    <!-- Panel Izquierdo: Control y Salas -->
+    <aside class="sidebar w-72 flex flex-col p-6 shrink-0">
+        <div class="mb-8">
+            <h1 class="text-xl font-black text-white italic uppercase tracking-tighter">Studio <span class="text-cyan-400">Pro</span></h1>
+            <div id="user-badge" class="mt-2 flex items-center gap-2">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span id="display-name" class="text-[10px] text-gray-500 font-mono uppercase">Offline</span>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="space-y-3">
+                <label class="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Identidad de la Sala</label>
+                <input type="text" id="room-name-input" placeholder="Nombre de tu stream..." 
+                    class="w-full bg-black border border-neutral-800 rounded-lg p-2 text-[11px] text-cyan-400 outline-none focus:border-cyan-500">
+                
+                <label class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mt-2 block">Configuración</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btnModeScreen" class="mode-btn active">Pantalla</button>
+                    <button id="btnModeCamera" class="mode-btn">Cámara</button>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Micro</span>
+                    <input type="checkbox" id="useMic" checked class="accent-cyan-500">
+                </div>
+            </div>
+
+            <button id="startBtn" class="action-btn w-full shadow-lg shadow-cyan-500/10">Empezar Directo</button>
+            <button id="stopBtn" class="hidden w-full bg-red-500/10 text-red-500 border border-red-500/20 font-bold p-3 rounded-lg uppercase text-xs">Cerrar Stream</button>
+            <button id="exitRoomBtn" class="hidden w-full bg-neutral-800 text-white font-bold p-3 rounded-lg uppercase text-xs">Desconectar de Sala</button>
+        </div>
+
+        <div class="mt-10 flex-1 flex flex-col min-h-0">
+            <h2 class="text-[9px] text-gray-500 uppercase font-bold mb-4 tracking-widest flex justify-between">
+                En Directo <span id="total-rooms" class="text-cyan-500">0</span>
+            </h2>
+            <div id="rooms-list" class="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                <!-- Salas dinámicas -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- Centro: Monitor -->
+    <main class="flex-1 flex flex-col p-4 relative overflow-hidden">
+        <div id="screenShare" class="shadow-2xl">
+            <div id="status-overlay" class="absolute top-4 left-4 z-20"></div>
+            <div id="reaction-container" class="absolute inset-0 pointer-events-none z-40"></div>
+            
+            <div id="placeholder" class="text-center opacity-10 flex flex-col items-center">
+                <div class="text-9xl font-black">LIVE</div>
+                <p class="font-mono text-[10px] tracking-[1em] mt-4">ESTADO_ESPERA</p>
+            </div>
+        </div>
+
+        <!-- Controles Inferiores -->
+        <div class="mt-4 flex items-center justify-between">
+            <div>
+                <h2 id="viewing-name" class="text-lg font-bold text-white italic uppercase tracking-tight">Monitor Principal</h2>
+                <div id="room-stats-info" class="text-[10px] text-gray-600 font-mono uppercase mt-1">Sincronización lista</div>
+            </div>
+
+            <!-- Reacciones Rápidas -->
+            <div id="reaction-bar" class="hidden flex items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/5">
+                <button class="hover:scale-125 transition-transform p-2 text-xl" onclick="sendReaction('❤️')">❤️</button>
+                <button class="hover:scale-125 transition-transform p-2 text-xl" onclick="sendReaction('👍')">👍</button>
+                <button class="hover:scale-125 transition-transform p-2 text-xl" onclick="sendReaction('🔥')">🔥</button>
+                <button class="hover:scale-125 transition-transform p-2 text-xl" onclick="sendReaction('😮')">😮</button>
+                <button class="hover:scale-125 transition-transform p-2 text-xl" onclick="sendReaction('😂')">😂</button>
+                <div class="w-px h-6 bg-white/10 mx-1"></div>
+                <button id="toggle-chat" class="p-2 text-gray-400 hover:text-white transition-colors">
+                    <span class="text-sm">💬</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Panel Derecho: Chat / Historial Reacciones -->
+    <aside id="chat-panel" class="right-panel w-72 flex flex-col p-6 closed shrink-0">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Actividad</h3>
+            <button onclick="toggleChat()" class="text-gray-500 hover:text-white">✕</button>
+        </div>
+        
+        <div id="chat-log" class="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar text-[11px] font-mono">
+            <!-- Log de reacciones -->
+        </div>
+
+        <div class="mt-4 p-3 bg-white/5 rounded-xl border border-white/5">
+            <p class="text-[9px] text-gray-500 uppercase tracking-tighter">Audiencia actual</p>
+            <div id="viewer-avatars" class="flex flex-wrap gap-1 mt-2">
+                <!-- Avatares de espectadores -->
+            </div>
+        </div>
+    </aside>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, onChildAdded, remove, update, onDisconnect, serverTimestamp, off } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDuzW2fxNBAbXAajDeYlluI9xp6mlau1w8",
+            authDomain: "chat-1e83b.firebaseapp.com",
+            databaseURL: "https://chat-1e83b-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "chat-1e83b",
+            storageBucket: "chat-1e83b.firebasestorage.app",
+            messagingSenderId: "803748270514",
+            appId: "1:803748270514:web:b462c4a53f44e61d6a14ab"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+
+        // Globals
+        let currentUser = "";
+        let currentMode = 'screen'; 
+        let isBroadcasting = false;
+        let isViewing = false;
+        let mainStream = null;
+        let currentRoomId = null;
+        let heartbeatInterval = null;
+        let activePeerConnections = new Map();
+        let currentPC = null; // PC para el espectador
+
+        // UI Refs
+        const onboarding = document.getElementById('onboarding');
+        const usernameInput = document.getElementById('username-input');
+        const roomNameInput = document.getElementById('room-name-input');
+        const enterBtn = document.getElementById('enter-btn');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const exitRoomBtn = document.getElementById('exitRoomBtn');
+        const reactionBar = document.getElementById('reaction-bar');
+        const chatPanel = document.getElementById('chat-panel');
+        const chatLog = document.getElementById('chat-log');
+
+        // Toggle Chat
+        window.toggleChat = () => {
+            chatPanel.classList.toggle('closed');
+        };
+        document.getElementById('toggle-chat').onclick = window.toggleChat;
+
+        enterBtn.onclick = () => {
+            const val = usernameInput.value.trim();
+            if (val.length < 2) return;
+            currentUser = val;
+            document.getElementById('display-name').innerText = currentUser.toUpperCase();
+            roomNameInput.value = `${currentUser.toUpperCase()}_LIVE`;
+            onboarding.style.display = 'none';
+        };
+
+        // Enviar Reacción
+        window.sendReaction = (emoji) => {
+            if (!currentRoomId) return;
+            const reactRef = push(ref(db, `reactions/${currentRoomId}`));
+            set(reactRef, { emoji, user: currentUser, t: serverTimestamp() });
+        };
+
+        const addReactionToLog = (data) => {
+            const div = document.createElement('div');
+            div.className = "flex items-center gap-3 animate-fade-in";
+            div.innerHTML = `
+                <span class="text-lg">${data.emoji}</span>
+                <div class="flex flex-col">
+                    <span class="text-white font-bold uppercase text-[9px]">${data.user}</span>
+                    <span class="text-gray-500 text-[8px]">REACCIONÓ AHORA</span>
+                </div>
+            `;
+            chatLog.prepend(div);
+            if (chatLog.children.length > 30) chatLog.lastChild.remove();
+        };
+
+        const spawnReactionVisual = (emoji) => {
+            const el = document.createElement('div');
+            el.className = 'reaction-emoji';
+            el.innerText = emoji;
+            el.style.setProperty('--tx', `${Math.random() * 200 - 100}px`);
+            el.style.setProperty('--tr', `${Math.random() * 90 - 45}deg`);
+            el.style.left = `${Math.random() * 60 + 20}%`;
+            document.getElementById('reaction-container').appendChild(el);
+            setTimeout(() => el.remove(), 2500);
+        };
+
+        // HEARTBEAT & ROOM CLEANUP
+        const startHeartbeat = (roomId) => {
+            heartbeatInterval = setInterval(() => {
+                update(ref(db, `rooms/${roomId}`), { lastActive: serverTimestamp() });
+            }, 5000);
+        };
+
+        // Monitor de Limpieza
+        setInterval(() => {
+            const now = Date.now();
+            onValue(ref(db, 'rooms'), (snap) => {
+                const rooms = snap.val();
+                if (!rooms) return;
+                Object.keys(rooms).forEach(id => {
+                    if (rooms[id].lastActive && (now - rooms[id].lastActive > 12000)) {
+                        remove(ref(db, `rooms/${id}`));
+                        remove(ref(db, `calls/${id}`));
+                        remove(ref(db, `reactions/${id}`));
+                    }
+                });
+            }, { onlyOnce: true });
+        }, 10000);
+
+        // Lógica Transmisión
+        startBtn.onclick = async () => {
+            try {
+                isBroadcasting = true;
+                document.getElementById('placeholder').classList.add('hidden');
+                reactionBar.classList.remove('hidden');
+                
+                let stream = (currentMode === 'screen') 
+                    ? await navigator.mediaDevices.getDisplayMedia({ video: true })
+                    : await navigator.mediaDevices.getUserMedia({ video: true });
+                
+                mainStream = new MediaStream(stream.getVideoTracks());
+                if (document.getElementById('useMic').checked) {
+                    try {
+                        const audio = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mainStream.addTrack(audio.getAudioTracks()[0]);
+                    } catch(e) {}
+                }
+
+                const v = document.createElement('video');
+                v.srcObject = mainStream; v.autoplay = true; v.muted = true;
+                document.getElementById('screenShare').appendChild(v);
+                
+                document.getElementById('status-overlay').innerHTML = '<span class="live-tag">ON AIR</span>';
+                startBtn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+
+                const roomRef = push(ref(db, 'rooms'));
+                currentRoomId = roomRef.key;
+                const roomDisplayName = roomNameInput.value.trim() || currentUser.toUpperCase();
+                
+                onDisconnect(ref(db, `rooms/${currentRoomId}`)).remove();
+                onDisconnect(ref(db, `calls/${currentRoomId}`)).remove();
+                onDisconnect(ref(db, `reactions/${currentRoomId}`)).remove();
+                
+                await set(roomRef, { 
+                    host: currentUser,
+                    roomName: roomDisplayName,
+                    lastActive: serverTimestamp()
+                });
+
+                startHeartbeat(currentRoomId);
+                
+                onChildAdded(ref(db, `reactions/${currentRoomId}`), (snap) => {
+                    const data = snap.val();
+                    spawnReactionVisual(data.emoji);
+                    addReactionToLog(data);
+                });
+
+                onChildAdded(ref(db, `calls/${currentRoomId}`), async (snap) => {
+                    const data = snap.val();
+                    const callId = snap.key;
+                    if (data?.offer) {
+                        const pc = new RTCPeerConnection(servers);
+                        activePeerConnections.set(callId, pc);
+                        mainStream.getTracks().forEach(t => pc.addTrack(t, mainStream));
+                        pc.onicecandidate = (e) => e.candidate && push(ref(db, `calls/${currentRoomId}/${callId}/hostCandidates`), e.candidate.toJSON());
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        await update(ref(db, `calls/${currentRoomId}/${callId}`), { answer: { type: answer.type, sdp: answer.sdp } });
+                        onChildAdded(ref(db, `calls/${currentRoomId}/${callId}/clientCandidates`), (s) => pc.addIceCandidate(new RTCIceCandidate(s.val())));
+                    }
+                });
+            } catch (err) { isBroadcasting = false; }
+        };
+
+        window.stopStream = () => {
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            if (mainStream) mainStream.getTracks().forEach(t => t.stop());
+            if (currentRoomId) {
+                remove(ref(db, `rooms/${currentRoomId}`));
+                remove(ref(db, `calls/${currentRoomId}`));
+                remove(ref(db, `reactions/${currentRoomId}`));
+            }
+            location.reload();
+        };
+        stopBtn.onclick = window.stopStream;
+
+        // Desconectar espectador
+        window.exitViewing = () => {
+            isViewing = false;
+            if (currentPC) {
+                currentPC.close();
+                currentPC = null;
+            }
+            // Limpiar listeners de reacciones
+            if (currentRoomId) {
+                off(ref(db, `reactions/${currentRoomId}`));
+            }
+            currentRoomId = null;
+            document.getElementById('screenShare').innerHTML = `
+                <div id="status-overlay" class="absolute top-4 left-4 z-20"></div>
+                <div id="reaction-container" class="absolute inset-0 pointer-events-none z-40"></div>
+                <div id="placeholder" class="text-center opacity-10 flex flex-col items-center">
+                    <div class="text-9xl font-black">LIVE</div>
+                    <p class="font-mono text-[10px] tracking-[1em] mt-4">ESTADO_ESPERA</p>
+                </div>
+            `;
+            document.getElementById('viewing-name').innerText = "Monitor Principal";
+            reactionBar.classList.add('hidden');
+            exitRoomBtn.classList.add('hidden');
+            startBtn.classList.remove('hidden');
+            chatLog.innerHTML = '';
+        };
+        exitRoomBtn.onclick = window.exitViewing;
+
+        // Unirse a sala
+        window.joinRoom = async (roomId, roomName) => {
+            if (isBroadcasting || isViewing) return;
+            isViewing = true;
+            currentRoomId = roomId;
+            
+            document.getElementById('screenShare').innerHTML = '<div id="reaction-container" class="absolute inset-0 pointer-events-none z-40"></div><div class="text-[10px] animate-pulse">SINTONIZANDO SEÑAL: ' + roomName + '...</div>';
+            document.getElementById('viewing-name').innerText = `Viendo: ${roomName}`;
+            
+            reactionBar.classList.remove('hidden');
+            startBtn.classList.add('hidden');
+            exitRoomBtn.classList.remove('hidden');
+            chatLog.innerHTML = '';
+
+            const pc = new RTCPeerConnection(servers);
+            currentPC = pc;
+            
+            pc.ontrack = (e) => {
+                if (document.getElementById('screenShare').querySelector('video')) return;
+                document.getElementById('screenShare').innerHTML = '<div id="reaction-container" class="absolute inset-0 pointer-events-none z-40"></div>';
+                const v = document.createElement('video');
+                v.srcObject = e.streams[0]; v.autoplay = true; v.controls = true;
+                document.getElementById('screenShare').appendChild(v);
+            };
+
+            const callRef = push(ref(db, `calls/${roomId}`));
+            onDisconnect(callRef).remove();
+            
+            pc.onicecandidate = (e) => e.candidate && push(ref(db, `calls/${roomId}/${callRef.key}/clientCandidates`), e.candidate.toJSON());
+            const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+            await pc.setLocalDescription(offer);
+            await update(callRef, { offer: { type: offer.type, sdp: offer.sdp }, viewerName: currentUser });
+            
+            onValue(callRef, (snap) => {
+                const d = snap.val();
+                if (d?.answer && !pc.currentRemoteDescription) pc.setRemoteDescription(new RTCSessionDescription(d.answer));
+            });
+            onChildAdded(ref(db, `calls/${roomId}/${callRef.key}/hostCandidates`), (s) => pc.addIceCandidate(new RTCIceCandidate(s.val())));
+            
+            onChildAdded(ref(db, `reactions/${roomId}`), (snap) => {
+                const data = snap.val();
+                spawnReactionVisual(data.emoji);
+                addReactionToLog(data);
+            });
+        };
+
+        // Lista de Salas
+        onValue(ref(db, 'rooms'), (snapshot) => {
+            const list = document.getElementById('rooms-list');
+            list.innerHTML = '';
+            const rooms = snapshot.val();
+            let total = 0;
+            if (rooms) {
+                Object.keys(rooms).forEach(id => {
+                    const r = rooms[id];
+                    total++;
+                    onValue(ref(db, `calls/${id}`), (callSnap) => {
+                        const viewersCount = callSnap.val() ? Object.keys(callSnap.val()).length : 0;
+                        const existingCard = document.getElementById(`room-${id}`);
+                        const name = r.roomName || r.host;
+                        
+                        if (!existingCard) {
+                            const card = document.createElement('div');
+                            card.id = `room-${id}`;
+                            card.className = "p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-cyan-500/30 cursor-pointer transition-all group";
+                            card.innerHTML = `
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-[11px] font-black text-white uppercase truncate w-32">${name}</span>
+                                    <div class="flex items-center gap-1 bg-cyan-500/10 px-2 py-0.5 rounded-full">
+                                        <span class="text-[9px] text-cyan-400 font-bold">${viewersCount}</span>
+                                        <span class="text-[8px]">👤</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[8px] text-gray-500 font-mono italic">HOST: ${r.host}</span>
+                                    <span class="text-[8px] text-cyan-500 font-bold group-hover:underline">CONECTAR</span>
+                                </div>
+                            `;
+                            card.onclick = () => joinRoom(id, name);
+                            list.appendChild(card);
+                        } else {
+                            existingCard.querySelector('.text-cyan-400').innerText = viewersCount;
+                        }
+                    });
+                });
+            }
+            document.getElementById('total-rooms').innerText = total;
+        });
+
+        document.getElementById('btnModeScreen').onclick = () => {
+            currentMode = 'screen';
+            document.getElementById('btnModeScreen').classList.add('active');
+            document.getElementById('btnModeCamera').classList.remove('active');
+        };
+        document.getElementById('btnModeCamera').onclick = () => {
+            currentMode = 'camera';
+            document.getElementById('btnModeCamera').classList.add('active');
+            document.getElementById('btnModeScreen').classList.remove('active');
+        };
+    </script>
+</body>
+</html>
