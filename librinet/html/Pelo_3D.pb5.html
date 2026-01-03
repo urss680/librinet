@@ -1,0 +1,234 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Pelo 3D</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:sans-serif}
+    #console{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:90%;max-width:500px;background:rgba(0,0,0,.7);color:#0f0;border:2px solid #0f0;border-radius:6px;padding:8px;display:flex;gap:6px}
+    #console input{flex:1;background:transparent;border:none;color:#0f0;outline:none;font-size:1rem}
+    #console button{background:#0f0;color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-weight:bold}
+    #cmdList{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#0f0;border:2px solid #0f0;border-radius:6px;padding:12px;font-size:.9rem;line-height:1.4}
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div id="cmdList">
+    <strong>Comandos disponibles:</strong><br/>
+    ven / acercate – Llama a Pelo<br/>
+    baila – Mueve a Pelo al azar<br/>
+    salta – Hace saltar a Pelo<br/>
+    cambiate – Cambia el color de Pelo<br/>
+    casa – Crea una casa en el origen<br/>
+    a casa – Manda a Pelo dentro de la casa<br/>
+    ayuda – Muestra esta lista
+  </div>
+
+  <div id="console">
+    <input id="cmd" placeholder="Escribe un comando..." autocomplete="off"/>
+    <button onclick="runCommand()">Ejecutar</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111111);
+    const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
+    camera.position.set(0,4,10);
+    camera.lookAt(0,0,0);
+    const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('canvas'),antialias:true});
+    renderer.setSize(innerWidth,innerHeight);
+    renderer.shadowMap.enabled=true;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    window.addEventListener('resize',()=>{
+      camera.aspect=innerWidth/innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth,innerHeight);
+    });
+
+    // Luces
+    const aLight = new THREE.AmbientLight(0xffffff,.4);
+    scene.add(aLight);
+    const dLight = new THREE.DirectionalLight(0xffffff,.8);
+    dLight.position.set(5,10,7);
+    dLight.castShadow=true;
+    dLight.shadow.mapSize.set(2048,2048);
+    scene.add(dLight);
+
+    // Suelo
+    const floorGeo = new THREE.PlaneGeometry(30,30);
+    const floorMat = new THREE.MeshStandardMaterial({color:0x228b22});
+    const floor = new THREE.Mesh(floorGeo,floorMat);
+    floor.rotation.x=-Math.PI/2;
+    floor.receiveShadow=true;
+    scene.add(floor);
+
+    // MUÑECA completa
+    const pelo = new THREE.Group();
+
+    // Cuerpo (tronco)
+    const bodyGeo = new THREE.BoxGeometry(1.2,1.8,0.8);
+    const bodyMat = new THREE.MeshStandardMaterial({color:0x00ff00});
+    const body = new THREE.Mesh(bodyGeo,bodyMat);
+    body.castShadow=true;
+    body.position.y=1.8;
+    pelo.add(body);
+
+    // Cabeza
+    const headGeo = new THREE.SphereGeometry(.6,32,32);
+    const head = new THREE.Mesh(headGeo,bodyMat);
+    head.castShadow=true;
+    head.position.y=3.2;
+    pelo.add(head);
+
+    // Ojos
+    const eyeGeo = new THREE.SphereGeometry(.1,16,16);
+    const eyeMat = new THREE.MeshStandardMaterial({color:0x000000});
+    const leftEye = new THREE.Mesh(eyeGeo,eyeMat);
+    leftEye.position.set(-.2,3.3,.55);
+    pelo.add(leftEye);
+    const rightEye = new THREE.Mesh(eyeGeo,eyeMat);
+    rightEye.position.set(.2,3.3,.55);
+    pelo.add(rightEye);
+
+    // Boca
+    const mouthGeo = new THREE.TorusGeometry(.15,.05,8,16,Math.PI);
+    const mouth = new THREE.Mesh(mouthGeo,eyeMat);
+    mouth.rotation.x=Math.PI;
+    mouth.position.set(0,3,.55);
+    pelo.add(mouth);
+
+    // Brazos
+    const armGeo = new THREE.BoxGeometry(.3,1.2,.3);
+    const leftArm = new THREE.Mesh(armGeo,bodyMat);
+    leftArm.position.set(-.8,2,0);
+    leftArm.rotation.z=.4;
+    leftArm.castShadow=true;
+    pelo.add(leftArm);
+    const rightArm = new THREE.Mesh(armGeo,bodyMat);
+    rightArm.position.set(.8,2,0);
+    rightArm.rotation.z=-.4;
+    rightArm.castShadow=true;
+    pelo.add(rightArm);
+
+    // Piernas
+    const legGeo = new THREE.BoxGeometry(.3,1.5,.3);
+    const leftLeg = new THREE.Mesh(legGeo,bodyMat);
+    leftLeg.position.set(-.3,.75,0);
+    leftLeg.castShadow=true;
+    pelo.add(leftLeg);
+    const rightLeg = new THREE.Mesh(legGeo,bodyMat);
+    rightLeg.position.set(.3,.75,0);
+    rightLeg.castShadow=true;
+    pelo.add(rightLeg);
+
+    pelo.position.set(0,0,0);
+    scene.add(pelo);
+
+    // Control
+    const peloData={speed:4,targetX:0,targetZ:0,color:0x00ff00,house:null};
+
+    function walkTo(x,z){
+      peloData.targetX=x;
+      peloData.targetZ=z;
+    }
+    function dance(){
+      const angle=Math.random()*Math.PI*2;
+      const r=3;
+      walkTo(Math.cos(angle)*r,Math.sin(angle)*r);
+    }
+    function jump(){
+      const start=pelo.position.y;
+      let up=true;
+      const j=setInterval(()=>{
+        if(up){
+          pelo.position.y+=.15;
+          if(pelo.position.y>start+1)up=false;
+        }else{
+          pelo.position.y-=.15;
+          if(pelo.position.y<=start){pelo.position.y=start;clearInterval(j);}
+        }
+      },20);
+    }
+    function changeColor(){
+      const colors=[0x00ff00,0xff0000,0x0000ff,0xffff00];
+      const c=new THREE.Color(colors[Math.floor(Math.random()*colors.length)]);
+      body.material.color=c;
+      head.material.color=c;
+      leftArm.material.color=c;
+      rightArm.material.color=c;
+      leftLeg.material.color=c;
+      rightLeg.material.color=c;
+    }
+    function createHouse(){
+      if(peloData.house) return;
+      const house=new THREE.Group();
+      const wallMat=new THREE.MeshStandardMaterial({color:0x8b4513});
+      const roofMat=new THREE.MeshStandardMaterial({color:0x654321});
+      // paredes
+      const wallGeo=new THREE.BoxGeometry(4,2.5,4);
+      const walls=new THREE.Mesh(wallGeo,wallMat);
+      walls.position.y=1.25;
+      walls.castShadow=true;
+      walls.receiveShadow=true;
+      house.add(walls);
+      // tejado
+      const roofGeo=new THREE.ConeGeometry(3,1.5,4);
+      const roof=new THREE.Mesh(roofGeo,roofMat);
+      roof.position.y=2.5+.75;
+      roof.rotation.y=Math.PI/4;
+      roof.castShadow=true;
+      house.add(roof);
+      // puerta
+      const doorGeo=new THREE.BoxGeometry(.8,1.8,.1);
+      const doorMat=new THREE.MeshStandardMaterial({color:0x4a2c17});
+      const door=new THREE.Mesh(doorGeo,doorMat);
+      door.position.set(0,.9,2.05);
+      house.add(door);
+      scene.add(house);
+      peloData.house=house;
+    }
+    function goInside(){
+      if(!peloData.house){alert('Primero crea la casa con "casa"');return;}
+      walkTo(0,0);
+    }
+    const commands={
+      ven:()=>walkTo(0,0),
+      acercate:()=>walkTo(0,0),
+      baila:()=>dance(),
+      salta:()=>jump(),
+      cambiate:()=>changeColor(),
+      casa:()=>createHouse(),
+      'a casa':()=>goInside(),
+      ayuda:()=>alert('Comandos: ven, acercate, baila, salta, cambiate, casa, "a casa", ayuda')
+    };
+    function runCommand(){
+      const val=document.getElementById('cmd').value.trim().toLowerCase();
+      document.getElementById('cmd').value='';
+      if(commands[val])commands[val](); else alert('Comando no reconocido. Escribe "ayuda".');
+    }
+    document.getElementById('cmd').addEventListener('keyup',e=>{if(e.key==='Enter')runCommand()});
+
+    // Animación
+    function animate(){
+      requestAnimationFrame(animate);
+      // Movimiento
+      const dx=peloData.targetX-pelo.position.x;
+      const dz=peloData.targetZ-pelo.position.z;
+      const dist=Math.hypot(dx,dz);
+      if(dist>.1){
+        pelo.position.x+=(dx/dist)*peloData.speed*0.03;
+        pelo.position.z+=(dz/dist)*peloData.speed*0.03;
+        pelo.rotation.y=Math.atan2(dx,dz);
+      }
+      // Rotación suave
+      pelo.rotation.y+=0.005;
+      renderer.render(scene,camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
+```
