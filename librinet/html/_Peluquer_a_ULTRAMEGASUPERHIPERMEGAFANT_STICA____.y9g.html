@@ -1,0 +1,928 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>¡Peluquería ULTRAMEGASUPERHIPERMEGAFANTÁSTICA! 🎉</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+        body{
+            margin:0;
+            font-family:'Fredoka One',cursive;
+            background:linear-gradient(45deg,#ff9a9e,#fecfef,#a8edea,#fed6e3,#f6d365,#fda085,#ff00ff,#00ffff,#ffff00);
+            background-size:400% 400%;
+            animation:fondo 1s ease infinite;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            padding:20px;
+            overflow:hidden;
+        }
+        @keyframes fondo{
+            0%{background-position:0% 50%}
+            50%{background-position:100% 50%}
+            100%{background-position:0% 50%}
+        }
+        h1{
+            color:#fff;
+            text-shadow:0 0 5px #ff00ff,0 0 10px #ff00ff,0 0 20px #ff00ff;
+            font-size:5em;
+            margin:0 0 10px;
+            animation:titileo 0.3s infinite alternate;
+        }
+        @keyframes titileo{
+            from{text-shadow:0 0 5px #ff00ff,0 0 10px #ff00ff,0 0 20px #ff00ff;}
+            to{text-shadow:0 0 10px #00ffff,0 0 20px #00ffff,0 0 30px #00ffff;}
+        }
+        #cliente{
+            width:400px;
+            height:500px;
+            margin-bottom:20px;
+            cursor:none;
+            position:relative;
+        }
+        .herramientas{
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+            justify-content:center;
+            max-width:900px;
+        }
+        button{
+            font-size:50px;
+            padding:20px 25px;
+            border:none;
+            border-radius:20px;
+            background:#fff;
+            box-shadow:0 4px 10px rgba(0,0,0,.25);
+            cursor:pointer;
+            transition:transform .2s,background .2s;
+            position:relative;
+            overflow:hidden;
+        }
+        button:hover{
+            transform:scale(1.3) rotate(-15deg);
+            background:#ffe0f0;
+        }
+        button:active{transform:scale(.9) rotate(15deg);}
+        #colorPicker{
+            width:90px;
+            height:90px;
+            border:none;
+            border-radius:50%;
+            cursor:pointer;
+            box-shadow:0 4px 10px rgba(0,0,0,.25);
+        }
+        .mensaje{
+            margin-top:15px;
+            font-weight:bold;
+            color:#fff;
+            height:50px;
+            font-size:3em;
+            text-shadow:0 0 5px #000;
+        }
+        .cursor{
+            position:absolute;
+            pointer-events:none;
+            z-index:1000;
+            font-size:60px;
+            display:none;
+            transform:rotate(-20deg);
+            filter:drop-shadow(0 0 5px #fff);
+            animation:girar 0.3s linear infinite;
+        }
+        @keyframes girar{
+            to{transform:rotate(-20deg) rotate(360deg);}
+        }
+        .mechon{
+            cursor:pointer;
+            transition:all .2s;
+        }
+        .corte-caida{
+            animation:caer 1s ease-in forwards;
+        }
+        @keyframes caer{
+            to{transform:translateY(500px) rotate(720deg);opacity:0;}
+        }
+        .explosion{
+            animation:explota .6s ease-out forwards;
+        }
+        @keyframes explota{
+            0%{transform:scale(1);opacity:1;}
+            50%{transform:scale(2);opacity:.8;}
+            100%{transform:scale(0);opacity:0;}
+        }
+        .confeti{
+            position:fixed;
+            width:20px;
+            height:20px;
+            border-radius:50%;
+            pointer-events:none;
+            animation:caerConfeti 2s ease-out forwards;
+        }
+        @keyframes caerConfeti{
+            to{transform:translateY(100vh) rotate(1080deg);opacity:0;}
+        }
+        .risa{
+            font-size:4em;
+            color:#ff00ff;
+            position:absolute;
+            animation:sube 1s ease-out forwards;
+            pointer-events:none;
+        }
+        @keyframes sube{
+            to{transform:translateY(-150px);opacity:0;}
+        }
+        .explosion-estrella{
+            position:absolute;
+            font-size:60px;
+            animation:explota .6s ease-out forwards;
+            pointer-events:none;
+        }
+        .electricidad{
+            filter:brightness(3) drop-shadow(0 0 10px yellow);
+            animation:electric 0.1s infinite;
+        }
+        @keyframes electric{
+            0%{filter:brightness(3) drop-shadow(0 0 10px yellow);}
+            50%{filter:brightness(5) drop-shadow(0 0 20px cyan);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px yellow);}
+        }
+        .mariquita{
+            animation:mariquita 0.3s infinite alternate;
+        }
+        @keyframes mariquita{
+            to{transform:translateY(-10px) rotate(10deg);}
+        }
+        .pulso{
+            animation:pulso 0.2s infinite alternate;
+        }
+        @keyframes pulso{
+            to{transform:scale(1.5);}
+        }
+        .magico{
+            animation:magico 0.5s infinite;
+        }
+        @keyframes magico{
+            0%{filter:hue-otate(0deg) brightness(2);}
+            50%{filter:hue-rotate(180deg) brightness(3);}
+            100%{filter:hue-rotate(360deg) brightness(2);}
+        }
+        .disco{
+            animation:disco 0.3s infinite;
+        }
+        @keyframes disco{
+            to{filter:invert(1) hue-rotate(360deg);}
+        }
+        .estrella{
+            animation:estrella 0.4s infinite;
+        }
+        @keyframes estrella{
+            0%{transform:rotate(0deg) scale(1);}
+            50%{transform:rotate(180deg) scale(1.5);}
+            100%{transform:rotate(360deg) scale(1);}
+        }
+        .corazon{
+            animation:corazon 0.3s infinite alternate;
+        }
+        @keyframes corazon{
+            to{transform:scale(1.2);}
+        }
+        .luna{
+            animation:luna 0.5s infinite alternate;
+        }
+        @keyframes luna{
+            to{transform:translateY(-15px) rotate(-10deg);}
+        }
+        .sol{
+            animation:sol 0.2s infinite;
+        }
+        @keyframes sol{
+            0%{filter:brightness(3) drop-shadow(0 0 20px #ffff00);}
+            50%{filter:brightness(5) drop-shadow(0 0 40px #ffff00);}
+            100%{filter:brightness(3) drop-shadow(0 0 20px #ffff00);}
+        }
+        .arcoiris{
+            animation:arcoiris 0.3s infinite;
+        }
+        @keyframes arcoiris{
+            0%{filter:hue-rotate(0deg);}
+            100%{filter:hue-rotate(360deg);}
+        }
+        .tornado{
+            animation:tornado 0.3s linear infinite;
+        }
+        @keyframes tornado{
+            to{transform:rotate(1080deg);}
+        }
+        .burbuja{
+            animation:burbuja 0.4s infinite alternate;
+        }
+        @keyframes burbuja{
+            to{transform:translateY(-20px) scale(1.3);}
+        }
+        .gato{
+            animation:gato 0.3s infinite;
+        }
+        @keyframes gato{
+            0%{transform:translateY(0);}
+            50%{transform:translateY(-10px);}
+            100%{transform:translateY(0);}
+        }
+        .perro{
+            animation:perro 0.3s infinite;
+        }
+        @keyframes perro{
+            to{transform:rotate(10deg) scale(1.1);}
+        }
+        .mono{
+            animation:mono 0.2s infinite;
+        }
+        @keyframes mono{
+            0%{transform:translateY(0);}
+            50%{transform:translateY(-5px);}
+            100%{transform:translateY(0);}
+        }
+        .panda{
+            animation:panda 0.4s infinite alternate;
+        }
+        @keyframes panda{
+            to{transform:scale(1.2) rotate(5deg);}
+        }
+        .dragon{
+            animation:dragon 0.3s infinite;
+        }
+        @keyframes dragon{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #ff0000);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #ff0000);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #ff0000);}
+        }
+        .unicornio{
+            animation:unicornio 0.3s infinite;
+        }
+        @keyframes unicornio{
+            0%{filter:hue-rotate(0deg) brightness(3);}
+            50%{filter:hue-rotate(180deg) brightness(5);}
+            100%{filter:hue-rotate(360deg) brightness(3);}
+        }
+        .arco{
+            animation:arco 0.3s infinite;
+        }
+        @keyframes arco{
+            to{transform:rotateY(360deg);}
+        }
+        .flecha{
+            animation:flecha 0.3s infinite;
+        }
+        @keyframes flecha{
+            to{transform:translateX(10px) rotate(10deg);}
+        }
+        .rayo{
+            animation:rayo 0.1s infinite;
+        }
+        @keyframes rayo{
+            0%{filter:brightness(3) drop-shadow(0 0 10px #ffff00);}
+            50%{filter:brightness(6) drop-shadow(0 0 20px #ffff00);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px #ffff00);}
+        }
+        .hielo{
+            animation:hielo 0.3s infinite;
+        }
+        @keyframes hielo{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #00ffff);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #00ffff);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #00ffff);}
+        }
+        .fuego{
+            animation:fuego 0.2s infinite;
+        }
+        @keyframes fuego{
+            0%{filter:brightness(3) drop-shadow(0 0 10px #ff4500);}
+            50%{filter:brightness(5) drop-shadow(0 0 20px #ff4500);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px #ff4500);}
+        }
+        .agua{
+            animation:agua 0.3s infinite;
+        }
+        @keyframes agua{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #00bfff);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #00bfff);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #00bfff);}
+        }
+        .tierra{
+            animation:tierra 0.4s infinite;
+        }
+        @keyframes tierra{
+            to{transform:scale(1.1) rotate(5deg);}
+        }
+        .aire{
+            animation:aire 0.3s infinite;
+        }
+        @keyframes aire{
+            0%{transform:translateX(0);}
+            50%{transform:translateX(10px);}
+            100%{transform:translateX(0);}
+        }
+        .espacio{
+            animation:espacio 0.3s infinite;
+        }
+        @keyframes espacio{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #4b0082);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #4b0082);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #4b0082);}
+        }
+        .galaxia{
+            animation:galaxia 0.3s infinite;
+        }
+        @keyframes galaxia{
+            0%{filter:hue-rotate(0deg) brightness(3);}
+            50%{filter:hue-rotate(180deg) brightness(5);}
+            100%{filter:hue-rotate(360deg) brightness(3);}
+        }
+        .nebulosa{
+            animation:nebulosa 0.3s infinite;
+        }
+        @keyframes nebulosa{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #9370db);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #9370db);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #9370db);}
+        }
+        .supernova{
+            animation:supernova 0.2s infinite;
+        }
+        @keyframes supernova{
+            0%{filter:brightness(3) drop-shadow(0 0 10px #ff00ff);}
+            50%{filter:brightness(6) drop-shadow(0 0 20px #ff00ff);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px #ff00ff);}
+        }
+        .agujero{
+            animation:agujero 0.3s infinite;
+        }
+        @keyframes agujero{
+            to{transform:scale(0);}
+        }
+        .estrella2{
+            animation:estrella2 0.3s infinite;
+        }
+        @keyframes estrella2{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #ffd700);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #ffd700);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #ffd700);}
+        }
+        .luna2{
+            animation:luna2 0.4s infinite;
+        }
+        @keyframes luna2{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #f0e68c);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #f0e68c);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #f0e68c);}
+        }
+        .sol2{
+            animation:sol2 0.2s infinite;
+        }
+        @keyframes sol2{
+            0%{filter:brightness(3) drop-shadow(0 0 10px #ffff00);}
+            50%{filter:brightness(6) drop-shadow(0 0 20px #ffff00);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px #ffff00);}
+        }
+        .planeta{
+            animation:planeta 0.3s infinite;
+        }
+        @keyframes planeta{
+            to{transform:rotate(360deg);}
+        }
+        .cometa{
+            animation:cometa 0.3s infinite;
+        }
+        @keyframes cometa{
+            0%{transform:translateX(0);}
+            50%{transform:translateX(20px);}
+            100%{transform:translateX(0);}
+        }
+        .meteorito{
+            animation:meteorito 0.2s infinite;
+        }
+        @keyframes meteorito{
+            0%{filter:brightness(3) drop-shadow(0 0 10px #ff6347);}
+            50%{filter:brightness(5) drop-shadow(0 0 20px #ff6347);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px #ff6347);}
+        }
+        .satelite{
+            animation:satelite 0.3s infinite;
+        }
+        @keyframes satelite{
+            to{transform:rotate(360deg) scale(1.1);}
+        }
+        .cohete{
+            animation:cohete 0.3s infinite;
+        }
+        @keyframes cohete{
+            0%{transform:translateY(0);}
+            50%{transform:translateY(-20px);}
+            100%{transform:translateY(0);}
+        }
+        .astronauta{
+            animation:astronauta 0.4s infinite;
+        }
+        @keyframes astronauta{
+            to{transform:rotate(360deg) scale(1.2);}
+        }
+        .alien{
+            animation:alien 0.3s infinite;
+        }
+        @keyframes alien{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #00ff00);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #00ff00);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #00ff00);}
+        }
+        .ovni{
+            animation:ovni 0.3s infinite;
+        }
+        @keyframes ovni{
+            to{transform:translateY(-10px) rotate(5deg);}
+        }
+        .robot{
+            animation:robot 0.3s infinite;
+        }
+        @keyframes robot{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #c0c0c0);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #c0c0c0);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #c0c0c0);}
+        }
+        .android{
+            animation:android 0.3s infinite;
+        }
+        @keyframes android{
+            to{transform:rotate(360deg);}
+        }
+        .cyber{
+            animation:cyber 0.2s infinite;
+        }
+        @keyframes cyber{
+            0%{filter:brightness(3) drop-shadow(0 0 10px #00ffff);}
+            50%{filter:brightness(6) drop-shadow(0 0 20px #00ffff);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px #00ffff);}
+        }
+        .matrix{
+            animation:matrix 0.3s infinite;
+        }
+        @keyframes matrix{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #00ff00);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #00ff00);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #00ff00);}
+        }
+        .holograma{
+            animation:holograma 0.3s infinite;
+        }
+        @keyframes holograma{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #ff00ff);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #ff00ff);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #ff00ff);}
+        }
+        .neuron{
+            animation:neuron 0.3s infinite;
+        }
+        @keyframes neuron{
+            to{transform:scale(1.3) rotate(10deg);}
+        }
+        .sinapsis{
+            animation:sinapsis 0.2s infinite;
+        }
+        @keyframes sinapsis{
+            0%{filter:brightness(3) drop-shadow(0 0 10px #ff00ff);}
+            50%{filter:brightness(6) drop-shadow(0 0 20px #ff00ff);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px #ff00ff);}
+        }
+        .quark{
+            animation:quark 0.3s infinite;
+        }
+        @keyframes quark{
+            to{transform:rotate(360deg) scale(0.5);}
+        }
+        .boson{
+            animation:boson 0.3s infinite;
+        }
+        @keyframes boson{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #ffd700);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #ffd700);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #ffd700);}
+        }
+        .foton{
+            animation:foton 0.1s infinite;
+        }
+        @keyframes foton{
+            0%{filter:brightness(3) drop-shadow(0 0 10px #ffffff);}
+            50%{filter:brightness(6) drop-shadow(0 0 20px #ffffff);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px #ffffff);}
+        }
+        .electron{
+            animation:electron 0.3s infinite;
+        }
+        @keyframes electron{
+            to{transform:translateX(15px) rotate(360deg);}
+        }
+        .proton{
+            animation:proton 0.3s infinite;
+        }
+        @keyframes proton{
+            to{transform:scale(1.2);}
+        }
+        .neutron{
+            animation:neutron 0.3s infinite;
+        }
+        @keyframes neutron{
+            to{transform:rotate(360deg) scale(0.8);}
+        }
+        .atomo{
+            animation:atomo 0.3s infinite;
+        }
+        @keyframes atomo{
+            to{transform:rotate(360deg);}
+        }
+        .molecula{
+            animation:molecula 0.3s infinite;
+        }
+        @keyframes molecula{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #00bfff);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #00bfff);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #00bfff);}
+        }
+        .celula{
+            animation:celula 0.3s infinite;
+        }
+        @keyframes celula{
+            to{transform:scale(1.1) rotate(5deg);}
+        }
+        .adn{
+            animation:adn 0.3s infinite;
+        }
+        @keyframes adn{
+            to{transform:rotate(360deg);}
+        }
+        .virus{
+            animation:virus 0.3s infinite;
+        }
+        @keyframes virus{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #00ff00);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #00ff00);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #00ff00);}
+        }
+        .bacteria{
+            animation:bacteria 0.3s infinite;
+        }
+        @keyframes bacteria{
+            to{transform:scale(1.2) rotate(10deg);}
+        }
+        .enzima{
+            animation:enzima 0.3s infinite;
+        }
+        @keyframes enzima{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #ff6347);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #ff6347);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #ff6347);}
+        }
+        .proteina{
+            animation:proteina 0.3s infinite;
+        }
+        @keyframes proteina{
+            to{transform:rotate(360deg) scale(0.7);}
+        }
+        .hormona{
+            animation:hormona 0.3s infinite;
+        }
+        @keyframes hormona{
+            to{transform:translateY(-10px) scale(1.2);}
+        }
+        .anticuerpo{
+            animation:anticuerpo 0.3s infinite;
+        }
+        @keyframes anticuerpo{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #ffffff);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #ffffff);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #ffffff);}
+        }
+        .globulo{
+            animation:globulo 0.3s infinite;
+        }
+        @keyframes globulo{
+            to{transform:scale(1.1) rotate(5deg);}
+        }
+        .platel{
+            animation:platel 0.3s infinite;
+        }
+        @keyframes platel{
+            to{transform:rotate(360deg);}
+        }
+        .neutrofilo{
+            animation:neutrofilo 0.3s infinite;
+        }
+        @keyframes neutrofilo{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #ff0000);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #ff0000);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #ff0000);}
+        }
+        .eosinofilo{
+            animation:eosinofilo 0.3s infinite;
+        }
+        @keyframes eosinofilo{
+            to{transform:scale(1.2) rotate(10deg);}
+        }
+        .basofilo{
+            animation:basofilo 0.3s infinite;
+        }
+        @keyframes basofilo{
+            to{transform:rotate(360deg) scale(0.9);}
+        }
+        .linfocito{
+            animation:linfocito 0.3s infinite;
+        }
+        @keyframes linfocito{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #9370db);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #9370db);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #9370db);}
+        }
+        .monocito{
+            animation:monocito 0.3s infinite;
+        }
+        @keyframes monocito{
+            to{transform:scale(1.1) rotate(5deg);}
+        }
+        .macrofago{
+            animation:macrofago 0.3s infinite;
+        }
+        @keyframes macrofago{
+            to{transform:rotate(360deg);}
+        }
+        .dendrita{
+            animation:dendrita 0.3s infinite;
+        }
+        @keyframes dendrita{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #00ff00);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #00ff00);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #00ff00);}
+        }
+        .axon{
+            animation:axon 0.3s infinite;
+        }
+        @keyframes axon{
+            to{transform:translateY(-15px) rotate(10deg);}
+        }
+        .sinapsis2{
+            animation:sinapsis2 0.2s infinite;
+        }
+        @keyframes sinapsis2{
+            0%{filter:brightness(3) drop-shadow(0 0 10px #ff00ff);}
+            50%{filter:brightness(6) drop-shadow(0 0 20px #ff00ff);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px #ff00ff);}
+        }
+        .neurotransmisor{
+            animation:neurotransmisor 0.3s infinite;
+        }
+        @keyframes neurotransmisor{
+            to{transform:scale(1.3) rotate(10deg);}
+        }
+        .receptor{
+            animation:receptor 0.3s infinite;
+        }
+        @keyframes receptor{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #00bfff);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #00bfff);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #00bfff);}
+        }
+        .ion{
+            animation:ion 0.3s infinite;
+        }
+        @keyframes ion{
+            to{transform:translateX(10px) rotate(360deg);}
+        }
+        .canal{
+            animation:canal 0.3s infinite;
+        }
+        @keyframes canal{
+            to{transform:rotate(360deg) scale(1.1);}
+        }
+        .potencial{
+            animation:potencial 0.2s infinite;
+        }
+        @keyframes potencial{
+            0%{filter:brightness(3) drop-shadow(0 0 10px #ffff00);}
+            50%{filter:brightness(6) drop-shadow(0 0 20px #ffff00);}
+            100%{filter:brightness(3) drop-shadow(0 0 10px #ffff00);}
+        }
+        .impulso{
+            animation:impulso 0.3s infinite;
+        }
+        @keyframes impulso{
+            to{transform:scale(1.2) rotate(5deg);}
+        }
+        .medula{
+            animation:medula 0.3s infinite;
+        }
+        @keyframes medula{
+            to{transform:rotate(360deg);}
+        }
+        .corteza{
+            animation:corteza 0.3s infinite;
+        }
+        @keyframes corteza{
+            0%{filter:brightness(2) drop-shadow(0 0 10px #8b4513);}
+            50%{filter:brightness(4) drop-shadow(0 0 20px #8b4513);}
+            100%{filter:brightness(2) drop-shadow(0 0 10px #8b4513);}
+        }
+        .hemisferio{
+            animation:hemisferio 0.3s infinite;
+        }
+        @keyframes hemisferio{
+            to{transform:scale(1.1) rotate(10deg);}
+        }
+        .lobulo{
+            animation:lobulo 0.3s infinite;
+        }
+        @keyframes lobulo{
+            to{transform:translateY(-10px) rotate(5deg);}
+        }
+        .giro{
+            animation:giro 0.3s infinite;
+        }
+        @keyframes giro{
+            to{transform:rotate(360deg);}
+        }
+        .salto{
+            animation:salto 0.3s infinite;
+        }
+        @keyframes salto{
+            0%{transform:translateY(0);}
+            50%{transform:translateY(-20px);}
+            100%{transform:translateY(0);}
+        }
+        .gira{
+            animation:gira 0.3s infinite;
+        }
+        @keyframes gira{
+            to{transform:rotate(360deg) scale(1.2);}
+        }
+        .rebota{
+            animation:rebota 0.3s infinite;
+        }
+        @keyframes rebota{
+            0%{transform:scale(1);}
+            50%{transform:scale(1.3);}
+            100%{transform:scale(1);}
+        }
+        .parpadea{
+            animation:parpadea 0.3s infinite;
+        }
+        @keyframes parpadea{
+            0%{opacity:1;}
+            50%{opacity:0;}
+            100%{opacity:1;}
+        }
+        .temblor{
+            animation:temblor 0.1s infinite;
+        }
+        @keyframes temblor{
+            0%{transform:translateX(0);}
+            25%{transform:translateX(-5px);}
+            50%{transform:translateX(5px);}
+            75%{transform:translateX(-5px);}
+            100%{transform:translateX(0);}
+        }
+        .flota{
+            animation:flota 0.3s infinite;
+        }
+        @keyframes flota{
+            0%{transform:translateY(0);}
+            50%{transform:translateY(-10px);}
+            100%{transform:translateY(0);}
+        }
+        .onda{
+            animation:onda 0.3s infinite;
+        }
+        @keyframes onda{
+            0%{transform:scale(1);}
+            50%{transform:scale(1.2);}
+            100%{transform:scale(1);}
+        }
+        .vibra{
+            animation:vibra 0.1s infinite;
+        }
+        @keyframes vibra{
+            0%{transform:rotate(0deg);}
+            25%{transform:rotate(5deg);}
+            50%{transform:rotate(-5deg);}
+            75%{transform:rotate(5deg);}
+            100%{transform:rotate(0deg);}
+        }
+        .explota{
+            animation:explota 0.6s ease-out forwards;
+        }
+        @keyframes explota{
+            0%{transform:scale(1);opacity:1;}
+            50%{transform:scale(2);opacity:.8;}
+            100%{transform:scale(0);opacity:0;}
+        }
+        .desaparece{
+            animation:desaparece 0.5s ease-out forwards;
+        }
+        @keyframes desaparece{
+            to{opacity:0;}
+        }
+        .aparece{
+            animation:aparece 0.5s ease-out forwards;
+        }
+        @keyframes aparece{
+            from{opacity:0;}
+            to{opacity:1;}
+        }
+        .crece{
+            animation:crece 0.5s ease-out forwards;
+        }
+        @keyframes crece{
+            from{transform:scale(0);}
+            to{transform:scale(1);}
+        }
+        .encoge{
+            animation:encoge 0.5s ease-out forwards;
+        }
+        @keyframes encoge{
+            from{transform:scale(1);}
+            to{transform:scale(0);}
+        }
+        .gigante{
+            animation:gigante 0.3s infinite;
+        }
+        @keyframes gigante{
+            to{transform:scale(2);}
+        }
+        .enano{
+            animation:enano 0.3s infinite;
+        }
+        @keyframes enano{
+            to{transform:scale(0.5);}
+        }
+        .invisible{
+            animation:invisible 0.3s infinite;
+        }
+        @keyframes invisible{
+            to{opacity:0;}
+        }
+        .visible{
+            animation:visible 0.3s infinite;
+        }
+        @keyframes visible{
+            to{opacity:1;}
+        }
+        .transparente{
+            animation:transparente 0.3s infinite;
+        }
+        @keyframes transparente{
+            to{opacity:0.5;}
+        }
+        .opaco{
+            animation:opaco 0.3s infinite;
+        }
+        @keyframes opaco{
+            to{opacity:1;}
+        }
+        .brillante{
+            animation:brillante 0.3s infinite;
+        }
+        @keyframes brillante{
+            0%{filter:brightness(1);}
+            50%{filter:brightness(3);}
+            100%{filter:brightness(1);}
+        }
+        .oscuro{
+            animation:oscuro 0.3s infinite;
+        }
+        @keyframes oscuro{
+            0%{filter:brightness(1);}
+            50%{filter:brightness(0.5);}
+            100%{filter:brightness(1);}
+        }
+        .negativo{
+            animation:negativo 0.3s infinite;
+        }
+        @keyframes negativo{
+            0%{filter:invert(0);}
+            50%{filter:invert(1);}
+            100%{filter:invert(0);}
+        }
+        .sepia{
+            animation:sepia 0.3s infinite;
+        }
+        @keyframes sepia{
+            0%{filter:sepia(0);}
+            50%{filter:sepia(1);}
+            100%{filter:sepia(0);}
+        }
+        .gris{
+            animation:gris 0.3s infinite;
+        }
+        @keyframes gris{
+            0%{filter:grayscale(0);}
+            50%{filter:grayscale(1);}
+            100%{filter:grayscale(0);}
+        }
+        .blur{
+            animation:blur
