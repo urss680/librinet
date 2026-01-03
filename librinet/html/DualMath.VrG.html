@@ -1,0 +1,133 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>DualMath</title>
+  <style>
+    *{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+    body{display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+    .game-container{background:#fff;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:90%;max-width:800px;padding:30px;text-align:center}
+    h1{margin-top:0;color:#333}
+    .players{display:flex;justify-content:space-between;margin:20px 0}
+    .player{width:48%}
+    .player h2{margin:0 0 10px;font-size:1.2em;color:#444}
+    .score{font-size:2em;margin-bottom:10px;color:#764ba2}
+    .question{font-size:1.4em;margin:20px 0;color:#333}
+    input[type=number]{width:120px;padding:10px;font-size:1.2em;border:2px solid #ccc;border-radius:6px;text-align:center}
+    button{padding:12px 24px;margin:6px;border:none;border-radius:6px;font-size:1em;cursor:pointer;transition:.3s}
+    .btn-start{background:#667eea;color:#fff}
+    .btn-start:hover{background:#5a67d8}
+    .btn-answer{background:#48bb78;color:#fff}
+    .btn-answer:hover{background:#38a169}
+    .turn-indicator{margin:15px 0;font-weight:bold;color:#555}
+    .timer{font-size:1.2em;color:#e53e3e;margin-bottom:10px}
+    .final{ font-size:1.4em; margin-top:20px; font-weight:bold;}
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>DualMath</h1>
+    <div class="players">
+      <div class="player">
+        <h2>Jugador 1</h2>
+        <div class="score" id="score1">0</div>
+        <div id="name1">Jugador 1</div>
+      </div>
+      <div class="player">
+        <h2>Jugador 2</h2>
+        <div class="score" id="score2">0</div>
+        <div id="name2">Jugador 2</div>
+      </div>
+    </div>
+
+    <div class="timer" id="timer">Tiempo: 10s</div>
+    <div class="turn-indicator" id="turn">Turno: Jugador 1</div>
+    <div class="question" id="question">Presiona Iniciar para comenzar</div>
+    <input type="number" id="answer" placeholder="Respuesta" disabled>
+    <br>
+    <button class="btn-start" id="startBtn" onclick="startGame()">Iniciar</button>
+    <button class="btn-answer" id="ansBtn" onclick="checkAnswer()" style="display:none;">Responder</button>
+    <div class="final" id="finalMsg"></div>
+  </div>
+
+  <script>
+    let turn = 1; // 1 o 2
+    let scores = {1:0, 2:0};
+    let current = {};
+    let timeLeft = 10;
+    let timerInterval;
+
+    function startGame(){
+      document.getElementById('startBtn').style.display='none';
+      document.getElementById('ansBtn').style.display='inline-block';
+      document.getElementById('answer').disabled=false;
+      document.getElementById('finalMsg').textContent='';
+      nextTurn();
+    }
+
+    function nextTurn(){
+      turn = turn===1?2:1;
+      document.getElementById('turn').textContent='Turno: Jugador '+turn;
+      generateQuestion();
+      resetTimer();
+    }
+
+    function generateQuestion(){
+      const a = Math.floor(Math.random()*10)+1;
+      const b = Math.floor(Math.random()*10)+1;
+      const ops = ['+','-','*'];
+      const op = ops[Math.floor(Math.random()*ops.length)];
+      let res;
+      switch(op){
+        case '+': res=a+b;break;
+        case '-': res=a-b;break;
+        case '*': res=a*b;break;
+      }
+      current={q:`${a} ${op} ${b}`,ans:res};
+      document.getElementById('question').textContent='¿Cuánto es '+current.q+'?';
+      document.getElementById('answer').value='';
+    }
+
+    function resetTimer(){
+      clearInterval(timerInterval);
+      timeLeft=10;
+      updateTimerDisplay();
+      timerInterval=setInterval(()=>{
+        timeLeft--;
+        updateTimerDisplay();
+        if(timeLeft<=0){
+          clearInterval(timerInterval);
+          nextTurn();
+        }
+      },1000);
+    }
+
+    function updateTimerDisplay(){
+      document.getElementById('timer').textContent='Tiempo: '+timeLeft+'s';
+    }
+
+    function checkAnswer(){
+      const val = parseInt(document.getElementById('answer').value,10);
+      if(val===current.ans){
+        scores[turn]++;
+        document.getElementById('score'+turn).textContent=scores[turn];
+      }
+      if(scores[1]>=5||scores[2]>=5){
+        endGame();
+      }else{
+        nextTurn();
+      }
+    }
+
+    function endGame(){
+      clearInterval(timerInterval);
+      document.getElementById('ansBtn').style.display='none';
+      document.getElementById('answer').disabled=true;
+      const winner = scores[1]>scores[2]?1:(scores[2]>scores[1]?2:0);
+      document.getElementById('finalMsg').textContent= winner===0?'Empate':'Ganador: Jugador '+winner;
+    }
+  </script>
+</body>
+</html>
+```
