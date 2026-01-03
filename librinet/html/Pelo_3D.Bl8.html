@@ -1,0 +1,157 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Pelo 3D</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:sans-serif}
+    #console{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:90%;max-width:500px;background:rgba(0,0,0,.7);color:#0f0;border:2px solid #0f0;border-radius:6px;padding:8px;display:flex;gap:6px}
+    #console input{flex:1;background:transparent;border:none;color:#0f0;outline:none;font-size:1rem}
+    #console button{background:#0f0;color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-weight:bold}
+    #cmdList{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#0f0;border:2px solid #0f0;border-radius:6px;padding:12px;font-size:.9rem;line-height:1.4}
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div id="cmdList">
+    <strong>Comandos disponibles:</strong><br/>
+    ven / acercate – Llama a Pelo<br/>
+    baila – Mueve a Pelo al azar<br/>
+    salta – Hace saltar a Pelo<br/>
+    cambiate – Cambia el color de Pelo<br/>
+    ayuda – Muestra esta lista
+  </div>
+
+  <div id="console">
+    <input id="cmd" placeholder="Escribe un comando..." autocomplete="off"/>
+    <button onclick="runCommand()">Ejecutar</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111111);
+    const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
+    camera.position.set(0,4,10);
+    camera.lookAt(0,0,0);
+    const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('canvas'),antialias:true});
+    renderer.setSize(innerWidth,innerHeight);
+    renderer.shadowMap.enabled=true;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    window.addEventListener('resize',()=>{
+      camera.aspect=innerWidth/innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth,innerHeight);
+    });
+
+    // Luces
+    const aLight = new THREE.AmbientLight(0xffffff,.4);
+    scene.add(aLight);
+    const dLight = new THREE.DirectionalLight(0xffffff,.8);
+    dLight.position.set(5,10,7);
+    dLight.castShadow=true;
+    dLight.shadow.mapSize.set(2048,2048);
+    scene.add(dLight);
+
+    // Suelo
+    const floorGeo = new THREE.PlaneGeometry(30,30);
+    const floorMat = new THREE.MeshStandardMaterial({color:0x228b22});
+    const floor = new THREE.Mesh(floorGeo,floorMat);
+    floor.rotation.x=-Math.PI/2;
+    floor.receiveShadow=true;
+    scene.add(floor);
+
+    // Pelo (personaje)
+    const pelo = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({color:0x00ff00});
+    // Cuerpo esponjoso
+    const bodyGeo = new THREE.SphereGeometry(.8,32,32);
+    const body = new THREE.Mesh(bodyGeo,bodyMat);
+    body.castShadow=true;
+    pelo.add(body);
+    // Ojos
+    const eyeGeo = new THREE.SphereGeometry(.1,16,16);
+    const eyeMat = new THREE.MeshStandardMaterial({color:0x000000});
+    const leftEye = new THREE.Mesh(eyeGeo,eyeMat);
+    leftEye.position.set(-.25,.1,.7);
+    pelo.add(leftEye);
+    const rightEye = new THREE.Mesh(eyeGeo,eyeMat);
+    rightEye.position.set(.25,.1,.7);
+    pelo.add(rightEye);
+    // Boca
+    const mouthGeo = new THREE.TorusGeometry(.15,.05,8,16,Math.PI);
+    const mouth = new THREE.Mesh(mouthGeo,eyeMat);
+    mouth.rotation.x=Math.PI;
+    mouth.position.set(0,-.2,.7);
+    pelo.add(mouth);
+    pelo.position.set(0,0.8,0);
+    scene.add(pelo);
+
+    // Control
+    const peloData={speed:4,targetX:0,targetZ:0,color:0x00ff00};
+
+    function walkTo(x,z){
+      peloData.targetX=x;
+      peloData.targetZ=z;
+    }
+    function dance(){
+      const angle=Math.random()*Math.PI*2;
+      const r=3;
+      walkTo(Math.cos(angle)*r,Math.sin(angle)*r);
+    }
+    function jump(){
+      const start=pelo.position.y;
+      let up=true;
+      const j=setInterval(()=>{
+        if(up){
+          pelo.position.y+=.15;
+          if(pelo.position.y>start+1)up=false;
+        }else{
+          pelo.position.y-=.15;
+          if(pelo.position.y<=start){pelo.position.y=start;clearInterval(j);}
+        }
+      },20);
+    }
+    function changeColor(){
+      const colors=[0x00ff00,0xff0000,0x0000ff,0xffff00];
+      const c=new THREE.Color(colors[Math.floor(Math.random()*colors.length)]);
+      body.material.color=c;
+    }
+    const commands={
+      ven:()=>walkTo(0,0),
+      acercate:()=>walkTo(0,0),
+      baila:()=>dance(),
+      salta:()=>jump(),
+      cambiate:()=>changeColor(),
+      ayuda:()=>alert('Comandos: ven, acercate, baila, salta, cambiate, ayuda')
+    };
+    function runCommand(){
+      const val=document.getElementById('cmd').value.trim().toLowerCase();
+      document.getElementById('cmd').value='';
+      if(commands[val])commands[val](); else alert('Comando no reconocido. Escribe "ayuda".');
+    }
+    document.getElementById('cmd').addEventListener('keyup',e=>{if(e.key==='Enter')runCommand()});
+
+    // Animación
+    function animate(){
+      requestAnimationFrame(animate);
+      // Movimiento
+      const dx=peloData.targetX-pelo.position.x;
+      const dz=peloData.targetZ-pelo.position.z;
+      const dist=Math.hypot(dx,dz);
+      if(dist>.1){
+        pelo.position.x+=(dx/dist)*peloData.speed*0.03;
+        pelo.position.z+=(dz/dist)*peloData.speed*0.03;
+        pelo.rotation.y=Math.atan2(dx,dz);
+      }
+      // Rotación suave
+      pelo.rotation.y+=0.005;
+      renderer.render(scene,camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
+```
