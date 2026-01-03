@@ -1,0 +1,279 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>¡Peluquería ULTRAMEGASUPERHIPERMEGAFANTÁSTICA! 🎉</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+        body{
+            margin:0;
+            font-family:'Fredoka One',cursive;
+            background:linear-gradient(45deg,#ff9a9e,#fecfef,#a8edea,#fed6e3,#f6d365,#fda085,#ff00ff,#00ffff,#ffff00);
+            background-size:400% 400%;
+            animation:fondo 1s ease infinite;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            padding:20px;
+            overflow:hidden;
+        }
+        @keyframes fondo{
+            0%{background-position:0% 50%}
+            50%{background-position:100% 50%}
+            100%{background-position:0% 50%}
+        }
+        h1{
+            color:#fff;
+            text-shadow:0 0 5px #ff00ff,0 0 10px #ff00ff,0 0 20px #ff00ff;
+            font-size:5em;
+            margin:0 0 10px;
+            animation:titileo 0.3s infinite alternate;
+        }
+        @keyframes titileo{
+            from{text-shadow:0 0 5px #ff00ff,0 0 10px #ff00ff,0 0 20px #ff00ff;}
+            to{text-shadow:0 0 10px #00ffff,0 0 20px #00ffff,0 0 30px #00ffff;}
+        }
+        #cliente{
+            width:400px;
+            height:500px;
+            margin-bottom:20px;
+            cursor:none;
+            position:relative;
+        }
+        .herramientas{
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+            justify-content:center;
+            max-width:900px;
+        }
+        button{
+            font-size:50px;
+            padding:20px 25px;
+            border:none;
+            border-radius:20px;
+            background:#fff;
+            box-shadow:0 4px 10px rgba(0,0,0,.25);
+            cursor:pointer;
+            transition:transform .2s,background .2s;
+            position:relative;
+            overflow:hidden;
+        }
+        button:hover{
+            transform:scale(1.3) rotate(-15deg);
+            background:#ffe0f0;
+        }
+        button:active{transform:scale(.9) rotate(15deg);}
+        #colorPicker{
+            width:90px;
+            height:90px;
+            border:none;
+            border-radius:50%;
+            cursor:pointer;
+            box-shadow:0 4px 10px rgba(0,0,0,.25);
+        }
+        .mensaje{
+            margin-top:15px;
+            font-weight:bold;
+            color:#fff;
+            height:50px;
+            font-size:3em;
+            text-shadow:0 0 5px #000;
+        }
+        .cursor{
+            position:absolute;
+            pointer-events:none;
+            z-index:1000;
+            font-size:60px;
+            display:none;
+            transform:rotate(-20deg);
+            filter:drop-shadow(0 0 5px #fff);
+            animation:girar 0.3s linear infinite;
+        }
+        @keyframes girar{
+            to{transform:rotate(-20deg) rotate(360deg);}
+        }
+        .mechon{
+            cursor:pointer;
+            transition:all .2s;
+        }
+        .corte-caida{
+            animation:caer 1s ease-in forwards;
+        }
+        @keyframes caer{
+            to{transform:translateY(500px) rotate(720deg);opacity:0;}
+        }
+        .explosion{
+            animation:explota .6s ease-out forwards;
+        }
+        @keyframes explota{
+            0%{transform:scale(1);opacity:1;}
+            50%{transform:scale(2);opacity:.8;}
+            100%{transform:scale(0);opacity:0;}
+        }
+        .confeti{
+            position:fixed;
+            width:20px;
+            height:20px;
+            border-radius:50%;
+            pointer-events:none;
+            animation:caerConfeti 2s ease-out forwards;
+        }
+        @keyframes caerConfeti{
+            to{transform:translateY(100vh) rotate(1080deg);opacity:0;}
+        }
+        .risa{
+            font-size:4em;
+            color:#ff00ff;
+            position:absolute;
+            animation:sube 1s ease-out forwards;
+            pointer-events:none;
+        }
+        @keyframes sube{
+            to{transform:translateY(-150px);opacity:0;}
+        }
+        .explosion-estrella{
+            position:absolute;
+            font-size:60px;
+            animation:explota .6s ease-out forwards;
+            pointer-events:none;
+        }
+    </style>
+</head>
+<body>
+
+<h1>¡Peluquería EL JUEGO MAS DIVERTIDO DE TODO EL MUNDO MUNDIAL!</h1>
+
+<div id="cliente">
+    <img id="personaje" src="https://raw.githubusercontent.com/pixilart/pixilart-assets/main/avatars/avatar.png" alt="Cliente">
+    <div class="cursor" id="cursor">✂️</div>
+</div>
+
+<div class="herramientas">
+    <button onclick="cortar()">✂️</button>
+    <button onclick="crecer()">🌱</button>
+    <button onclick="pintar()">🎨</button>
+    <button onclick="rizar()">💈</button>
+    <button onclick="alisar()">💆</button>
+    <button onclick="mohicano()">🦔</button>
+    <button onclick="trenzas()">🪢</button>
+    <button onclick="peluca()">🎭</button>
+    <button onclick="confeti()">🎊</button>
+    <button onclick="reset()">🔄</button>
+    <input type="color" id="colorPicker" value="#ff00ff">
+</div>
+
+<div class="mensaje" id="mensaje">¡Haz clic en las herramientas!</div>
+
+<script>
+    let mechones = 0;
+    let colorActual = "#ff00ff";
+
+    document.getElementById('colorPicker').addEventListener('input',(e)=>{colorActual=e.target.value;});
+
+    function mostrarMensaje(texto){
+        const m=document.getElementById('mensaje');
+        m.textContent=texto;
+        m.style.animation='none';
+        setTimeout(()=>m.style.animation='titileo 0.3s infinite alternate',10);
+    }
+
+    function crearConfeti(){
+        for(let i=0;i<50;i++){
+            const c=document.createElement('div');
+            c.className='confeti';
+            c.style.left=Math.random()*window.innerWidth+'px';
+            c.style.top='-20px';
+            c.style.backgroundColor='hsl('+Math.random()*360+',100%,50%)';
+            document.body.appendChild(c);
+            setTimeout(()=>c.remove(),2000);
+        }
+    }
+
+    function cortar(){
+        mostrarMensaje('¡Snip snip! ✂️');
+        document.getElementById('personaje').classList.add('corte-caida');
+        setTimeout(()=>{document.getElementById('personaje').classList.remove('corte-caida');},1000);
+        mechones++;
+        if(mechones%5===0) crearConfeti();
+    }
+
+    function crecer(){
+        mostrarMensaje('¡Crece pelo! 🌱');
+        document.getElementById('personaje').style.transform='scale(1.2)';
+        document.getElementById('personaje').style.filter='brightness(1.5)';
+        setTimeout(()=>{document.getElementById('personaje').style.transform='scale(1)';document.getElementById('personaje').style.filter='brightness(1)';},500);
+    }
+
+    function pintar(){
+        mostrarMensaje('¡Color! 🎨');
+        document.getElementById('personaje').style.filter=`hue-rotate(${Math.random()*360}deg) saturate(2)`;
+        setTimeout(()=>document.getElementById('personaje').style.filter='none',1000);
+    }
+
+    function rizar(){
+        mostrarMensaje('¡Rizos! 💈');
+        document.getElementById('personaje').style.transform='rotate(360deg)';
+        setTimeout(()=>document.getElementById('personaje').style.transform='rotate(0deg)',500);
+    }
+
+    function alisar(){
+        mostrarMensaje('¡Liso! 💆');
+        document.getElementById('personaje').style.filter='blur(2px)';
+        setTimeout(()=>document.getElementById('personaje').style.filter='none',500);
+    }
+
+    function mohicano(){
+        mostrarMensaje('¡Mohicano! 🦔');
+        document.getElementById('personaje').style.transform='scaleY(1.5)';
+        setTimeout(()=>document.getElementById('personaje').style.transform='scaleY(1)',500);
+    }
+
+    function trenzas(){
+        mostrarMensaje('¡Trenzas! 🪢');
+        document.getElementById('personaje').style.transform='skewX(20deg)';
+        setTimeout(()=>document.getElementById('personaje').style.transform='skewX(0)',500);
+    }
+
+    function peluca(){
+        mostrarMensaje('¡Peluca! 🎭');
+        document.getElementById('personaje').src='https://raw.githubusercontent.com/pixilart/pixilart-assets/main/avatars/avatar2.png';
+        setTimeout(()=>document.getElementById('personaje').src='https://raw.githubusercontent.com/pixilart/pixilart-assets/main/avatars/avatar.png',1000);
+    }
+
+    function confeti(){
+        mostrarMensaje('¡Fiesta! 🎊');
+        crearConfeti();
+        const risa=document.createElement('div');
+        risa.className='risa';
+        risa.textContent='😂';
+        risa.style.left=Math.random()*window.innerWidth+'px';
+        risa.style.top=Math.random()*window.innerHeight+'px';
+        document.body.appendChild(risa);
+        setTimeout(()=>risa.remove(),1000);
+    }
+
+    function reset(){
+        mostrarMensaje('¡Reinicio! 🔄');
+        document.getElementById('personaje').style.transform='scale(1) rotate(0deg)';
+        document.getElementById('personaje').style.filter='none';
+        mechones=0;
+        crearConfeti();
+    }
+
+    document.getElementById('cliente').addEventListener('mousemove',(e)=>{
+        const c=document.getElementById('cursor');
+        c.style.display='block';
+        c.style.left=e.pageX+'px';
+        c.style.top=e.pageY+'px';
+    });
+
+    document.getElementById('cliente').addEventListener('mouseleave',()=>{
+        document.getElementById('cursor').style.display='none';
+    });
+</script>
+
+</body>
+</html>
+```
