@@ -1,0 +1,338 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>¡Peluquería MEGADIVERTIDA! 🎉</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+        body{
+            margin:0;
+            font-family:'Fredoka One',cursive;
+            background:linear-gradient(45deg,#ff9a9e,#fecfef,#a8edea,#fed6e3);
+            background-size:400% 400%;
+            animation:fondo 8s ease infinite;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            padding:20px;
+            overflow:hidden;
+        }
+        @keyframes fondo{
+            0%{background-position:0% 50%}
+            50%{background-position:100% 50%}
+            100%{background-position:0% 50%}
+        }
+        h1{
+            color:#fff;
+            text-shadow:0 0 5px #ff00ff,0 0 10px #ff00ff,0 0 20px #ff00ff;
+            font-size:3em;
+            margin:0 0 10px;
+            animation:titileo 1.2s infinite alternate;
+        }
+        @keyframes titileo{
+            from{text-shadow:0 0 5px #ff00ff,0 0 10px #ff00ff,0 0 20px #ff00ff;}
+            to{text-shadow:0 0 10px #00ffff,0 0 20px #00ffff,0 0 30px #00ffff;}
+        }
+        #cliente{
+            width:300px;
+            height:400px;
+            margin-bottom:20px;
+            cursor:none;
+            position:relative;
+        }
+        .herramientas{
+            display:flex;
+            gap:15px;
+            flex-wrap:wrap;
+            justify-content:center;
+            max-width:700px;
+        }
+        button{
+            font-size:36px;
+            padding:15px 20px;
+            border:none;
+            border-radius:20px;
+            background:#fff;
+            box-shadow:0 4px 10px rgba(0,0,0,.25);
+            cursor:pointer;
+            transition:transform .2s,background .2s;
+            position:relative;
+            overflow:hidden;
+        }
+        button:hover{
+            transform:scale(1.15) rotate(-5deg);
+            background:#ffe0f0;
+        }
+        button:active{transform:scale(.9);}
+        #colorPicker{
+            width:70px;
+            height:70px;
+            border:none;
+            border-radius:50%;
+            cursor:pointer;
+            box-shadow:0 4px 10px rgba(0,0,0,.25);
+        }
+        .mensaje{
+            margin-top:15px;
+            font-weight:bold;
+            color:#fff;
+            height:30px;
+            font-size:1.5em;
+            text-shadow:0 0 5px #000;
+        }
+        .cursor{
+            position:absolute;
+            pointer-events:none;
+            z-index:1000;
+            font-size:40px;
+            display:none;
+            transform:rotate(-20deg);
+            filter:drop-shadow(0 0 5px #fff);
+        }
+        .mechon{
+            cursor:pointer;
+            transition:all .2s;
+        }
+        .corte-caida{
+            animation:caer 1s ease-in forwards;
+        }
+        @keyframes caer{
+            to{transform:translateY(400px) rotate(360deg);opacity:0;}
+        }
+        .explosion{
+            animation:explota .6s ease-out forwards;
+        }
+        @keyframes explota{
+            0%{transform:scale(1);opacity:1;}
+            50%{transform:scale(1.5);opacity:.8;}
+            100%{transform:scale(0);opacity:0;}
+        }
+        .confeti{
+            position:fixed;
+            width:10px;
+            height:10px;
+            border-radius:50%;
+            pointer-events:none;
+            animation:caerConfeti 2s ease-out forwards;
+        }
+        @keyframes caerConfeti{
+            to{transform:translateY(100vh) rotate(720deg);opacity:0;}
+        }
+        .risa{
+            font-size:2em;
+            color:#ff00ff;
+            position:absolute;
+            animation:sube 1s ease-out forwards;
+            pointer-events:none;
+        }
+        @keyframes sube{
+            to{transform:translateY(-100px);opacity:0;}
+        }
+    </style>
+</head>
+<body>
+    <h1>¡Peluquería MEGADIVERTIDA! ✂️🎉</h1>
+    <svg id="cliente" viewBox="0 0 300 400">
+        <!-- Cabeza -->
+        <circle cx="150" cy="180" r="80" fill="#fdbcb4" stroke="#000" stroke-width="2"/>
+        <!-- Ojos grandes y locos -->
+        <circle cx="125" cy="170" r="15" fill="#fff"/>
+        <circle cx="125" cy="170" r="10" fill="#000"/>
+        <circle cx="175" cy="170" r="15" fill="#fff"/>
+        <circle cx="175" cy="170" r="10" fill="#000"/>
+        <!-- Boca sorpresa -->
+        <circle cx="150" cy="200" r="15" fill="#ff1493" stroke="#000" stroke-width="2"/>
+        <!-- Cuello -->
+        <rect x="135" y="250" width="30" height="20" fill="#fdbcb4" stroke="#000" stroke-width="2"/>
+        <!-- Cuerpo -->
+        <rect x="100" y="260" width="100" height="120" rx="20" fill="#00ffff" stroke="#000" stroke-width="2"/>
+        <!-- Contenedor de mechones -->
+        <g id="pelo"></g>
+    </svg>
+
+    <div class="herramientas">
+        <button onclick="seleccionar('crecer')" title="¡CRECE PELO!">🌱</button>
+        <button onclick="seleccionar('cortar')" title="¡CORTA!">✂️</button>
+        <button onclick="seleccionar('lavar')" title="¡LAVA!">🧼</button>
+        <button onclick="seleccionar('secar')" title="¡SECA!">💨</button>
+        <button onclick="seleccionar('alisar')" title="¡ALISA!">🧴</button>
+        <button onclick="seleccionar('rizar')" title="¡RIZA!">🌀</button>
+        <button onclick="seleccionar('peinar')" title="¡PEINA!">🖌️</button>
+        <button onclick="seleccionar('pintar')" title="¡PINTA!">🎨</button>
+        <button onclick="seleccionar('fuego')" title="¡FUEGO!">🔥</button>
+        <button onclick="seleccionar('helado')" title="¡HELADO!">🧊</button>
+        <button onclick="seleccionar('confeti')" title="¡CONFETI!">🎊</button>
+        <input type="color" id="colorPicker" onchange="seleccionar('pintar')" title="¡COLOR!">
+    </div>
+
+    <div class="mensaje" id="mensaje"></div>
+    <div class="cursor" id="cursor"></div>
+
+    <script>
+        const pelo=document.getElementById('pelo');
+        const mensaje=document.getElementById('mensaje');
+        const cliente=document.getElementById('cliente');
+        const cursor=document.getElementById('cursor');
+        let herramientaSeleccionada=null;
+        let isMouseDown=false;
+        let colorPelo='#ff00ff';
+
+        function mostrar(msg){
+            mensaje.textContent=msg;
+            setTimeout(()=>mensaje.textContent='',1500);
+        }
+
+        function seleccionar(herramienta){
+            herramientaSeleccionada=herramienta;
+            const iconos={
+                crecer:'🌱',cortar:'✂️',lavar:'🧼',secar:'💨',alisar:'🧴',rizar:'🌀',peinar:'🖌️',pintar:'🎨',fuego:'🔥',helado:'🧊',confeti:'🎊'
+            };
+            cursor.innerHTML=iconos[herramienta]||'🖌️';
+            mostrar(`¡${herramienta.toUpperCase()} ACTIVADO!`);
+            if(herramienta==='confeti')lanzarConfeti();
+        }
+
+        // Crear mechones con formas divertidas
+        function generarMechones(){
+            pelo.innerHTML='';
+            const filas=10;
+            const cols=14;
+            for(let r=0;r<filas;r++){
+                for(let c=0;c<cols;c++){
+                    const x=80+c*10;
+                    const y=70+r*10;
+                    const mechon=document.createElementNS("http://www.w3.org/2000/svg","path");
+                    const forma=Math.random()>0.5?'Q':'C';
+                    mechon.setAttribute("d",`M${x} ${y} ${forma}${x+5} ${y-15} ${x+10} ${y-5} L${x+8} ${y+20} L${x+2} ${y+20} Z`);
+                    mechon.setAttribute("fill",colorPelo);
+                    mechon.setAttribute("stroke","#000");
+                    mechon.setAttribute("stroke-width","1");
+                    mechon.setAttribute("class","mechon");
+                    mechon.dataset.x=x;
+                    mechon.dataset.y=y;
+                    mechon.dataset.originalY=y;
+                    mechon.dataset.crecido='0';
+                    mechon.dataset.vida='100';
+                    pelo.appendChild(mechon);
+                }
+            }
+        }
+
+        function cortarMechon(e){
+            const mechon=e.target;
+            if(!mechon.classList.contains('mechon'))return;
+            const caida=mechon.cloneNode(true);
+            caida.setAttribute("class","corte-caida");
+            cliente.appendChild(caida);
+            mechon.remove();
+            crearRisa(e.clientX,e.clientY);
+            mostrar('¡SNIP SNIP! ✂️');
+        }
+
+        function aplicarAMechon(e){
+            if(!herramientaSeleccionada)return;
+            if(herramientaSeleccionada==='cortar'){
+                cortarMechon(e);
+                return;
+            }
+            const mechon=e.target;
+            if(!mechon.classList.contains('mechon'))return;
+            switch(herramientaSeleccionada){
+                case 'crecer':
+                    let crecido=parseFloat(mechon.dataset.crecido||'0');
+                    crecido+=8;
+                    mechon.dataset.crecido=crecido;
+                    const ny=parseFloat(mechon.dataset.originalY)-crecido;
+                    const d=`M${mechon.dataset.x} ${ny} Q${parseFloat(mechon.dataset.x)+5} ${ny-20} ${parseFloat(mechon.dataset.x)+10} ${ny} L${parseFloat(mechon.dataset.x)+8} ${ny+25} L${parseFloat(mechon.dataset.x)+2} ${ny+25} Z`;
+                    mechon.setAttribute("d",d);
+                    break;
+                case 'alisar':
+                    mechon.setAttribute("d",`M${mechon.dataset.x} ${mechon.dataset.originalY} Q${parseFloat(mechon.dataset.x)+5} ${parseFloat(mechon.dataset.originalY)-10} ${parseFloat(mechon.dataset.x)+10} ${mechon.dataset.originalY} L${parseFloat(mechon.dataset.x)+8} ${parseFloat(mechon.dataset.originalY)+20} L${parseFloat(mechon.dataset.x)+2} ${parseFloat(mechon.dataset.originalY)+20} Z`);
+                    break;
+                case 'rizar':
+                    const cx=parseFloat(mechon.dataset.x)+5;
+                    const cy=parseFloat(mechon.dataset.originalY)+5;
+                    mechon.outerHTML=`<circle cx="${cx}" cy="${cy}" r="12" fill="${colorPelo}" stroke="#000" stroke-width="2" class="mechon" data-x="${mechon.dataset.x}" data-y="${mechon.dataset.y}" data-original-y="${mechon.dataset.originalY}" data-crecido="${mechon.dataset.crecido}"/>`;
+                    break;
+                case 'pintar':
+                    colorPelo=document.getElementById('colorPicker').value;
+                    mechon.setAttribute('fill',colorPelo);
+                    break;
+                case 'fuego':
+                    mechon.setAttribute('fill','#ff4500');
+                    mechon.setAttribute('stroke','#ff0000');
+                    mechon.style.filter='drop-shadow(0 0 5px #ff0000)';
+                    break;
+                case 'helado':
+                    mechon.setAttribute('fill','#00bfff');
+                    mechon.setAttribute('stroke','#0000ff');
+                    mechon.style.filter='drop-shadow(0 0 5px #00bfff)';
+                    break;
+                case 'lavar':
+                case 'secar':
+                case 'peinar':
+                    mostrar(`¡${herramientaSeleccionada.toUpperCase()}!`);
+                    break;
+            }
+        }
+
+        function crearRisa(x,y){
+            const risa=document.createElement('div');
+            risa.className='risa';
+            risa.textContent='😂';
+            risa.style.left=x+'px';
+            risa.style.top=y+'px';
+            document.body.appendChild(risa);
+            setTimeout(()=>risa.remove(),1000);
+        }
+
+        function lanzarConfeti(){
+            const colores=['#ff00ff','#00ffff','#ffff00','#ff1493','#00ff00'];
+            for(let i=0;i<50;i++){
+                setTimeout(()=>{
+                    const confeti=document.createElement('div');
+                    confeti.className='confeti';
+                    confeti.style.left=Math.random()*window.innerWidth+'px';
+                    confeti.style.top='-20px';
+                    confeti.style.backgroundColor=colores[Math.floor(Math.random()*colores.length)];
+                    document.body.appendChild(confeti);
+                    setTimeout(()=>confeti.remove(),2000);
+                },i*50);
+            }
+            mostrar('¡CONFETI PARTY! 🎊');
+        }
+
+        document.addEventListener('mousemove',(e)=>{
+            cursor.style.left=(e.clientX+10)+'px';
+            cursor.style.top=(e.clientY+10)+'px';
+        });
+
+        cliente.addEventListener('mouseenter',()=>{
+            if(herramientaSeleccionada){
+                cursor.style.display='block';
+                cliente.style.cursor='none';
+            }
+        });
+        cliente.addEventListener('mouseleave',()=>{
+            cursor.style.display='none';
+            cliente.style.cursor='default';
+        });
+        cliente.addEventListener('mousedown',(e)=>{
+            if(herramientaSeleccionada){
+                isMouseDown=true;
+                aplicarAMechon(e);
+            }
+        });
+        cliente.addEventListener('mouseup',()=>{isMouseDown=false;});
+        cliente.addEventListener('mousemove',(e)=>{
+            if(isMouseDown&&herramientaSeleccionada){
+                aplicarAMechon(e);
+            }
+        });
+
+        generarMechones();
+    </script>
+</body>
+</html>
+```
