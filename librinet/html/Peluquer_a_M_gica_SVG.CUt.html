@@ -1,0 +1,269 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Peluquería Mágica SVG</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #ffeef8 0%, #ffe0f0 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #d63384;
+            margin-bottom: 10px;
+        }
+        #cliente {
+            width: 300px;
+            height: 400px;
+            margin-bottom: 20px;
+            cursor: none;
+        }
+        .herramientas {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 600px;
+        }
+        button {
+            font-size: 28px;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,.15);
+            cursor: pointer;
+            transition: transform .15s;
+        }
+        button:hover {
+            transform: scale(1.08);
+        }
+        button:active {
+            transform: scale(.95);
+        }
+        #colorPicker {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .mensaje {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #d63384;
+            height: 24px;
+        }
+        .cursor {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .corte-caida {
+            animation: caer 1s ease-in forwards;
+        }
+        @keyframes caer {
+            to { transform: translateY(300px) rotate(30deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <h1>¡Peluquería Mágica! 💇‍♀️✨</h1>
+    <svg id="cliente" viewBox="0 0 300 400">
+        <!-- Cabeza -->
+        <circle cx="150" cy="180" r="80" fill="#fdbcb4" stroke="#000" stroke-width="2"/>
+        <!-- Ojos -->
+        <circle cx="130" cy="170" r="8" fill="#000"/>
+        <circle cx="170" cy="170" r="8" fill="#000"/>
+        <!-- Boca -->
+        <path d="M130 200 Q150 220 170 200" fill="none" stroke="#000" stroke-width="2"/>
+        <!-- Cuerpo -->
+        <rect x="100" y="260" width="100" height="120" rx="20" fill="#ffccf9" stroke="#000" stroke-width="2"/>
+        <!-- Cuello -->
+        <rect x="135" y="250" width="30" height="20" fill="#fdbcb4" stroke="#000" stroke-width="2"/>
+        <!-- Pelo base -->
+        <g id="pelo">
+            <path id="basePelo" d="M70 120 Q150 60 230 120 Q230 180 150 200 Q70 180 70 120 Z" fill="#8b4513" stroke="#000" stroke-width="2"/>
+        </g>
+    </svg>
+
+    <div class="herramientas">
+        <button onclick="seleccionar('crecer')" title="Crecer pelo">🌱</button>
+        <button onclick="seleccionar('cortar')" title="Cortar">✂️</button>
+        <button onclick="seleccionar('lavar')" title="Lavar">🧼</button>
+        <button onclick="seleccionar('secar')" title="Secar">💨</button>
+        <button onclick="seleccionar('alisar')" title="Alisar">🧴</button>
+        <button onclick="seleccionar('rizar')" title="Rizar">🌀</button>
+        <button onclick="seleccionar('peinar')" title="Peinar">🖌️</button>
+        <input type="color" id="colorPicker" onchange="seleccionar('pintar')" title="Pintar">
+    </div>
+
+    <div class="mensaje" id="mensaje"></div>
+
+    <div class="cursor" id="cursor"></div>
+
+    <script>
+        const pelo = document.getElementById('pelo');
+        const mensaje = document.getElementById('mensaje');
+        const cliente = document.getElementById('cliente');
+        const cursor = document.getElementById('cursor');
+        let herramientaSeleccionada = null;
+        let isMouseDown = false;
+        let crecimiento = 0;
+        let cortes = [];
+
+        function mostrar(msg) {
+            mensaje.textContent = msg;
+            setTimeout(() => mensaje.textContent = '', 1500);
+        }
+
+        function seleccionar(herramienta) {
+            herramientaSeleccionada = herramienta;
+            const iconos = {
+                'crecer': '🌱',
+                'cortar': '✂️',
+                'lavar': '🧼',
+                'secar': '💨',
+                'alisar': '🧴',
+                'rizar': '🌀',
+                'peinar': '🖌️',
+                'pintar': '🎨'
+            };
+            cursor.innerHTML = iconos[herramienta] || '🖌️';
+            cursor.style.fontSize = '30px';
+            mostrar(`Herramienta seleccionada: ${herramienta}`);
+        }
+
+        function crearMechon(x, y) {
+            const mechon = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            mechon.setAttribute("d", `M${x-10} ${y-10} Q${x} ${y-20} ${x+10} ${y-10} L${x+5} ${y+15} L${x-5} ${y+15} Z`);
+            mechon.setAttribute("fill", "#8b4513");
+            mechon.setAttribute("stroke", "#000");
+            mechon.setAttribute("stroke-width", "1");
+            mechon.setAttribute("class", "corte-caida");
+            cliente.appendChild(mechon);
+            setTimeout(() => mechon.remove(), 1000);
+        }
+
+        function aplicarHerramienta(e) {
+            if (!herramientaSeleccionada) return;
+
+            const rect = cliente.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (300 / rect.width);
+            const y = (e.clientY - rect.top) * (400 / rect.height);
+
+            switch(herramientaSeleccionada) {
+                case 'crecer':
+                    crecimiento += 20;
+                    const topPoint = 60 - crecimiento;
+                    const sidePoint = 120 + crecimiento / 2;
+                    pelo.innerHTML = `<path d="M50 ${sidePoint} Q150 ${topPoint} 250 ${sidePoint} Q250 ${180 + crecimiento / 2} 150 ${200 + crecimiento / 2} Q50 ${180 + crecimiento / 2} 50 ${sidePoint} Z" fill="#8b4513" stroke="#000" stroke-width="2"/>`;
+                    mostrar('¡El pelo sigue creciendo sin fin! 🌱');
+                    break;
+                case 'cortar':
+                    crearMechon(x, y);
+                    // Crear recorte en el pelo base
+                    cortes.push({x, y});
+                    actualizarPelo();
+                    mostrar('¡Corte realista aplicado! ✂️');
+                    break;
+                case 'lavar':
+                    mostrar('¡Champú y enjuague! 🧼');
+                    break;
+                case 'secar':
+                    mostrar('¡Seco y brillante! 💨');
+                    break;
+                case 'alisar':
+                    pelo.innerHTML = '<path d="M70 120 Q150 60 230 120 L230 140 L70 140 Z" fill="#8b4513" stroke="#000" stroke-width="2"/>';
+                    mostrar('¡Pelo liso! 🧴');
+                    break;
+                case 'rizar':
+                    pelo.innerHTML = '';
+                    for(let i = 0; i < 8; i++) {
+                        const x = 90 + i * 18;
+                        const circ = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        circ.setAttribute("cx", x);
+                        circ.setAttribute("cy", 120);
+                        circ.setAttribute("r", 20);
+                        circ.setAttribute("fill", "#8b4513");
+                        circ.setAttribute("stroke", "#000");
+                        circ.setAttribute("stroke-width", "2");
+                        pelo.appendChild(circ);
+                    }
+                    mostrar('¡Rizado perfecto! 🌀');
+                    break;
+                case 'peinar':
+                    mostrar('¡Peinado impecable! 🖌️');
+                    break;
+                case 'pintar':
+                    const color = document.getElementById('colorPicker').value;
+                    pelo.querySelectorAll('path, circle').forEach(el => el.setAttribute('fill', color));
+                    mostrar('¡Color mágico! 🎨');
+                    break;
+            }
+        }
+
+        function actualizarPelo() {
+            // Crear definiciones de recorte
+            let defs = '';
+            if (cortes.length > 0) {
+                defs = '<defs>';
+                cortes.forEach((corte, index) => {
+                    defs += `<clipPath id="corte${index}">
+                        <path d="M0 0 L300 0 L300 400 L0 400 Z M${corte.x-20} ${corte.y-20} L${corte.x+20} ${corte.y-20} L${corte.x+20} ${corte.y+20} L${corte.x-20} ${corte.y+20} Z"/>
+                    </clipPath>`;
+                });
+                defs += '</defs>';
+            }
+
+            // Aplicar recorte al pelo base
+            let clipAttr = cortes.length > 0 ? ` clip-path="url(#corte${cortes.length-1})"` : '';
+            
+            pelo.innerHTML = defs + `<path id="basePelo" d="M70 120 Q150 60 230 120 Q230 180 150 200 Q70 180 70 120 Z" fill="#8b4513" stroke="#000" stroke-width="2"${clipAttr}/>`;
+        }
+
+        // Seguir el cursor con el icono de la herramienta
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = (e.clientX + 10) + 'px';
+            cursor.style.top = (e.clientY + 10) + 'px';
+        });
+
+        // Eventos del SVG
+        cliente.addEventListener('mouseenter', () => {
+            if (herramientaSeleccionada) {
+                cursor.style.display = 'block';
+                cliente.style.cursor = 'none';
+            }
+        });
+
+        cliente.addEventListener('mouseleave', () => {
+            cursor.style.display = 'none';
+            cliente.style.cursor = 'default';
+        });
+
+        cliente.addEventListener('mousedown', (e) => {
+            if (herramientaSeleccionada) {
+                isMouseDown = true;
+                aplicarHerramienta(e);
+            }
+        });
+
+        cliente.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+        cliente.addEventListener('mousemove', (e) => {
+            if (isMouseDown && herramientaSeleccionada) {
+                aplicarHerramienta(e);
+            }
+        });
+    </script>
+</body>
+</html>
+```
