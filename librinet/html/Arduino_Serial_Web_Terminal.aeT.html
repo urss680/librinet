@@ -1,0 +1,276 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino Serial Web Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #terminal {
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .status-dot {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        /* Animación para el estado de carga */
+        .loading {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .arduino-output {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+        <!-- Encabezado -->
+        <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold">Terminal Serial Web</h1>
+                <p class="text-indigo-100 text-sm">Conecta tu Arduino directamente desde el navegador</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="statusLabel" class="text-sm font-medium">Desconectado</span>
+                <span id="statusDot" class="status-dot bg-red-500"></span>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <!-- Alerta de Política de Permisos (Oculta por defecto) -->
+            <div id="policyAlert" class="hidden mb-6 p-4 bg-amber-50 border-l-4 border-amber-400 text-amber-700">
+                <p class="font-bold">Aviso de Seguridad</p>
+                <p class="text-sm">El navegador ha bloqueado el acceso al puerto serie. Asegúrate de ejecutar este archivo en un entorno seguro (HTTPS o localhost) o revisa los permisos del sitio en la barra de direcciones.</p>
+            </div>
+
+            <!-- Controles de Conexión -->
+            <div class="flex flex-wrap gap-4 mb-6 items-end">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Velocidad (Baud Rate)</label>
+                    <select id="baudRate" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                        <option value="9600">9600</option>
+                        <option value="115200">115200</option>
+                        <option value="19200">19200</option>
+                        <option value="38400">38400</option>
+                        <option value="57600">57600</option>
+                    </select>
+                </div>
+                <button id="btnConnect" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200">
+                    Conectar Arduino
+                </button>
+                <button id="btnDisconnect" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition duration-200">
+                    Desconectar
+                </button>
+            </div>
+
+            <!-- Terminal de Salida -->
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-lg font-semibold text-gray-800">Monitor Serie</h2>
+                    <button id="btnClear" class="text-sm text-indigo-600 hover:underline">Limpiar Consola</button>
+                </div>
+                <div id="terminal" class="bg-gray-900 text-green-400 p-4 rounded-lg border-2 border-gray-800">
+                    <div class="italic text-gray-500">// Esperando conexión...</div>
+                </div>
+            </div>
+
+            <!-- Entrada de Datos -->
+            <div class="flex gap-2">
+                <input type="text" id="inputData" placeholder="Escribe un comando para Arduino..." 
+                       class="flex-1 border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none" 
+                       disabled>
+                <button id="btnSend" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200" disabled>
+                    Enviar
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-gray-50 p-4 border-t text-xs text-gray-500">
+            Nota: Requiere un navegador compatible (Chrome, Edge u Opera). Si estás usando un iframe o entorno local, asegúrate de que el servidor permita la "Permissions-Policy: serial".
+        </div>
+    </div>
+
+    <script>
+        let port;
+        let reader;
+        let inputDone;
+        let inputStream;
+        const textDecoder = new TextDecoderStream();
+
+        const btnConnect = document.getElementById('btnConnect');
+        const btnDisconnect = document.getElementById('btnDisconnect');
+        const btnSend = document.getElementById('btnSend');
+        const btnClear = document.getElementById('btnClear');
+        const inputData = document.getElementById('inputData');
+        const terminal = document.getElementById('terminal');
+        const baudRateSelect = document.getElementById('baudRate');
+        const statusDot = document.getElementById('statusDot');
+        const statusLabel = document.getElementById('statusLabel');
+        const policyAlert = document.getElementById('policyAlert');
+
+        // Verificar compatibilidad
+        if (!("serial" in navigator)) {
+            terminal.innerHTML = '<div class="text-red-500">Error: Tu navegador no soporta la Web Serial API. Usa Chrome o Edge.</div>';
+            btnConnect.disabled = true;
+        }
+
+        async function connect() {
+            policyAlert.classList.add('hidden');
+            try {
+                // Solicitar puerto al usuario
+                port = await navigator.serial.requestPort();
+                const baudRate = parseInt(baudRateSelect.value);
+                
+                await port.open({ baudRate });
+
+                // UI Update
+                btnConnect.classList.add('hidden');
+                btnDisconnect.classList.remove('hidden');
+                inputData.disabled = false;
+                btnSend.disabled = false;
+                statusDot.classList.replace('bg-red-500', 'bg-green-500');
+                statusLabel.innerText = "Conectado";
+                
+                logToTerminal("Sistema", "Conexión establecida correctamente.");
+
+                // Iniciar bucle de lectura
+                readLoop();
+
+            } catch (error) {
+                console.error('Error de conexión:', error);
+                
+                if (error.name === 'SecurityError') {
+                    policyAlert.classList.remove('hidden');
+                    logToTerminal("Error", "Acceso denegado por política de permisos del navegador.");
+                } else if (error.name === 'NotFoundError') {
+                    logToTerminal("Sistema", "No se seleccionó ningún puerto.");
+                } else {
+                    logToTerminal("Error", `Ocurrió un error: ${error.message}`);
+                }
+            }
+        }
+
+        async function disconnect() {
+            try {
+                if (reader) {
+                    await reader.cancel();
+                    await inputDone;
+                }
+                if (port) {
+                    await port.close();
+                }
+            } catch (error) {
+                console.error('Error al desconectar:', error);
+            } finally {
+                // UI Update siempre a estado desconectado
+                btnConnect.classList.remove('hidden');
+                btnDisconnect.classList.add('hidden');
+                inputData.disabled = true;
+                btnSend.disabled = true;
+                statusDot.classList.replace('bg-green-500', 'bg-red-500');
+                statusLabel.innerText = "Desconectado";
+                logToTerminal("Sistema", "Puerto cerrado.");
+            }
+        }
+
+        async function readLoop() {
+            while (port.readable) {
+                inputDone = port.readable.pipeTo(textDecoder.writable);
+                inputStream = textDecoder.readable;
+                reader = inputStream.getReader();
+
+                try {
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        if (value) {
+                            logToTerminal("Arduino", value, false);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error de lectura:', error);
+                    break;
+                } finally {
+                    reader.releaseLock();
+                }
+            }
+        }
+
+        async function writeToSerial(message) {
+            if (!port || !port.writable) {
+                logToTerminal("Error", "El puerto no es escribible.");
+                return;
+            }
+
+            const encoder = new TextEncoder();
+            const writer = port.writable.getWriter();
+            try {
+                await writer.write(encoder.encode(message + '\n'));
+                logToTerminal("Tú", message);
+            } catch (error) {
+                logToTerminal("Error", "Fallo al enviar datos.");
+            } finally {
+                writer.releaseLock();
+            }
+        }
+
+        function logToTerminal(sender, message, addNewLine = true) {
+            const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            if (sender === "Arduino" && !addNewLine) {
+                // Si el mensaje viene de Arduino y no es una línea nueva, lo añadimos a la última línea si existe
+                const lastLine = terminal.lastElementChild;
+                if (lastLine && lastLine.classList.contains('arduino-output')) {
+                    lastLine.innerHTML += message;
+                } else {
+                    const line = document.createElement('div');
+                    line.className = 'arduino-output';
+                    line.innerHTML = `<span class="text-gray-500">[${time}]</span> <span class="font-bold text-indigo-400">${sender}:</span> ${message}`;
+                    terminal.appendChild(line);
+                }
+            } else {
+                const line = document.createElement('div');
+                line.innerHTML = `<span class="text-gray-500">[${time}]</span> <span class="font-bold text-indigo-400">${sender}:</span> ${message}`;
+                terminal.appendChild(line);
+            }
+            
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Event Listeners
+        btnConnect.addEventListener('click', connect);
+        btnDisconnect.addEventListener('click', disconnect);
+        
+        btnSend.addEventListener('click', () => {
+            const val = inputData.value.trim();
+            if (val) {
+                writeToSerial(val);
+                inputData.value = '';
+            }
+        });
+
+        inputData.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') btnSend.click();
+        });
+
+        btnClear.addEventListener('click', () => {
+            terminal.innerHTML = '<div class="italic text-gray-500">// Consola limpia</div>';
+        });
+
+    </script>
+</body>
+</html>
+```
