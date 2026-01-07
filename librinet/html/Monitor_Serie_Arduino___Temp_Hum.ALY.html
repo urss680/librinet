@@ -1,0 +1,291 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Serie Arduino - Temp/Hum</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-white font-sans p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Encabezado -->
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                    Arduino Real-Time Monitor
+                </h1>
+                <p class="text-slate-400">Actualización de gráfica cada 10 segundos</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="connectBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg font-semibold transition-all shadow-lg flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    Conectar Arduino
+                </button>
+                <button id="disconnectBtn" class="hidden bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg font-semibold transition-all shadow-lg">
+                    Desconectar
+                </button>
+            </div>
+        </header>
+
+        <!-- Indicadores Rápidos -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="card p-6 rounded-2xl flex items-center justify-between border-l-4 border-orange-500">
+                <div>
+                    <p class="text-sm text-slate-400 uppercase tracking-wider font-semibold">Temperatura Actual</p>
+                    <h2 id="tempValue" class="text-5xl font-mono mt-2">-- °C</h2>
+                </div>
+                <div class="p-4 bg-orange-500/20 rounded-full text-orange-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="card p-6 rounded-2xl flex items-center justify-between border-l-4 border-blue-500">
+                <div>
+                    <p class="text-sm text-slate-400 uppercase tracking-wider font-semibold">Humedad Actual</p>
+                    <h2 id="humValue" class="text-5xl font-mono mt-2">-- %</h2>
+                </div>
+                <div class="p-4 bg-blue-500/20 rounded-full text-blue-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.641.284a4 4 0 01-2.574.345l-2.147-.429a2 2 0 00-1.28.161l-1.612.806A2 2 0 004 18.12V19a2 2 0 002 2h12a2 2 0 002-2v-.878a2 2 0 00-.572-1.414l-.572-.572z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfica -->
+        <div class="card p-6 rounded-2xl mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">Historial (Punto cada 10s)</h3>
+                <span id="statusBadge" class="px-3 py-1 bg-slate-700 text-xs rounded-full text-slate-300 italic">Desconectado</span>
+            </div>
+            <div class="h-[400px] w-full">
+                <canvas id="sensorChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Terminal Log -->
+        <div class="card p-4 rounded-xl">
+            <p class="text-xs text-slate-500 mb-2 font-mono uppercase">Consola de datos entrantes:</p>
+            <div id="log" class="text-xs font-mono text-emerald-400 h-24 overflow-y-auto bg-black/30 p-2 rounded border border-white/5">
+                Esperando conexión...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let port;
+        let reader;
+        let chart;
+        let updateInterval;
+        const maxDataPoints = 50;
+
+        // Variables de estado para los últimos valores recibidos
+        let lastTemp = null;
+        let lastHum = null;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const logElement = document.getElementById('log');
+        const tempDisplay = document.getElementById('tempValue');
+        const humDisplay = document.getElementById('humValue');
+        const statusBadge = document.getElementById('statusBadge');
+
+        function initChart() {
+            const ctx = document.getElementById('sensorChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Temperatura (°C)',
+                            borderColor: '#fb923c',
+                            backgroundColor: 'rgba(251, 146, 60, 0.1)',
+                            borderWidth: 3,
+                            data: [],
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Humedad (%)',
+                            borderColor: '#60a5fa',
+                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                            borderWidth: 3,
+                            data: [],
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { 
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#fb923c' },
+                            title: { display: true, text: 'Temp °C', color: '#fb923c' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: '#60a5fa' },
+                            title: { display: true, text: 'Hum %', color: '#60a5fa' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: 'white' } }
+                    }
+                }
+            });
+        }
+
+        // Esta función actualiza las tarjetas inmediatamente
+        function updateCards() {
+            if (lastTemp !== null) tempDisplay.innerText = `${lastTemp.toFixed(2)} °C`;
+            if (lastHum !== null) humDisplay.innerText = `${lastHum.toFixed(2)} %`;
+        }
+
+        // Esta función añade un nuevo punto a la gráfica (se llamará cada 10s)
+        function addChartPoint() {
+            if (lastTemp === null && lastHum === null) return;
+
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            if (chart.data.labels.length > maxDataPoints) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+                chart.data.datasets[1].data.shift();
+            }
+
+            chart.data.labels.push(now);
+            chart.data.datasets[0].data.push(lastTemp);
+            chart.data.datasets[1].data.push(lastHum);
+            chart.update();
+        }
+
+        function parseData(line) {
+            const tempMatch = line.match(/TEMPERATURA:?\s*([-+]?\d*\.?\d+)/i);
+            const humMatch = line.match(/HUMEDAD:?\s*([-+]?\d*\.?\d+)/i);
+
+            if (tempMatch) {
+                lastTemp = parseFloat(tempMatch[1]);
+            }
+
+            if (humMatch) {
+                lastHum = parseFloat(humMatch[1]);
+            }
+
+            // Soporte fallback para "25.0,60"
+            if (!tempMatch && !humMatch && line.includes(',')) {
+                const parts = line.split(',');
+                if (parts.length >= 2) {
+                    lastTemp = parseFloat(parts[0]);
+                    lastHum = parseFloat(parts[1]);
+                }
+            }
+
+            updateCards();
+        }
+
+        function appendLog(msg) {
+            const entry = document.createElement('div');
+            entry.textContent = `> ${msg}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        async function readFromSerial() {
+            const textDecoder = new TextDecoderStream();
+            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            const inputStream = textDecoder.readable;
+            reader = inputStream.getReader();
+
+            let buffer = "";
+
+            try {
+                // Iniciar el temporizador de 10 segundos para la gráfica
+                updateInterval = setInterval(addChartPoint, 10000);
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += value;
+                    
+                    if (buffer.includes('\n')) {
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            const cleanLine = line.trim();
+                            if (!cleanLine) continue;
+                            appendLog(cleanLine);
+                            parseData(cleanLine);
+                        }
+                    }
+                }
+            } catch (error) {
+                appendLog("Error: " + error.message);
+            } finally {
+                if (updateInterval) clearInterval(updateInterval);
+                reader.releaseLock();
+            }
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+
+                statusBadge.innerText = "Conectado";
+                statusBadge.classList.replace('bg-slate-700', 'bg-emerald-500/20');
+                statusBadge.classList.add('text-emerald-400');
+                
+                connectBtn.classList.add('hidden');
+                disconnectBtn.classList.remove('hidden');
+                
+                appendLog("Conexión establecida.");
+                readFromSerial();
+            } catch (err) {
+                appendLog("Error: " + err.message);
+            }
+        });
+
+        disconnectBtn.addEventListener('click', () => {
+            if (updateInterval) clearInterval(updateInterval);
+            location.reload();
+        });
+
+        window.onload = initChart;
+    </script>
+</body>
+</html>
+```
