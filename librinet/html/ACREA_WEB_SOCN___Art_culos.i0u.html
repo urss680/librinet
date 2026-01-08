@@ -1,0 +1,220 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACREA WEB SOCN - Artículos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(2, 8, 20, 0.4);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #38bdf8;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            color: #cbd5e1;
+        }
+        
+        .articles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .article-card {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .article-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(56, 189, 248, 0.2);
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+        
+        .article-header {
+            background: rgba(56, 189, 248, 0.1);
+            padding: 15px;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+        }
+        
+        .article-header h3 {
+            color: #38bdf8;
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+        
+        .article-header p {
+            color: #cbd5e1;
+            font-size: 0.9em;
+        }
+        
+        .article-iframe {
+            width: 100%;
+            height: 200px;
+            border: none;
+            background: rgba(15, 23, 42, 0.3);
+        }
+        
+        .article-footer {
+            padding: 15px;
+            background: rgba(15, 23, 42, 0.7);
+            border-top: 1px solid rgba(56, 189, 248, 0.2);
+        }
+        
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(56, 189, 248, 0.2);
+            color: #cbd5e1;
+        }
+        
+        .footer a {
+            color: #38bdf8;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ACREA WEB SOCN</h1>
+            <p>Artículos y Recursos - Sistema de Operación y Control Nacional</p>
+        </div>
+        
+        <div class="articles-grid">
+            <div class="article-card">
+                <div class="article-header">
+                    <h3>Recursos Humanos</h3>
+                    <p>Gestión del talento y operaciones</p>
+                </div>
+                <iframe class="article-iframe" src="https://otieu.com/4/10335730"></iframe>
+                <div class="article-footer">
+                    <a href="https://otieu.com/4/10335730" target="_blank" class="btn">Ver completo</a>
+                </div>
+            </div>
+            
+            <div class="article-card">
+                <div class="article-header">
+                    <h3>Operaciones Nacionales</h3>
+                    <p>Control y monitoreo SOCN</p>
+                </div>
+                <iframe class="article-iframe" src="https://otieu.com/4/10335730"></iframe>
+                <div class="article-footer">
+                    <a href="https://otieu.com/4/10335730" target="_blank" class="btn">Ver completo</a>
+                </div>
+            </div>
+            
+            <div class="article-card">
+                <div class="article-header">
+                    <h3>Reportes y Estadísticas</h3>
+                    <p>Análisis de datos operativos</p>
+                </div>
+                <iframe class="article-iframe" src="https://otieu.com/4/10335730"></iframe>
+                <div class="article-footer">
+                    <a href="https://otieu.com/4/10335730" target="_blank" class="btn">Ver completo</a>
+                </div>
+            </div>
+            
+            <div class="article-card">
+                <div class="article-header">
+                    <h3>Sistema de Gestión</h3>
+                    <p>Herramientas administrativas</p>
+                </div>
+                <iframe class="article-iframe" src="https://otieu.com/4/10335730"></iframe>
+                <div class="article-footer">
+                    <a href="https://otieu.com/4/10335730" target="_blank" class="btn">Ver completo</a>
+                </div>
+            </div>
+            
+            <div class="article-card">
+                <div class="article-header">
+                    <h3>Capacitaciones</h3>
+                    <p>Desarrollo profesional</p>
+                </div>
+                <iframe class="article-iframe" src="https://otieu.com/4/10335730"></iframe>
+                <div class="article-footer">
+                    <a href="https://otieu.com/4/10335730" target="_blank" class="btn">Ver completo</a>
+                </div>
+            </div>
+            
+            <div class="article-card">
+                <div class="article-header">
+                    <h3>Soporte Técnico</h3>
+                    <p>Asistencia y mantenimiento</p>
+                </div>
+                <iframe class="article-iframe" src="https://otieu.com/4/10335730"></iframe>
+                <div class="article-footer">
+                    <a href="https://otieu.com/4/10335730" target="_blank" class="btn">Ver completo</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 ACREA WEB SOCN | <a href="https://otieu.com/4/10335730" target="_blank">Acceso al sistema completo</a></p>
+        </div>
+    </div>
+</body>
+</html>
+```
