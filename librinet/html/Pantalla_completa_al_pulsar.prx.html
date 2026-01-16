@@ -1,0 +1,43 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Pantalla completa al pulsar</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      cursor: pointer;
+    }
+    #contenedor {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="contenedor">
+    <h1>Pulsa para entrar en pantalla completa</h1>
+  </div>
+
+  <script>
+    document.body.addEventListener('click', () => {
+      const elem = document.documentElement;
+      if (!document.fullscreenElement) {
+        elem.requestFullscreen().catch(err => {
+          console.error(`Error al entrar en pantalla completa: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+  </script>
+</body>
+</html>
+```
