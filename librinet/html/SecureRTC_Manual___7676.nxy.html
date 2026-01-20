@@ -1,0 +1,272 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureRTC Manual - 7676</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .video-container {
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 1rem;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid #374151;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .step-card {
+            transition: all 0.3s ease;
+        }
+        textarea {
+            scrollbar-width: thin;
+            scrollbar-color: #4b5563 #111827;
+        }
+        .pulse-blue { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen font-sans">
+
+    <header class="p-6 text-center">
+        <h1 class="text-2xl font-bold text-green-400">🔒 Videollamada 7676</h1>
+        <p class="text-gray-400 text-sm">Conexión manual paso a paso</p>
+    </header>
+
+    <main class="container mx-auto p-4 max-w-4xl pb-32">
+        
+        <!-- PANTALLA 1: ACCESO -->
+        <div id="login-screen" class="max-w-sm mx-auto mt-10 p-8 bg-gray-800 rounded-2xl shadow-xl text-center border border-gray-700">
+            <div class="mb-6 text-5xl">🔑</div>
+            <h2 class="text-xl font-bold mb-4">Código Secreto</h2>
+            <input type="password" id="master-code" placeholder="Escribe 7676" 
+                class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-center text-xl tracking-widest focus:ring-2 focus:ring-green-500 outline-none mb-4">
+            <button onclick="unlockApp()" class="w-full bg-green-600 hover:bg-green-700 font-bold py-3 rounded-xl transition-all">
+                Entrar
+            </button>
+            <p id="error-msg" class="text-red-400 text-sm mt-3 hidden">Código incorrecto</p>
+        </div>
+
+        <!-- PANTALLA 2: INSTRUCCIONES INICIALES -->
+        <div id="instructions-screen" class="hidden max-w-2xl mx-auto space-y-6">
+            <div class="bg-gray-800 p-8 rounded-2xl border border-gray-700 shadow-2xl">
+                <h2 class="text-2xl font-bold mb-6 text-center text-blue-400">¿Cómo conectar?</h2>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <h3 class="font-bold text-blue-400 border-b border-blue-900 pb-2 text-center">Persona A (Inicia)</h3>
+                        <ol class="text-sm space-y-3 text-gray-300">
+                            <li class="flex gap-2"><span>1.</span> Pulsa "Iniciar Llamada".</li>
+                            <li class="flex gap-2"><span>2.</span> Copia tu código generado.</li>
+                            <li class="flex gap-2"><span>3.</span> Envíalo a tu amigo.</li>
+                            <li class="flex gap-2"><span>4.</span> Espera el código de vuelta.</li>
+                        </ol>
+                    </div>
+                    <div class="space-y-4">
+                        <h3 class="font-bold text-purple-400 border-b border-purple-900 pb-2 text-center">Persona B (Recibe)</h3>
+                        <ol class="text-sm space-y-3 text-gray-300">
+                            <li class="flex gap-2"><span>1.</span> Pega el código de tu amigo.</li>
+                            <li class="flex gap-2"><span>2.</span> Pulsa "Procesar".</li>
+                            <li class="flex gap-2"><span>3.</span> Pulsa "Responder".</li>
+                            <li class="flex gap-2"><span>4.</span> Envía el nuevo código a Persona A.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <button onclick="showPanel()" class="w-full mt-8 bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-bold text-lg transition-all shadow-lg">
+                    ¡Entendido, vamos!
+                </button>
+            </div>
+        </div>
+
+        <!-- PANTALLA 3: PANEL DE CONEXIÓN -->
+        <div id="signaling-screen" class="hidden space-y-6">
+            
+            <!-- INDICADOR DE ESTADO DINÁMICO -->
+            <div id="status-box" class="bg-blue-600/20 border border-blue-500/50 p-4 rounded-xl text-center pulse-blue">
+                <p id="status-text" class="text-blue-200 font-medium">Sigue los pasos de la guía para conectar.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- PASO 1: TU LADO -->
+                <div class="step-card bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                        <span class="bg-blue-600 w-6 h-6 rounded-full text-xs flex items-center justify-center">1</span>
+                        Tu Código Local
+                    </h3>
+                    <textarea id="localOffer" readonly placeholder="Tu código aparecerá aquí..."
+                        class="w-full h-32 bg-gray-950 text-[10px] font-mono p-3 rounded-lg border border-gray-800 mb-3 resize-none focus:outline-none"></textarea>
+                    
+                    <div class="flex flex-col gap-2">
+                        <button id="btnCreate" onclick="createOffer()" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold transition-all">
+                            📞 1. Iniciar Llamada
+                        </button>
+                        <button onclick="copyToClipboard('localOffer')" class="w-full bg-gray-700 hover:bg-gray-600 py-2 rounded-xl text-xs font-semibold">
+                            📋 2. Copiar y enviar código
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PASO 2: LADO AMIGO -->
+                <div class="step-card bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                        <span class="bg-purple-600 w-6 h-6 rounded-full text-xs flex items-center justify-center">2</span>
+                        Código de tu Amigo
+                    </h3>
+                    <textarea id="remoteOffer" placeholder="Pega el código aquí..."
+                        class="w-full h-32 bg-gray-950 text-[10px] font-mono p-3 rounded-lg border border-gray-800 mb-3 resize-none focus:ring-1 focus:ring-purple-500 outline-none"></textarea>
+                    
+                    <div class="flex flex-col gap-2">
+                        <button onclick="processRemoteCode()" class="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-xl font-bold transition-all">
+                            📥 3. Procesar código pegado
+                        </button>
+                        <button id="btnAnswer" onclick="createAnswer()" disabled class="w-full bg-indigo-600 py-3 rounded-xl font-bold opacity-30 cursor-not-allowed transition-all">
+                            🤝 4. Generar Respuesta
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ÁREA DE VIDEO -->
+            <div id="video-area" class="grid md:grid-cols-2 gap-6 mt-4">
+                <div class="video-container shadow-2xl">
+                    <video id="localVideo" autoplay playsinline muted></video>
+                    <div class="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">Tú</div>
+                </div>
+                <div class="video-container shadow-2xl">
+                    <video id="remoteVideo" autoplay playsinline></video>
+                    <div id="remote-status" class="absolute inset-0 flex items-center justify-center bg-black/80 text-gray-500 text-sm font-medium">
+                        Esperando conexión remota...
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTONES DE CONTROL FLOTANTES -->
+            <div class="fixed bottom-6 left-1/2 -translate-x-1/2 flex gap-4 bg-gray-800/95 backdrop-blur-sm p-3 rounded-full shadow-2xl border border-gray-700 z-50">
+                <button id="micBtn" class="w-12 h-12 flex items-center justify-center bg-gray-700 rounded-full hover:bg-gray-600 transition-colors">🎤</button>
+                <button id="camBtn" class="w-12 h-12 flex items-center justify-center bg-gray-700 rounded-full hover:bg-gray-600 transition-colors">📹</button>
+                <button onclick="location.reload()" class="w-12 h-12 flex items-center justify-center bg-red-600 rounded-full hover:bg-red-700 transition-colors">✖</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const MASTER_CODE = "7676";
+        const servers = { iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] };
+        let pc = new RTCPeerConnection(servers);
+        let localStream = null;
+
+        const statusText = document.getElementById('status-text');
+        const btnAnswer = document.getElementById('btnAnswer');
+
+        function unlockApp() {
+            if (document.getElementById('master-code').value === MASTER_CODE) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('instructions-screen').classList.remove('hidden');
+            } else {
+                const err = document.getElementById('error-msg');
+                err.classList.remove('hidden');
+                setTimeout(() => err.classList.add('hidden'), 3000);
+            }
+        }
+
+        function showPanel() {
+            document.getElementById('instructions-screen').classList.add('hidden');
+            document.getElementById('signaling-screen').classList.remove('hidden');
+            initMedia();
+        }
+
+        async function initMedia() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('localVideo').srcObject = localStream;
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            } catch (e) {
+                statusBoxUpdate("Error: Permite el acceso a la cámara.", "red");
+            }
+
+            pc.ontrack = (e) => {
+                document.getElementById('remoteVideo').srcObject = e.streams[0];
+                document.getElementById('remote-status').classList.add('hidden');
+                statusBoxUpdate("¡LLAMADA CONECTADA CON ÉXITO!", "green");
+            };
+
+            pc.onicecandidate = (e) => {
+                if (!e.candidate) {
+                    document.getElementById('localOffer').value = btoa(JSON.stringify(pc.localDescription));
+                    statusText.innerText = "Código listo. Cópialo y pásalo a tu amigo.";
+                }
+            };
+        }
+
+        function statusBoxUpdate(text, color) {
+            statusText.innerText = text;
+            const box = document.getElementById('status-box');
+            box.className = `p-4 rounded-xl text-center border transition-all ${color === 'green' ? 'bg-green-600/20 border-green-500/50 text-green-200' : color === 'red' ? 'bg-red-600/20 border-red-500/50 text-red-200' : 'bg-blue-600/20 border-blue-500/50 text-blue-200'}`;
+        }
+
+        async function createOffer() {
+            statusText.innerText = "Generando código de llamada...";
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            document.getElementById('btnCreate').disabled = true;
+            document.getElementById('btnCreate').classList.add('opacity-50');
+        }
+
+        async function processRemoteCode() {
+            const val = document.getElementById('remoteOffer').value.trim();
+            if (!val) return alert("Pega el código de tu amigo primero");
+            
+            try {
+                const data = JSON.parse(atob(val));
+                await pc.setRemoteDescription(new RTCSessionDescription(data));
+                
+                if (data.type === 'offer') {
+                    statusText.innerText = "Código de amigo procesado. ¡Haz clic en Responder!";
+                    btnAnswer.disabled = false;
+                    btnAnswer.classList.remove('opacity-30', 'cursor-not-allowed');
+                } else {
+                    statusText.innerText = "Respuesta aceptada. La conexión se está abriendo...";
+                }
+            } catch (e) { 
+                alert("El código pegado no es válido."); 
+            }
+        }
+
+        async function createAnswer() {
+            statusText.innerText = "Generando código de respuesta...";
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+        }
+
+        function copyToClipboard(id) {
+            const el = document.getElementById(id);
+            if (!el.value) return alert("Genera el código primero pulsando Iniciar");
+            el.select();
+            document.execCommand('copy');
+            statusText.innerText = "¡Código copiado! Pégalo en tu chat con tu amigo.";
+        }
+
+        document.getElementById('micBtn').onclick = () => {
+            const t = localStream.getAudioTracks()[0];
+            t.enabled = !t.enabled;
+            document.getElementById('micBtn').classList.toggle('bg-red-500');
+        };
+        document.getElementById('camBtn').onclick = () => {
+            const t = localStream.getVideoTracks()[0];
+            t.enabled = !t.enabled;
+            document.getElementById('camBtn').classList.toggle('bg-red-500');
+        };
+    </script>
+</body>
+</html>
+```
