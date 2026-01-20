@@ -1,0 +1,670 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dibujo Colaborativo WebRTC</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            overflow: hidden;
+            color: #e2e8f0;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .toolbar {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(94, 234, 212, 0.2);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(2, 8, 20, 0.4);
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(94, 234, 212, 0.2);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(2, 8, 20, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #canvas {
+            cursor: crosshair;
+            display: block;
+            background: rgba(226, 232, 240, 0.9);
+        }
+
+        .tool-section {
+            background: rgba(30, 41, 59, 0.6);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(94, 234, 212, 0.1);
+        }
+
+        .tool-section h3 {
+            margin-bottom: 12px;
+            color: #5eead4;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .color-option {
+            width: 32px;
+            height: 32px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+            border-color: #5eead4;
+        }
+
+        .color-option.active {
+            border-color: #5eead4;
+            box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.3);
+        }
+
+        .custom-color {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(94, 234, 212, 0.2);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+            background: transparent;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 6px;
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #5eead4;
+            border-radius: 50%;
+            margin-top: -6px;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(94, 234, 212, 0.5);
+        }
+
+        .size-display {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #0ea5e9, #5eead4);
+            color: #0f172a;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(to right, #38bdf8, #2dd4bf);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(30, 41, 59, 0.8);
+            color: #e2e8f0;
+            border: 1px solid rgba(94, 234, 212, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(51, 65, 85, 0.8);
+            box-shadow: 0 0 10px rgba(94, 234, 212, 0.2);
+        }
+
+        .btn-danger {
+            background: linear-gradient(to right, #ef4444, #f87171);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(to right, #f87171, #fca5a5);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .user-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid rgba(94, 234, 212, 0.1);
+        }
+
+        .user-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(94, 234, 212, 0.1);
+        }
+
+        .user-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #5eead4;
+            box-shadow: 0 0 5px rgba(94, 234, 212, 0.7);
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+
+        .connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+        }
+
+        .room-code {
+            background: rgba(30, 41, 59, 0.6);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 16px;
+            margin-top: 10px;
+            border: 1px solid rgba(94, 234, 212, 0.1);
+            color: #5eead4;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(94, 234, 212, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(94, 234, 212, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="toolbar">
+            <div class="tool-section">
+                <h3>Herramientas</h3>
+                <button class="btn-primary" onclick="selectTool('pen')">✏️ Lápiz</button>
+                <button class="btn-secondary" onclick="selectTool('eraser')">🧹 Borrador</button>
+                <button class="btn-secondary" onclick="clearCanvas()">🗑️ Limpiar</button>
+            </div>
+
+            <div class="tool-section">
+                <h3>Color</h3>
+                <div class="color-palette">
+                    <div class="color-option active" style="background-color: #000000" onclick="selectColor('#000000')"></div>
+                    <div class="color-option" style="background-color: #ef4444" onclick="selectColor('#ef4444')"></div>
+                    <div class="color-option" style="background-color: #f97316" onclick="selectColor('#f97316')"></div>
+                    <div class="color-option" style="background-color: #eab308" onclick="selectColor('#eab308')"></div>
+                    <div class="color-option" style="background-color: #22c55e" onclick="selectColor('#22c55e')"></div>
+                    <div class="color-option" style="background-color: #3b82f6" onclick="selectColor('#3b82f6')"></div>
+                    <div class="color-option" style="background-color: #8b5cf6" onclick="selectColor('#8b5cf6')"></div>
+                    <div class="color-option" style="background-color: #ec4899" onclick="selectColor('#ec4899')"></div>
+                    <div class="color-option" style="background-color: #f43f5e" onclick="selectColor('#f43f5e')"></div>
+                    <div class="color-option" style="background-color: #06b6d4" onclick="selectColor('#06b6d4')"></div>
+                    <div class="color-option" style="background-color: #84cc16" onclick="selectColor('#84cc16')"></div>
+                    <div class="color-option" style="background-color: #6366f1" onclick="selectColor('#6366f1')"></div>
+                </div>
+                <input type="color" class="custom-color" id="customColor" onchange="selectColor(this.value)">
+            </div>
+
+            <div class="tool-section">
+                <h3>Tamaño</h3>
+                <input type="range" id="brushSize" min="1" max="50" value="3" oninput="updateBrushSize(this.value)">
+                <div class="size-display">Tamaño: <span id="sizeDisplay">3</span>px</div>
+            </div>
+
+            <div class="tool-section">
+                <h3>Sala WebRTC</h3>
+                <button class="btn-primary" onclick="createRoom()">Crear Sala</button>
+                <button class="btn-secondary" onclick="joinRoom()">Unirse a Sala</button>
+                <div class="room-code" id="roomCode">Sin conexión</div>
+            </div>
+
+            <div class="tool-section">
+                <h3>Usuarios Conectados</h3>
+                <div class="user-list" id="userList">
+                    <div class="user-item">
+                        <div class="user-indicator"></div>
+                        <span>Tú (Anfitrión)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tool-section">
+                <button class="btn-danger" onclick="disconnect()">Desconectar</button>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <div class="connection-status disconnected" id="connectionStatus">Desconectado</div>
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentTool = 'pen';
+        let currentColor = '#000000';
+        let brushSize = 3;
+        let roomId = null;
+        let peerConnection = null;
+        let dataChannel = null;
+        let users = [{ id: 'local', name: 'Tú' }];
+        let userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        let isHost = false;
+        let drawingHistory = [];
+        let isConnected = false;
+
+        // Servidores STUN/TURN públicos para WebRTC
+        const iceServers = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+            ]
+        };
+
+        // Inicializar canvas
+        function initCanvas() {
+            const container = document.querySelector('.canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+
+        // Seleccionar herramienta
+        function selectTool(tool) {
+            currentTool = tool;
+            canvas.style.cursor = tool === 'eraser' ? 'grab' : 'crosshair';
+        }
+
+        // Seleccionar color
+        function selectColor(color) {
+            currentColor = color;
+            document.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('customColor').value = color;
+        }
+
+        // Actualizar tamaño del pincel
+        function updateBrushSize(size) {
+            brushSize = parseInt(size);
+            document.getElementById('sizeDisplay').textContent = size;
+        }
+
+        // Dibujar
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            
+            // Enviar a través de WebRTC
+            sendDrawData({
+                type: 'start',
+                x: x,
+                y: y,
+                tool: currentTool,
+                color: currentColor,
+                brushSize: brushSize
+            });
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ctx.globalCompositeOperation = currentTool === 'eraser' ? 'destination-out' : 'source-over';
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = brushSize;
+            
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            // Enviar a través de WebRTC
+            sendDrawData({
+                type: 'draw',
+                x: x,
+                y: y
+            });
+        }
+
+        function stopDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            // Enviar a través de WebRTC
+            sendDrawData({
+                type: 'stop'
+            });
+        }
+
+        // Enviar datos de dibujo a través de WebRTC
+        function sendDrawData(data) {
+            if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify(data));
+            }
+        }
+
+        // Recibir datos de dibujo
+        function receiveDrawData(data) {
+            switch(data.type) {
+                case 'start':
+                    ctx.globalCompositeOperation = data.tool === 'eraser' ? 'destination-out' : 'source-over';
+                    ctx.strokeStyle = data.color;
+                    ctx.lineWidth = data.brushSize;
+                    ctx.beginPath();
+                    ctx.moveTo(data.x, data.y);
+                    break;
+                case 'draw':
+                    ctx.lineTo(data.x, data.y);
+                    ctx.stroke();
+                    break;
+                case 'stop':
+                    // No hay acción necesaria
+                    break;
+                case 'clear':
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    break;
+            }
+        }
+
+        // Limpiar canvas
+        function clearCanvas() {
+            if (confirm('¿Estás seguro de que quieres limpiar el canvas?')) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawingHistory = [];
+                
+                // Enviar a través de WebRTC
+                sendDrawData({
+                    type: 'clear'
+                });
+            }
+        }
+
+        // Crear sala (Host)
+        function createRoom() {
+            isHost = true;
+            roomId = Math.random().toString(36).substr(2, 6).toUpperCase();
+            document.getElementById('roomCode').textContent = roomId;
+            alert(`Sala creada. Comparte este código: ${roomId}`);
+            
+            // Crear peer connection como host
+            createPeerConnection(true);
+        }
+
+        // Unirse a sala (Cliente)
+        function joinRoom() {
+            const code = prompt('Código de la sala:');
+            if (!code) return;
+            
+            roomId = code;
+            document.getElementById('roomCode').textContent = roomId;
+            
+            // Crear peer connection como cliente
+            createPeerConnection(false);
+        }
+
+        // Crear conexión WebRTC
+        function createPeerConnection(isHost) {
+            peerConnection = new RTCPeerConnection(iceServers);
+            
+            // Crear canal de datos si es host
+            if (isHost) {
+                dataChannel = peerConnection.createDataChannel('drawingChannel', {
+                    ordered: true
+                });
+                setupDataChannel(dataChannel);
+                
+                // Crear oferta
+                peerConnection.createOffer()
+                    .then(offer => {
+                        return peerConnection.setLocalDescription(offer);
+                    })
+                    .then(() => {
+                        // En producción, aquí enviarías la oferta al otro peer
+                        // usando un servidor de señalización
+                        console.log('Oferta creada:', JSON.stringify(peerConnection.localDescription));
+                        prompt('Copia esta oferta y compártela con el otro usuario:', JSON.stringify(peerConnection.localDescription));
+                    });
+            } else {
+                // Escuchar canal de datos entrante
+                peerConnection.ondatachannel = (event) => {
+                    dataChannel = event.channel;
+                    setupDataChannel(dataChannel);
+                };
+                
+                // Pedir respuesta
+                const answer = prompt('Pega la oferta del otro usuario:');
+                if (answer) {
+                    const offer = JSON.parse(answer);
+                    peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+                        .then(() => {
+                            return peerConnection.createAnswer();
+                        })
+                        .then(answer => {
+                            return peerConnection.setLocalDescription(answer);
+                        })
+                        .then(() => {
+                            console.log('Respuesta creada:', JSON.stringify(peerConnection.localDescription));
+                            prompt('Copia esta respuesta y compártela con el otro usuario:', JSON.stringify(peerConnection.localDescription));
+                        });
+                }
+            }
+            
+            // Manejar candidatos ICE
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    console.log('Candidato ICE:', JSON.stringify(event.candidate));
+                }
+            };
+            
+            // Manejar cambios en el estado de conexión
+            peerConnection.onconnectionstatechange = () => {
+                console.log('Estado de conexión:', peerConnection.connectionState);
+                if (peerConnection.connectionState === 'connected') {
+                    isConnected = true;
+                    updateConnectionStatus(true);
+                }
+            };
+        }
+
+        // Configurar canal de datos
+        function setupDataChannel(channel) {
+            channel.onopen = () => {
+                console.log('Canal de datos abierto');
+                isConnected = true;
+                updateConnectionStatus(true);
+            };
+            
+            channel.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                receiveDrawData(data);
+            };
+            
+            channel.onclose = () => {
+                console.log('Canal de datos cerrado');
+                isConnected = false;
+                updateConnectionStatus(false);
+            };
+            
+            channel.onerror = (error) => {
+                console.error('Error en canal de datos:', error);
+            };
+        }
+
+        // Actualizar estado de conexión
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connectionStatus');
+            if (connected) {
+                statusEl.textContent = 'Conectado';
+                statusEl.className = 'connection-status connected';
+            } else {
+                statusEl.textContent = 'Desconectado';
+                statusEl.className = 'connection-status disconnected';
+            }
+        }
+
+        // Agregar usuario
+        function addUser(id, name) {
+            if (!users.find(u => u.id === id)) {
+                users.push({ id, name });
+                updateUserList();
+            }
+        }
+
+        // Remover usuario
+        function removeUser(id) {
+            users = users.filter(u => u.id !== id);
+            updateUserList();
+        }
+
+        // Actualizar lista de usuarios
+        function updateUserList() {
+            const userList = document.getElementById('userList');
+            userList.innerHTML = users.map(user => `
+                <div class="user-item">
+                    <div class="user-indicator"></div>
+                    <span>${user.name}</span>
+                </div>
+            `).join('');
+        }
+
+        // Desconectar
+        function disconnect() {
+            if (dataChannel) {
+                dataChannel.close();
+                dataChannel = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            roomId = null;
+            users = [{ id: 'local', name: 'Tú' }];
+            updateUserList();
+            updateConnectionStatus(false);
+            document.getElementById('roomCode').textContent = 'Sin conexión';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Eventos del canvas
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Inicializar
+        window.addEventListener('resize', initCanvas);
+        initCanvas();
+        
+        // Nota sobre WebRTC
+        console.log('WebRTC requiere un servidor de señalización para intercambiar ofertas/respuestas. Para producción, implementa tu propio servidor.');
+    </script>
+</body>
+</html>
+```
