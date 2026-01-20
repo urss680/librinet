@@ -1,0 +1,242 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dibujo Colaborativo WebRTC</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #topBar {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: #222;
+            gap: 10px;
+        }
+        #roomName {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            background: #0af;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #08c;
+        }
+        #copyBtn {
+            background: #3c3;
+        }
+        #copyBtn:hover {
+            background: #2b2;
+        }
+        #status {
+            margin-left: auto;
+            font-size: 13px;
+        }
+        #canvas {
+            flex: 1;
+            background: #000;
+            cursor: crosshair;
+        }
+        #colorPicker {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #brushSize {
+            width: 120px;
+        }
+    </style>
+</head>
+<body>
+    <div id="topBar">
+        <input id="roomName" placeholder="Nombre de la sala" />
+        <button id="joinBtn">Unirse</button>
+        <button id="copyBtn">Copiar enlace</button>
+        <input type="color" id="colorPicker" value="#ffffff" />
+        <input type="range" id="brushSize" min="1" max="20" value="3" />
+        <span id="status">Desconectado</span>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const roomInput = document.getElementById('roomName');
+        const joinBtn = document.getElementById('joinBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const colorPicker = document.getElementById('colorPicker');
+        const brushSize = document.getElementById('brushSize');
+        const status = document.getElementById('status');
+
+        let room = '';
+        let isDrawing = false;
+        let localPath = [];
+        let paths = [];
+        let isHost = false;
+        let peerConn;
+        let dataChannel;
+
+        const signaling = new WebSocket('wss://signaling-yolo.glitch.me');
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            redraw();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawPath(path, color, size) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            if (path.length < 2) return;
+            ctx.beginPath();
+            ctx.moveTo(path[0].x, path[0].y);
+            for (let i = 1; i < path.length; i++) {
+                ctx.lineTo(path[i].x, path[i].y);
+            }
+            ctx.stroke();
+        }
+
+        function redraw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            paths.forEach(p => drawPath(p.points, p.color, p.size));
+        }
+
+        canvas.addEventListener('mousedown', e => {
+            if (!dataChannel) return;
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const point = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            localPath = [point];
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const point = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            localPath.push(point);
+            drawPath(localPath, colorPicker.value, brushSize.value);
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (!isDrawing) return;
+            isDrawing = false;
+            if (localPath.length > 1) {
+                const data = {
+                    type: 'draw',
+                    color: colorPicker.value,
+                    size: brushSize.value,
+                    points: localPath
+                };
+                paths.push(data);
+                if (dataChannel && dataChannel.readyState === 'open') {
+                    dataChannel.send(JSON.stringify(data));
+                }
+            }
+            localPath = [];
+        });
+
+        function sendViaWS(msg) {
+            signaling.send(JSON.stringify({ room, ...msg }));
+        }
+
+        signaling.onopen = () => {
+            status.textContent = 'Conectado al servidor';
+        };
+
+        signaling.onmessage = async e => {
+            const msg = JSON.parse(e.data);
+            if (msg.room !== room) return;
+
+            if (msg.type === 'ready' && !isHost) {
+                // Crear oferta
+                isHost = true;
+                peerConn = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+                dataChannel = peerConn.createDataChannel('draw');
+                setupDataChannel(dataChannel);
+                const offer = await peerConn.createOffer();
+                await peerConn.setLocalDescription(offer);
+                sendViaWS({ type: 'offer', offer });
+            } else if (msg.type === 'offer' && !peerConn) {
+                // Responder oferta
+                peerConn = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+                peerConn.ondatachannel = e => {
+                    dataChannel = e.channel;
+                    setupDataChannel(dataChannel);
+                };
+                await peerConn.setRemoteDescription(new RTCSessionDescription(msg.offer));
+                const answer = await peerConn.createAnswer();
+                await peerConn.setLocalDescription(answer);
+                sendViaWS({ type: 'answer', answer });
+            } else if (msg.type === 'answer' && peerConn) {
+                await peerConn.setRemoteDescription(new RTCSessionDescription(msg.answer));
+            } else if (msg.type === 'ice' && peerConn) {
+                await peerConn.addIceCandidate(new RTCIceCandidate(msg.candidate));
+            }
+        };
+
+        function setupDataChannel(channel) {
+            channel.onopen = () => {
+                status.textContent = 'Conectado al otro usuario';
+                // Enviar historial
+                paths.forEach(p => channel.send(JSON.stringify(p)));
+            };
+            channel.onmessage = e => {
+                const data = JSON.parse(e.data);
+                if (data.type === 'draw') {
+                    paths.push(data);
+                    drawPath(data.points, data.color, data.size);
+                }
+            };
+            channel.onclose = () => status.textContent = 'Desconectado';
+        }
+
+        peerConn?.addEventListener('icecandidate', e => {
+            if (e.candidate) sendViaWS({ type: 'ice', candidate: e.candidate });
+        });
+
+        joinBtn.addEventListener('click', () => {
+            room = roomInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+            if (!room) return;
+            history.pushState(null, '', '#' + room);
+            sendViaWS({ type: 'ready' });
+        });
+
+        copyBtn.addEventListener('click', () => {
+            const url = location.href.split('#')[0] + '#' + room;
+            navigator.clipboard.writeText(url);
+            copyBtn.textContent = 'Copiado';
+            setTimeout(() => copyBtn.textContent = 'Copiar enlace', 1500);
+        });
+
+        // Auto-unirse si hay hash
+        if (location.hash) {
+            roomInput.value = location.hash.slice(1);
+            joinBtn.click();
+        }
+    </script>
+</body>
+</html>
+```
