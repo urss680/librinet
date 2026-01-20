@@ -1,0 +1,145 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chat WebQL</title>
+  <style>
+    body { margin:0; background:#111; color:#eee; font-family:Arial,Helvetica,sans-serif; display:flex; height:100vh; }
+    #sidebar { width:240px; background:#222; padding:10px; overflow:auto; }
+    #sidebar h3 { margin-top:0; }
+    #sidebar ul { list-style:none; padding:0; }
+    #sidebar li { padding:6px; cursor:pointer; }
+    #sidebar li:hover { background:#333; }
+    #main { flex:1; display:flex; flex-direction:column; }
+    #messages { flex:1; overflow:auto; padding:10px; }
+    .msg { margin:6px 0; }
+    .msg strong { color:#4af; }
+    #inputArea { display:flex; border-top:1px solid #444; }
+    #inputArea input { flex:1; background:#000; color:#eee; border:none; padding:10px; outline:none; }
+    #inputArea button { background:#28a; color:#fff; border:none; padding:0 14px; cursor:pointer; }
+    #inputArea button:hover { background:#3ac; }
+    #status { padding:4px 10px; background:#222; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <h3>Salas</h3>
+    <ul id="roomList"></ul>
+    <input id="newRoom" placeholder="Nueva sala" />
+    <button onclick="addRoom()">Añadir</button>
+  </div>
+
+  <div id="main">
+    <div id="status">Desconectado</div>
+    <div id="messages"></div>
+    <div id="inputArea">
+      <input id="msgInput" placeholder="Escribe un mensaje..." onkeypress="if(event.key==='Enter') sendMsg()" />
+      <button onclick="sendMsg()">Enviar</button>
+    </div>
+  </div>
+
+  <script>
+    let db;
+    const roomList = document.getElementById('roomList');
+    const messages = document.getElementById('messages');
+    const status = document.getElementById('status');
+    let currentRoom = 'general';
+
+    // Inicializar WebQL (IndexedDB)
+    const request = indexedDB.open('chatDB', 1);
+    request.onerror = () => status.textContent = 'Error al abrir DB';
+    request.onsuccess = () => {
+      db = request.result;
+      loadRooms();
+      loadMessages();
+      status.textContent = 'Conectado';
+    };
+    request.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('messages')) {
+        const msgStore = db.createObjectStore('messages', { autoIncrement: true });
+        msgStore.createIndex('room', 'room', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('rooms')) {
+        db.createObjectStore('rooms', { keyPath: 'name' });
+      }
+    };
+
+    function addRoom() {
+      const name = document.getElementById('newRoom').value.trim();
+      if (!name) return;
+      const tx = db.transaction('rooms', 'readwrite');
+      const store = tx.objectStore('rooms');
+      store.put({ name });
+      tx.oncomplete = () => {
+        document.getElementById('newRoom').value = '';
+        loadRooms();
+      };
+    }
+
+    function loadRooms() {
+      roomList.innerHTML = '';
+      const tx = db.transaction('rooms', 'readonly');
+      const store = tx.objectStore('rooms');
+      store.openCursor().onsuccess = e => {
+        const cursor = e.target.result;
+        if (cursor) {
+          const li = document.createElement('li');
+          li.textContent = cursor.key;
+          li.onclick = () => switchRoom(cursor.key);
+          if (cursor.key === currentRoom) li.style.background = '#444';
+          roomList.appendChild(li);
+          cursor.continue();
+        }
+      };
+      // Asegurar sala general
+      if (!roomList.querySelector('li')) {
+        const tx2 = db.transaction('rooms', 'readwrite');
+        tx2.objectStore('rooms').put({ name: 'general' });
+        tx2.oncomplete = loadRooms;
+      }
+    }
+
+    function switchRoom(name) {
+      currentRoom = name;
+      loadRooms();
+      loadMessages();
+    }
+
+    function loadMessages() {
+      messages.innerHTML = '';
+      const tx = db.transaction('messages', 'readonly');
+      const store = tx.objectStore('messages');
+      const index = store.index('room');
+      const range = IDBKeyRange.only(currentRoom);
+      index.openCursor(range).onsuccess = e => {
+        const cursor = e.target.result;
+        if (cursor) {
+          const m = cursor.value;
+          const div = document.createElement('div');
+          div.className = 'msg';
+          div.innerHTML = `<strong>${m.user}:</strong> ${m.text}`;
+          messages.appendChild(div);
+          cursor.continue();
+        }
+        messages.scrollTop = messages.scrollHeight;
+      };
+    }
+
+    function sendMsg() {
+      const input = document.getElementById('msgInput');
+      const text = input.value.trim();
+      if (!text) return;
+      const tx = db.transaction('messages', 'readwrite');
+      const store = tx.objectStore('messages');
+      store.add({ room: currentRoom, user: 'Yo', text, ts: Date.now() });
+      tx.oncomplete = () => {
+        input.value = '';
+        loadMessages();
+      };
+    }
+  </script>
+</body>
+</html>
+```
