@@ -1,0 +1,204 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>App 7676</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h1 { margin-bottom: 1rem; }
+    #pregunta {
+      background: #222;
+      padding: 1.5rem 2rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+    input[type="text"] {
+      padding: .6rem 1rem;
+      font-size: 1rem;
+      width: 220px;
+      margin-right: .5rem;
+      border: none;
+      border-radius: 4px;
+    }
+    button {
+      padding: .6rem 1.2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: .25rem;
+    }
+    #entrar { background: #28a745; color: #fff; }
+    #entrar:hover { background: #218838; }
+    #espectador { background: #6c757d; color: #fff; }
+    #espectador:hover { background: #5a6268; }
+    #videoLocal, #videoRemoto {
+      width: 320px;
+      height: 240px;
+      background: #000;
+      margin: .5rem;
+      border-radius: 4px;
+    }
+    #videos {
+      display: none;
+      gap: 1rem;
+    }
+    #estado { margin-top: 1rem; font-size: .9rem; color: #ccc; }
+    #codigoGenerado {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      color: #0ff;
+    }
+    #codigoGenerado span {
+      background: #333;
+      padding: .3rem .6rem;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: all;
+    }
+    #sdpArea {
+      margin-top: 1rem;
+    }
+    textarea {
+      width: 300px;
+      height: 100px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: .5rem;
+      resize: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>App 7676</h1>
+
+  <div id="pregunta">
+    <p>Escribe el código para retransmitir o entra como espectador:</p>
+    <input id="codigo" placeholder="Código" />
+    <br><br>
+    <button id="entrar">Emitir</button>
+    <button id="espectador">Ser espectador</button>
+    <div id="codigoGenerado"></div>
+  </div>
+
+  <div id="videos">
+    <div>
+      <video id="videoLocal" autoplay muted playsinline></video>
+      <p>Local</p>
+    </div>
+    <div>
+      <video id="videoRemoto" autoplay playsinline></video>
+      <p>Remoto</p>
+    </div>
+  </div>
+
+  <div id="sdpArea" style="display:none;">
+    <p id="sdpLabel">SDP para compartir:</p>
+    <textarea id="sdpText" readonly></textarea>
+  </div>
+
+  <div id="estado"></div>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const codigo = $('#codigo');
+    const entrar = $('#entrar');
+    const espectador = $('#espectador');
+    const pregunta = $('#pregunta');
+    const videos = $('#videos');
+    const estado = $('#estado');
+    const codigoGenerado = $('#codigoGenerado');
+    const sdpArea = $('#sdpArea');
+    const sdpText = $('#sdpText');
+
+    const LOCAL = 'local';
+    const REMOTE = 'remote';
+
+    let pc;
+    let localStream;
+    let esEmisor = false;
+
+    const SERVERS = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    };
+
+    function log(msg) { estado.textContent = msg; }
+
+    entrar.onclick = () => {
+      const pass = codigo.value.trim();
+      if (pass === '7676') {
+        esEmisor = true;
+        pregunta.style.display = 'none';
+        videos.style.display = 'flex';
+        const id = Math.random().toString(36).slice(2, 8).toUpperCase();
+        codigoGenerado.innerHTML = 'Tu código de emisión: <span id="codigoSpan">' + id + '</span>';
+        iniciarLocal();
+      } else {
+        alert('Código incorrecto');
+      }
+    };
+
+    espectador.onclick = () => {
+      const id = prompt('Introduce el código de emisión:');
+      if (!id) return;
+      pregunta.style.display = 'none';
+      videos.style.display = 'flex';
+      iniciarRemoto();
+    };
+
+    async function iniciarLocal() {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      $('#videoLocal').srcObject = localStream;
+      crearPeerConnection();
+      localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+      pc.createOffer().then(offer => pc.setLocalDescription(offer));
+    }
+
+    function iniciarRemoto() {
+      crearPeerConnection();
+      pc.ontrack = e => {
+        $('#videoRemoto').srcObject = e.streams[0];
+      };
+    }
+
+    function crearPeerConnection() {
+      pc = new RTCPeerConnection(SERVERS);
+      pc.onicecandidate = e => {
+        if (e.candidate) return;
+        const sdp = pc.localDescription.sdp;
+        mostrarSDP(sdp);
+      };
+      pc.onconnectionstatechange = () => log('Estado: ' + pc.connectionState);
+    }
+
+    function mostrarSDP(sdp) {
+      sdpArea.style.display = 'block';
+      sdpText.value = sdp;
+      log('SDP generado. Compártelo con el otro peer.');
+    }
+
+    function recibirSDP(offer) {
+      if (pc.signalingState === 'stable') {
+        pc.setRemoteDescription(offer);
+        pc.createAnswer().then(answer => pc.setLocalDescription(answer));
+      } else {
+        pc.setRemoteDescription(offer);
+      }
+    }
+  </script>
+</body>
+</html>
+```
