@@ -1,0 +1,71 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Contenido protegido</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.01);
+            z-index: 9999;
+            pointer-events: none;
+        }
+    </style>
+    <script>
+        // Bloqueo de teclas de captura
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "PrintScreen" || 
+                (e.ctrlKey && e.shiftKey && ["S", "I", "J"].includes(e.key.toUpperCase())) || // Ctrl+Shift+S/I/J
+                (e.ctrlKey && e.key === "F12") || // Ctrl+F12
+                (e.ctrlKey && e.shiftKey && e.key === "C") // Ctrl+Shift+C
+            ) {
+                e.preventDefault();
+                alert("Captura de pantalla deshabilitada.");
+            }
+        });
+
+        // Detección de intento de captura con PrintScreen
+        document.addEventListener("keyup", function(e) {
+            if (e.key === "PrintScreen") {
+                document.body.style.display = "none";
+                setTimeout(() => { document.body.style.display = ""; }, 100);
+            }
+        });
+
+        // Desactivar menú contextual
+        document.addEventListener("contextmenu", e => e.preventDefault());
+
+        // Advertencia al intentar imprimir
+        window.addEventListener("beforeprint", function() {
+            alert("La impresión está deshabilitada.");
+            window.print = function(){};
+        });
+
+        // Deshabilitar clipboard API
+        document.addEventListener("copy", e => e.preventDefault());
+        document.addEventListener("cut", e => e.preventDefault());
+
+        // Protección adicional contra herramientas de desarrollo
+        setInterval(function() {
+            debugger;
+        }, 100);
+    </script>
+</head>
+<body>
+    <h1>Contenido protegido contra capturas</h1>
+    <p>Este contenido está protegido. No se permite la captura de pantalla ni la impresión.</p>
+</body>
+</html>
+```
