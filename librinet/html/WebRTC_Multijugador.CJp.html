@@ -1,0 +1,170 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>WebRTC Multijugador</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+      background: #222;
+    }
+    #chat {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      width: 300px;
+      max-height: 120px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.7);
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    #msg {
+      position: absolute;
+      bottom: 10px;
+      left: 320px;
+      width: 200px;
+      padding: 6px;
+      border: none;
+      border-radius: 4px;
+    }
+    button {
+      position: absolute;
+      bottom: 10px;
+      left: 530px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      background: #0af;
+      color: #fff;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="cv"></canvas>
+  <div id="chat"></div>
+  <input id="msg" placeholder="Escribe y presiona Enter">
+  <button onclick="conectar()">Conectar</button>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const peers = {};
+    const players = {};
+    let conn;
+    let idLocal;
+
+    const input = document.getElementById('msg');
+    const chat = document.getElementById('chat');
+
+    // Crear PeerJS
+    function conectar() {
+      conn = new Peer();
+      conn.on('open', id => {
+        idLocal = id;
+        players[id] = {x: Math.random()*canvas.width, y: Math.random()*canvas.height, color: '#'+(Math.random()*0xFFFFFF|0).toString(16)};
+        log("Tu ID: " + id);
+      });
+      conn.on('connection', c => {
+        c.on('data', d => procesarMensaje(d, c.peer));
+      });
+      conn.on('error', e => log("Error: " + e));
+    }
+
+    // Enviar coordenadas
+    function enviarPosicion() {
+      const p = players[idLocal];
+      const data = {type: 'pos', id: idLocal, x: p.x, y: p.y, color: p.color};
+      Object.values(peers).forEach(c => c.send(data));
+    }
+
+    // Chat
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && input.value.trim()) {
+        const texto = input.value.trim();
+        const data = {type: 'chat', id: idLocal, text: texto};
+        Object.values(peers).forEach(c => c.send(data));
+        log("Yo: " + texto);
+        input.value = '';
+      }
+    });
+
+    // Procesar mensajes
+    function procesarMensaje(d, from) {
+      if (d.type === 'pos') {
+        players[d.id] = {x: d.x, y: d.y, color: d.color};
+      } else if (d.type === 'chat') {
+        log(d.id + ": " + d.text);
+      }
+    }
+
+    // Dibujar
+    function loop() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for (let id in players) {
+        const p = players[id];
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 10, 0, Math.PI*2);
+        ctx.fill();
+      }
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    // Movimiento local
+    let keys = {};
+    window.addEventListener('keydown', e => keys[e.key] = true);
+    window.addEventListener('keyup', e => keys[e.key] = false);
+    setInterval(() => {
+      if (!players[idLocal]) return;
+      const p = players[idLocal];
+      if (keys['ArrowUp']) p.y -= 4;
+      if (keys['ArrowDown']) p.y += 4;
+      if (keys['ArrowLeft']) p.x -= 4;
+      if (keys['ArrowRight']) p.x += 4;
+      enviarPosicion();
+    }, 50);
+
+    // Conectar con otro peer
+    function conectarPeer(idRemoto) {
+      const c = conn.connect(idRemoto);
+      c.on('open', () => {
+        peers[idRemoto] = c;
+        c.on('data', d => procesarMensaje(d, idRemoto));
+        enviarPosicion();
+      });
+    }
+
+    // Log chat
+    function log(txt) {
+      const div = document.createElement('div');
+      div.textContent = txt;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Ejemplo: introducir ID remoto en el prompt
+    window.conectarPeer = conectarPeer;
+    setTimeout(() => {
+      const id = prompt("Introduce ID remoto (deja vacío para ser host):");
+      if (id && id !== idLocal) conectarPeer(id);
+    }, 1500);
+  </script>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</body>
+</html>
+```
