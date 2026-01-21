@@ -1,0 +1,25 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Visor WebRTC</title>
+  <style>
+    html,body{margin:0;padding:0;height:100%;background:#000}
+    video{width:100%;height:100%;object-fit:contain}
+  </style>
+</head>
+<body>
+  <video id="visor" autoplay></video>
+<script>
+const visor = document.getElementById('visor');
+const pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+
+pc.ontrack = e => visor.srcObject = e.streams[0];
+
+// Conéctate al servidor de señalización y maneja oferta/respuesta
+// (implementa tu lógica de señalización aquí)
+</script>
+</body>
+</html>
+```
