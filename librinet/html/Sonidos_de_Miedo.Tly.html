@@ -1,0 +1,501 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sonidos de Miedo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            z-index: 10;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 15px rgba(255, 0, 0, 0.7);
+            letter-spacing: 1px;
+            background: linear-gradient(to right, #ff6b6b, #8b0000);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #8b0000, #ff0000);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.3em;
+            cursor: pointer;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 5px 25px rgba(255, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 35px rgba(255, 0, 0, 0.6);
+        }
+
+        .btn:active {
+            transform: translateY(2px);
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -60%;
+            width: 20px;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(25deg);
+            transition: all 0.7s;
+        }
+
+        .btn:hover::after {
+            left: 120%;
+        }
+
+        .status {
+            margin-top: 30px;
+            font-size: 1.3em;
+            opacity: 0.9;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+            letter-spacing: 1px;
+            color: #ff9999;
+        }
+
+        .ghost {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: url('https://raw.githubusercontent.com/jmverduga/jmverduga/main/ghost.png') no-repeat center;
+            background-size: contain;
+            opacity: 0;
+            animation: ghostAppear 3s ease-in-out;
+            filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8));
+        }
+
+        @keyframes ghostAppear {
+            0% { opacity: 0; transform: scale(0.5) rotate(-10deg); }
+            30% { opacity: 0.9; transform: scale(1.3) rotate(5deg); }
+            70% { opacity: 0.9; transform: scale(1.1) rotate(-3deg); }
+            100% { opacity: 0; transform: scale(0.8) rotate(10deg); }
+        }
+
+        .flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,0,0,0.8) 0%, rgba(139,0,0,0.6) 70%, rgba(0,0,0,0.9) 100%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .flash.active {
+            animation: flashEffect 0.4s ease-out;
+        }
+
+        @keyframes flashEffect {
+            0% { opacity: 0; }
+            30% { opacity: 0.9; }
+            100% { opacity: 0; }
+        }
+
+        .volume-control {
+            margin-top: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .volume-slider {
+            width: 180px;
+            height: 8px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(to right, #330000, #8b0000);
+            outline: none;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            background: linear-gradient(45deg, #ff0000, #8b0000);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .volume-slider::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            background: linear-gradient(45deg, #ff0000, #8b0000);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💀 Sonidos del Terror 💀</h1>
+        <button class="btn" id="startBtn">INICIAR MIEDO</button>
+        <div class="status" id="status">Listo para asustarte...</div>
+        <div class="volume-control">
+            <span>Volumen:</span>
+            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
+            <span id="volumeValue">70%</span>
+        </div>
+    </div>
+    <div class="flash" id="flash"></div>
+
+    <script>
+        class HorrorSoundGenerator {
+            constructor() {
+                this.isActive = false;
+                this.audioContext = null;
+                this.nextTimeout = null;
+                this.volume = 0.7;
+                this.startBtn = document.getElementById('startBtn');
+                this.status = document.getElementById('status');
+                this.flash = document.getElementById('flash');
+                this.volumeSlider = document.getElementById('volumeSlider');
+                this.volumeValue = document.getElementById('volumeValue');
+                
+                this.init();
+            }
+
+            init() {
+                this.startBtn.addEventListener('click', () => this.toggle());
+                this.volumeSlider.addEventListener('input', (e) => {
+                    this.volume = e.target.value / 100;
+                    this.volumeValue.textContent = e.target.value + '%';
+                });
+            }
+
+            async toggle() {
+                if (!this.isActive) {
+                    await this.start();
+                } else {
+                    this.stop();
+                }
+            }
+
+            async start() {
+                if (!this.audioContext) {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                if (this.audioContext.state === 'suspended') {
+                    await this.audioContext.resume();
+                }
+
+                this.isActive = true;
+                this.startBtn.textContent = 'DETENER MIEDO';
+                this.startBtn.style.background = 'linear-gradient(45deg, #006400, #00ff00)';
+                this.status.textContent = 'Preparate... algo terrible se aproxima...';
+                
+                this.scheduleNextSound();
+            }
+
+            stop() {
+                this.isActive = false;
+                if (this.nextTimeout) {
+                    clearTimeout(this.nextTimeout);
+                }
+                
+                this.startBtn.textContent = 'INICIAR MIEDO';
+                this.startBtn.style.background = 'linear-gradient(45deg, #8b0000, #ff0000)';
+                this.status.textContent = 'El miedo ha terminado... por ahora';
+            }
+
+            scheduleNextSound() {
+                if (!this.isActive) return;
+
+                // Tiempo aleatorio entre 10 segundos y 3 minutos
+                const delay = Math.random() * 170000 + 10000;
+                
+                this.nextTimeout = setTimeout(() => {
+                    this.playScarySound();
+                    this.scheduleNextSound();
+                }, delay);
+            }
+
+            playScarySound() {
+                const soundType = Math.floor(Math.random() * 6);
+                
+                // Efecto visual flash
+                this.createFlash();
+                
+                // Crear fantasma visual
+                if (Math.random() > 0.5) {
+                    this.createGhost();
+                }
+
+                switch(soundType) {
+                    case 0:
+                        this.playScream();
+                        break;
+                    case 1:
+                        this.playWhisper();
+                        break;
+                    case 2:
+                        this.playHeartbeat();
+                        break;
+                    case 3:
+                        this.playMetalScrape();
+                        break;
+                    case 4:
+                        this.playDemonicSound();
+                        break;
+                    case 5:
+                        this.playChildLaugh();
+                        break;
+                }
+            }
+
+            playScream() {
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                const filter = this.audioContext.createBiquadFilter();
+                
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1200, this.audioContext.currentTime + 0.1);
+                oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 1.5);
+                
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(800, this.audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(this.volume * 0.8, this.audioContext.currentTime + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1.5);
+                
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.start();
+                oscillator.stop(this.audioContext.currentTime + 1.5);
+                
+                this.status.textContent = '¡UN ALARIDO DESGARRADOR RESUENA!';
+            }
+
+            playWhisper() {
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                const filter = this.audioContext.createBiquadFilter();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(100, this.audioContext.currentTime);
+                
+                // Crear efecto de susurro con modulación
+                const lfo = this.audioContext.createOscillator();
+                const lfoGain = this.audioContext.createGain();
+                lfo.frequency.setValueAtTime(0.5, this.audioContext.currentTime);
+                lfoGain.gain.setValueAtTime(30, this.audioContext.currentTime);
+                
+                lfo.connect(lfoGain);
+                lfoGain.connect(oscillator.frequency);
+                lfo.start();
+                
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(200, this.audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(this.volume * 0.4, this.audioContext.currentTime + 0.5);
+                gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 4);
+                
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.start();
+                oscillator.stop(this.audioContext.currentTime + 4);
+                lfo.stop(this.audioContext.currentTime + 4);
+                
+                this.status.textContent = 'Escuchas susurros ininteligibles...';
+            }
+
+            playHeartbeat() {
+                for (let i = 0; i < 6; i++) {
+                    setTimeout(() => {
+                        const oscillator = this.audioContext.createOscillator();
+                        const gainNode = this.audioContext.createGain();
+                        const filter = this.audioContext.createBiquadFilter();
+                        
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(60, this.audioContext.currentTime);
+                        
+                        filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(100, this.audioContext.currentTime);
+                        
+                        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                        gainNode.gain.linearRampToValueAtTime(this.volume * 0.6, this.audioContext.currentTime + 0.05);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                        
+                        oscillator.connect(filter);
+                        filter.connect(gainNode);
+                        gainNode.connect(this.audioContext.destination);
+                        
+                        oscillator.start();
+                        oscillator.stop(this.audioContext.currentTime + 0.3);
+                    }, i * 400);
+                }
+                
+                this.status.textContent = '¡Tu corazón late con fuerza!';
+            }
+
+            playMetalScrape() {
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                const filter = this.audioContext.createBiquadFilter();
+                
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(3000, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, this.audioContext.currentTime + 2);
+                
+                filter.type = 'highpass';
+                filter.frequency.setValueAtTime(2000, this.audioContext.currentTime);
+                filter.Q.setValueAtTime(30, this.audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(this.volume * 0.5, this.audioContext.currentTime + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 2);
+                
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.start();
+                oscillator.stop(this.audioContext.currentTime + 2);
+                
+                this.status.textContent = '¡Metal raspando contra metal!';
+            }
+
+            playDemonicSound() {
+                const oscillator1 = this.audioContext.createOscillator();
+                const oscillator2 = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                const filter = this.audioContext.createBiquadFilter();
+                
+                oscillator1.type = 'sawtooth';
+                oscillator1.frequency.setValueAtTime(50, this.audioContext.currentTime);
+                oscillator2.type = 'sine';
+                oscillator2.frequency.setValueAtTime(25, this.audioContext.currentTime);
+                
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(80, this.audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(this.volume * 0.7, this.audioContext.currentTime + 0.5);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 3);
+                
+                oscillator1.connect(filter);
+                oscillator2.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator1.start();
+                oscillator2.start();
+                oscillator1.stop(this.audioContext.currentTime + 3);
+                oscillator2.stop(this.audioContext.currentTime + 3);
+                
+                this.status.textContent = 'Una voz demoníaca retumba...';
+            }
+
+            playChildLaugh() {
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                // Crear risa infantil con múltiples osciladores
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const osc = this.audioContext.createOscillator();
+                        const gain = this.audioContext.createGain();
+                        
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(400, this.audioContext.currentTime);
+                        osc.frequency.linearRampToValueAtTime(600, this.audioContext.currentTime + 0.1);
+                        osc.frequency.linearRampToValueAtTime(300, this.audioContext.currentTime + 0.2);
+                        
+                        gain.gain.setValueAtTime(0, this.audioContext.currentTime);
+                        gain.gain.linearRampToValueAtTime(this.volume * 0.5, this.audioContext.currentTime + 0.05);
+                        gain.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.2);
+                        
+                        osc.connect(gain);
+                        gain.connect(this.audioContext.destination);
+                        
+                        osc.start();
+                        osc.stop(this.audioContext.currentTime + 0.2);
+                    }, i * 250);
+                }
+                
+                this.status.textContent = 'Un niño ríe en la oscuridad...';
+            }
+
+            createFlash() {
+                this.flash.classList.add('active');
+                setTimeout(() => {
+                    this.flash.classList.remove('active');
+                }, 400);
+            }
+
+            createGhost() {
+                const ghost = document.createElement('div');
+                ghost.className = 'ghost';
+                ghost.style.left = Math.random() * (window.innerWidth - 120) + 'px';
+                ghost.style.top = Math.random() * (window.innerHeight - 120) + 'px';
+                document.body.appendChild(ghost);
+                
+                setTimeout(() => {
+                    ghost.remove();
+                }, 3000);
+            }
+        }
+
+        // Inicializar cuando la página cargue
+        window.addEventListener('load', () => {
+            new HorrorSoundGenerator();
+        });
+    </script>
+</body>
+</html>
+```
