@@ -1,0 +1,88 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Voz de 5 años en directo</title>
+  <style>
+    body{background:#111;color:#eee;font-family:Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;padding:40px}
+    h1{margin-bottom:20px}
+    .panel{background:#222;border-radius:8px;padding:25px;width:320px;box-shadow:0 0 10px rgba(0,0,0,.5)}
+    button{width:100%;padding:10px;margin-top:15px;border:none;border-radius:4px;font-size:16px;cursor:pointer}
+    #startBtn{background:#0af;color:#fff}
+    #stopBtn{background:#c00;color:#fff}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    #status{margin-top:15px;font-size:13px;text-align:center}
+  </style>
+</head>
+<body>
+  <h1>Voz de 5 años en directo</h1>
+  <div class="panel">
+    <button id="startBtn">Iniciar micrófono</button>
+    <button id="stopBtn" disabled>Detener y descargar</button>
+    <div id="status">Presiona "Iniciar micrófono"</div>
+  </div>
+
+  <script>
+    const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    let mic,pitchShifter,dest,recorder,ch=[];
+    const startBtn=document.getElementById('startBtn');
+    const stopBtn=document.getElementById('stopBtn');
+    const status=document.getElementById('status');
+
+    // Pitch shifter simple que sube el tono (voz de 5 años)
+    function createPitchShifter(){
+      const shifter=audioCtx.createScriptProcessor(2048,1,1);
+      const factor=1.6; // más agudo
+      let grain=512,overlap=grain*(0.75/factor);
+      let buf=new Float32Array(grain),wp=0;
+      shifter.onaudioprocess=function(e){
+        const inp=e.inputBuffer.getChannelData(0);
+        const out=e.outputBuffer.getChannelData(0);
+        for(let i=0;i<inp.length;i++){
+          buf[wp]=inp[i];
+          wp=(wp+1)%grain;
+          const rp=(wp-overlap*factor)%grain;
+          out[i]=buf[(rp+grain)%grain];
+        }
+      };
+      return shifter;
+    }
+
+    startBtn.onclick=async()=>{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      mic=audioCtx.createMediaStreamSource(stream);
+      pitchShifter=createPitchShifter();
+      dest=audioCtx.createMediaStreamDestination();
+      mic.connect(pitchShifter);
+      pitchShifter.connect(dest);
+      // grabar
+      ch=[];
+      recorder=new MediaRecorder(dest.stream);
+      recorder.ondataavailable=e=>ch.push(e.data);
+      recorder.onstop=()=>{
+        const blob=new Blob(ch,{type:'audio/webm'});
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);
+        a.download='voz_5_anios.webm';
+        a.click();
+      };
+      recorder.start();
+      status.textContent='Escuchando y grabando...';
+      startBtn.disabled=true;
+      stopBtn.disabled=false;
+    };
+
+    stopBtn.onclick=()=>{
+      recorder.stop();
+      mic.disconnect();
+      pitchShifter.disconnect();
+      dest.stream.getTracks().forEach(t=>t.stop());
+      status.textContent='Listo. Descargando archivo...';
+      startBtn.disabled=false;
+      stopBtn.disabled=true;
+    };
+  </script>
+</body>
+</html>
+```
