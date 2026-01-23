@@ -1,0 +1,530 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Efectos de Audio en Directo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-group {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .control-group h3 {
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+            margin: 10px 0;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffd700;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffd700;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        button {
+            padding: 12px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-start {
+            background: linear-gradient(45deg, #00ff88, #00cc66);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
+        }
+        
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 136, 0.6);
+        }
+        
+        .btn-stop {
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 68, 68, 0.4);
+        }
+        
+        .btn-stop:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 68, 68, 0.6);
+        }
+        
+        .visualizer {
+            width: 100%;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .preset-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .preset-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .status.active {
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid rgba(0, 255, 136, 0.5);
+        }
+        
+        .status.inactive {
+            background: rgba(255, 68, 68, 0.2);
+            border: 1px solid rgba(255, 68, 68, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎛️ Efectos de Audio en Directo</h1>
+        
+        <canvas id="visualizer" class="visualizer"></canvas>
+        
+        <div class="button-group">
+            <button id="startBtn" class="btn-start">▶️ Iniciar</button>
+            <button id="stopBtn" class="btn-stop" disabled>⏹️ Detener</button>
+        </div>
+        
+        <div class="status" id="status">Estado: Inactivo</div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>🔊 Volumen</h3>
+                <input type="range" id="volumeSlider" class="slider" min="0" max="100" value="50">
+                <span id="volumeValue">50%</span>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎚️ Ganancia</h3>
+                <input type="range" id="gainSlider" class="slider" min="0" max="200" value="100">
+                <span id="gainValue">100%</span>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎸 Distorsión</h3>
+                <input type="range" id="distortionSlider" class="slider" min="0" max="100" value="0">
+                <span id="distortionValue">0%</span>
+            </div>
+            
+            <div class="control-group">
+                <h3>🌊 Chorus</h3>
+                <input type="range" id="chorusSlider" class="slider" min="0" max="100" value="0">
+                <span id="chorusValue">0%</span>
+            </div>
+            
+            <div class="control-group">
+                <h3>🌀 Reverb</h3>
+                <input type="range" id="reverbSlider" class="slider" min="0" max="100" value="0">
+                <span id="reverbValue">0%</span>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎵 Delay</h3>
+                <input type="range" id="delaySlider" class="slider" min="0" max="100" value="0">
+                <span id="delayValue">0%</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h3>🎛️ Presets</h3>
+            <div class="preset-buttons">
+                <button class="preset-btn" onclick="loadPreset('clean')">Limpio</button>
+                <button class="preset-btn" onclick="loadPreset('rock')">Rock</button>
+                <button class="preset-btn" onclick="loadPreset('electronic')">Electrónico</button>
+                <button class="preset-btn" onclick="loadPreset('ambient')">Ambiente</button>
+                <button class="preset-btn" onclick="loadPreset('radio')">Radio</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let audioContext;
+        let source;
+        let analyser;
+        let gainNode;
+        let distortionNode;
+        let chorusNode;
+        let reverbNode;
+        let delayNode;
+        let isPlaying = false;
+        let animationId;
+
+        const canvas = document.getElementById('visualizer');
+        const canvasCtx = canvas.getContext('2d');
+
+        // Inicializar canvas
+        function initCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+
+        window.addEventListener('resize', initCanvas);
+        initCanvas();
+
+        // Función para inicializar el audio
+        async function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Obtener acceso al micrófono
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Crear nodos de audio
+                source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                gainNode = audioContext.createGain();
+                distortionNode = audioContext.createWaveShaper();
+                chorusNode = audioContext.createDelay();
+                reverbNode = audioContext.createConvolver();
+                delayNode = audioContext.createDelay();
+                
+                // Configurar analyser
+                analyser.fftSize = 2048;
+                
+                // Conectar nodos
+                source.connect(analyser);
+                analyser.connect(gainNode);
+                gainNode.connect(distortionNode);
+                distortionNode.connect(chorusNode);
+                chorusNode.connect(delayNode);
+                delayNode.connect(audioContext.destination);
+                
+                // Configurar efectos iniciales
+                updateEffects();
+                
+                // Iniciar visualización
+                visualize();
+                
+                // Actualizar estado
+                updateStatus(true);
+                
+            } catch (error) {
+                console.error('Error al acceder al micrófono:', error);
+                alert('No se pudo acceder al micrófono. Por favor, permite el acceso al micrófono.');
+            }
+        }
+
+        // Función para visualizar el audio
+        function visualize() {
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            function draw() {
+                animationId = requestAnimationFrame(draw);
+                
+                analyser.getByteFrequencyData(dataArray);
+                
+                canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                const barWidth = (canvas.width / bufferLength) * 2.5;
+                let barHeight;
+                let x = 0;
+                
+                for (let i = 0; i < bufferLength; i++) {
+                    barHeight = (dataArray[i] / 255) * canvas.height;
+                    
+                    const hue = (i / bufferLength) * 360;
+                    canvasCtx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                    canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    
+                    x += barWidth + 1;
+                }
+            }
+            
+            draw();
+        }
+
+        // Función para actualizar efectos
+        function updateEffects() {
+            if (!audioContext) return;
+            
+            // Volumen
+            const volume = document.getElementById('volumeSlider').value / 100;
+            gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+            
+            // Ganancia
+            const gain = document.getElementById('gainSlider').value / 100;
+            gainNode.gain.setValueAtTime(volume * gain, audioContext.currentTime);
+            
+            // Distorsión
+            const distortion = document.getElementById('distortionSlider').value / 100;
+            const samples = 44100;
+            const curve = new Float32Array(samples);
+            const deg = Math.PI / 180;
+            
+            for (let i = 0; i < samples; i++) {
+                const x = (i * 2) / samples - 1;
+                curve[i] = ((3 + distortion) * x * 20 * deg) / (Math.PI + distortion * Math.abs(x));
+            }
+            
+            distortionNode.curve = curve;
+            
+            // Chorus
+            const chorus = document.getElementById('chorusSlider').value / 100;
+            chorusNode.delayTime.setValueAtTime(chorus * 0.02, audioContext.currentTime);
+            
+            // Reverb
+            const reverb = document.getElementById('reverbSlider').value / 100;
+            if (reverb > 0) {
+                const length = reverb * 2;
+                const impulse = audioContext.sampleRate * length;
+                const buffer = audioContext.createBuffer(2, impulse, audioContext.sampleRate);
+                
+                for (let channel = 0; channel < 2; channel++) {
+                    const channelData = buffer.getChannelData(channel);
+                    for (let i = 0; i < impulse; i++) {
+                        channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impulse, 2);
+                    }
+                }
+                
+                reverbNode.buffer = buffer;
+            }
+            
+            // Delay
+            const delay = document.getElementById('delaySlider').value / 100;
+            delayNode.delayTime.setValueAtTime(delay * 0.5, audioContext.currentTime);
+        }
+
+        // Función para actualizar estado
+        function updateStatus(active) {
+            const statusEl = document.getElementById('status');
+            if (active) {
+                statusEl.textContent = 'Estado: Activo';
+                statusEl.className = 'status active';
+            } else {
+                statusEl.textContent = 'Estado: Inactivo';
+                statusEl.className = 'status inactive';
+            }
+        }
+
+        // Función para cargar preset
+        function loadPreset(preset) {
+            const presets = {
+                clean: {
+                    volume: 50,
+                    gain: 100,
+                    distortion: 0,
+                    chorus: 0,
+                    reverb: 0,
+                    delay: 0
+                },
+                rock: {
+                    volume: 70,
+                    gain: 150,
+                    distortion: 60,
+                    chorus: 20,
+                    reverb: 10,
+                    delay: 10
+                },
+                electronic: {
+                    volume: 60,
+                    gain: 120,
+                    distortion: 30,
+                    chorus: 70,
+                    reverb: 40,
+                    delay: 50
+                },
+                ambient: {
+                    volume: 40,
+                    gain: 80,
+                    distortion: 0,
+                    chorus: 50,
+                    reverb: 80,
+                    delay: 30
+                },
+                radio: {
+                    volume: 50,
+                    gain: 100,
+                    distortion: 10,
+                    chorus: 10,
+                    reverb: 20,
+                    delay: 0
+                }
+            };
+            
+            const settings = presets[preset];
+            if (settings) {
+                document.getElementById('volumeSlider').value = settings.volume;
+                document.getElementById('gainSlider').value = settings.gain;
+                document.getElementById('distortionSlider').value = settings.distortion;
+                document.getElementById('chorusSlider').value = settings.chorus;
+                document.getElementById('reverbSlider').value = settings.reverb;
+                document.getElementById('delaySlider').value = settings.delay;
+                
+                // Actualizar displays
+                document.getElementById('volumeValue').textContent = settings.volume + '%';
+                document.getElementById('gainValue').textContent = settings.gain + '%';
+                document.getElementById('distortionValue').textContent = settings.distortion + '%';
+                document.getElementById('chorusValue').textContent = settings.chorus + '%';
+                document.getElementById('reverbValue').textContent = settings.reverb + '%';
+                document.getElementById('delayValue').textContent = settings.delay + '%';
+                
+                updateEffects();
+            }
+        }
+
+        // Event listeners
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            await initAudio();
+            isPlaying = true;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            isPlaying = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            updateStatus(false);
+        });
+
+        // Sliders event listeners
+        document.getElementById('volumeSlider').addEventListener('input', (e) => {
+            document.getElementById('volumeValue').textContent = e.target.value + '%';
+            updateEffects();
+        });
+
+        document.getElementById('gainSlider').addEventListener('input', (e) => {
+            document.getElementById('gainValue').textContent = e.target.value + '%';
+            updateEffects();
+        });
+
+        document.getElementById('distortionSlider').addEventListener('input', (e) => {
+            document.getElementById('distortionValue').textContent = e.target.value + '%';
+            updateEffects();
+        });
+
+        document.getElementById('chorusSlider').addEventListener('input', (e) => {
+            document.getElementById('chorusValue').textContent = e.target.value + '%';
+            updateEffects();
+        });
+
+        document.getElementById('reverbSlider').addEventListener('input', (e) => {
+            document.getElementById('reverbValue').textContent = e.target.value + '%';
+            updateEffects();
+        });
+
+        document.getElementById('delaySlider').addEventListener('input', (e) => {
+            document.getElementById('delayValue').textContent = e.target.value + '%';
+            updateEffects();
+        });
+    </script>
+</body>
+</html>
+```
