@@ -1,0 +1,446 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creador de Efectos 3D en Vivo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            overflow: hidden;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            height: 100vh;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(0, 195, 255, 0.7);
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #00d9ff, #00ffaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        .video-container {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(0, 195, 255, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 20px rgba(0, 195, 255, 0.3);
+        }
+
+        #video, #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .effect-btn {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #00c6ff, #0072ff);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .effect-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 114, 255, 0.5);
+        }
+
+        .effect-btn.active {
+            background: linear-gradient(45deg, #00ffaa, #00ffcc);
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.7);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 30px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .slider {
+            width: 150px;
+            height: 5px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            border-radius: 5px;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #00ffaa;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 255, 170, 0.7);
+        }
+
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #aaa;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .recording-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            background: #ff0000;
+            border-radius: 50%;
+            display: none;
+            animation: pulse 1s infinite;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Creador de Efectos 3D en Vivo</h1>
+        
+        <div class="video-container">
+            <video id="video" autoplay></video>
+            <canvas id="canvas"></canvas>
+            <div class="recording-indicator" id="recordingIndicator"></div>
+        </div>
+
+        <div class="controls">
+            <button class="effect-btn active" data-effect="normal">Normal</button>
+            <button class="effect-btn" data-effect="anaglyph">Anaglifo 3D</button>
+            <button class="effect-btn" data-effect="depth">Profundidad</button>
+            <button class="effect-btn" data-effect="wobble">Wobble 3D</button>
+            <button class="effect-btn" data-effect="stereo">Estéreo</button>
+            <button class="effect-btn" data-effect="glitch">Glitch 3D</button>
+            <button class="effect-btn" data-effect="vintage">Vintage 3D</button>
+            <button class="effect-btn" data-effect="thermal">Térmico</button>
+        </div>
+
+        <div class="controls">
+            <div class="slider-container">
+                <label>Intensidad:</label>
+                <input type="range" class="slider" id="intensitySlider" min="0" max="100" value="50">
+                <span id="intensityValue">50%</span>
+            </div>
+            <div class="slider-container">
+                <label>Profundidad:</label>
+                <input type="range" class="slider" id="depthSlider" min="0" max="100" value="30">
+                <span id="depthValue">30%</span>
+            </div>
+        </div>
+
+        <div class="info">
+            <p>Selecciona un efecto 3D y ajusta los parámetros en tiempo real</p>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let currentEffect = 'normal';
+        let intensity = 0.5;
+        let depth = 0.3;
+        let frame = 0;
+
+        // Inicializar la cámara
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 },
+                    audio: false 
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error('Error al acceder a la cámara:', err);
+                alert('No se pudo acceder a la cámara. Por favor, permite el acceso.');
+            }
+        }
+
+        // Aplicar efectos 3D
+        function applyEffect(imageData, effect) {
+            const data = imageData.data;
+            const width = imageData.width;
+            const height = imageData.height;
+            const offset = Math.floor(depth * 50);
+
+            switch(effect) {
+                case 'anaglyph':
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const i = (y * width + x) * 4;
+                            
+                            if (x >= offset) {
+                                const leftI = (y * width + (x - offset)) * 4;
+                                const rightI = i;
+                                
+                                // Rojo para ojo izquierdo
+                                data[i] = data[leftI];
+                                // Cian para ojo derecho
+                                data[i + 1] = data[rightI + 1];
+                                data[i + 2] = data[rightI + 2];
+                            }
+                        }
+                    }
+                    break;
+
+                case 'depth':
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const i = (y * width + x) * 4;
+                            const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                            
+                            // Simular mapa de profundidad con gradiente
+                            const depthMap = (x / width + y / height) / 2;
+                            const depthValue = gray * depthMap * intensity;
+                            
+                            data[i] = depthValue;
+                            data[i + 1] = depthValue * 0.8;
+                            data[i + 2] = depthValue * 1.2;
+                        }
+                    }
+                    break;
+
+                case 'wobble':
+                    const centerX = width / 2;
+                    const centerY = height / 2;
+                    
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const i = (y * width + x) * 4;
+                            
+                            const dx = x - centerX;
+                            const dy = y - centerY;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            const angle = Math.atan2(dy, dx) + Math.sin(frame * 0.05) * intensity;
+                            
+                            const newX = centerX + distance * Math.cos(angle);
+                            const newY = centerY + distance * Math.sin(angle);
+                            
+                            if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+                                const newI = (Math.floor(newY) * width + Math.floor(newX)) * 4;
+                                data[i] = data[newI];
+                                data[i + 1] = data[newI + 1];
+                                data[i + 2] = data[newI + 2];
+                            }
+                        }
+                    }
+                    break;
+
+                case 'stereo':
+                    const shift = Math.floor(intensity * 20);
+                    const halfWidth = width / 2;
+                    
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < halfWidth; x++) {
+                            const leftI = (y * width + x) * 4;
+                            const rightI = (y * width + x + halfWidth) * 4;
+                            
+                            // Desplazar canales R y B para simular visión estereoscópica
+                            if (x + shift < halfWidth) {
+                                const shiftI = (y * width + x + shift) * 4;
+                                data[leftI] = data[shiftI]; // R
+                                data[leftI + 1] = data[leftI + 1]; // G
+                                data[leftI + 2] = data[leftI + 2 - shift * 4]; // B
+                            }
+                        }
+                    }
+                    break;
+
+                case 'glitch':
+                    if (Math.random() < intensity * 0.1) {
+                        const glitchHeight = Math.floor(Math.random() * 50);
+                        const glitchY = Math.floor(Math.random() * (height - glitchHeight));
+                        const glitchX = Math.floor(Math.random() * width);
+                        
+                        for (let y = glitchY; y < glitchY + glitchHeight; y++) {
+                            for (let x = 0; x < width; x++) {
+                                const i = (y * width + x) * 4;
+                                const shiftI = (y * width + (x + glitchX) % width) * 4;
+                                
+                                data[i] = data[shiftI];
+                                data[i + 1] = data[shiftI + 1];
+                                data[i + 2] = data[shiftI + 2];
+                            }
+                        }
+                    }
+                    break;
+
+                case 'vintage':
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const i = (y * width + x) * 4;
+                            
+                            // Efecto sepia con profundidad
+                            const sepiaR = (data[i] * 0.393 + data[i + 1] * 0.769 + data[i + 2] * 0.189);
+                            const sepiaG = (data[i] * 0.349 + data[i + 1] * 0.686 + data[i + 2] * 0.168);
+                            const sepiaB = (data[i] * 0.272 + data[i + 1] * 0.534 + data[i + 2] * 0.131);
+                            
+                            const depthFactor = 1 - (y / height) * intensity * 0.5;
+                            
+                            data[i] = sepiaR * depthFactor;
+                            data[i + 1] = sepiaG * depthFactor;
+                            data[i + 2] = sepiaB * depthFactor;
+                        }
+                    }
+                    break;
+
+                case 'thermal':
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const i = (y * width + x) * 4;
+                            const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                            
+                            // Simular visión térmica con efecto 3D
+                            const thermal = gray / 255;
+                            const depthFactor = 1 + (y / height - 0.5) * intensity;
+                            
+                            if (thermal < 0.33) {
+                                data[i] = 0;
+                                data[i + 1] = 0;
+                                data[i + 2] = 255 * thermal * 3 * depthFactor;
+                            } else if (thermal < 0.66) {
+                                data[i] = 0;
+                                data[i + 1] = 255 * (thermal - 0.33) * 3 * depthFactor;
+                                data[i + 2] = 255 * (1 - thermal) * 3 * depthFactor;
+                            } else {
+                                data[i] = 255 * (thermal - 0.66) * 3 * depthFactor;
+                                data[i + 1] = 255 * (1 - thermal) * 3 * depthFactor;
+                                data[i + 2] = 0;
+                            }
+                        }
+                    }
+                    break;
+            }
+            
+            return imageData;
+        }
+
+        // Procesar el video con efectos
+        function processVideo() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                ctx.drawImage(video, 0, 0);
+                
+                if (currentEffect !== 'normal') {
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const processed = applyEffect(imageData, currentEffect);
+                    ctx.putImageData(processed, 0, 0);
+                }
+                
+                // Mostrar el canvas con el efecto aplicado
+                canvas.style.display = 'block';
+                video.style.display = 'none';
+            } else {
+                // Si no hay suficientes datos, mostrar el video normal
+                video.style.display = 'block';
+                canvas.style.display = 'none';
+            }
+            
+            frame++;
+            requestAnimationFrame(processVideo);
+        }
+
+        // Event Listeners
+        document.querySelectorAll('.effect-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentEffect = this.dataset.effect;
+            });
+        });
+
+        document.getElementById('intensitySlider').addEventListener('input', function() {
+            intensity = this.value / 100;
+            document.getElementById('intensityValue').textContent = this.value + '%';
+        });
+
+        document.getElementById('depthSlider').addEventListener('input', function() {
+            depth = this.value / 100;
+            document.getElementById('depthValue').textContent = this.value + '%';
+        });
+
+        // Inicializar
+        initCamera();
+        video.addEventListener('loadedmetadata', function() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            processVideo();
+        });
+    </script>
+</body>
+</html>
+```
