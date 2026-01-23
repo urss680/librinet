@@ -1,0 +1,78 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Despertador Incierto</title>
+<style>
+  html,body{margin:0;height:100%;background:#111;display:flex;justify-content:center;align-items:center;font-family:sans-serif;color:#eee;}
+  button{padding:1rem 2rem;font-size:1.2rem;border:none;border-radius:4px;background:#0af;color:#fff;cursor:pointer;transition:.3s;}
+  button:hover{background:#08c;}
+</style>
+</head>
+<body>
+
+<button id="start">Iniciar / Parar</button>
+
+<script>
+/* ===== CONFIGURACIÓN ===== */
+const MIN_FREQ = 150;        // Hz mínimos
+const MAX_FREQ = 3500;     // Hz máximos
+const MIN_DUR = 0.05;      // segundos mínimos por sonido
+const MAX_DUR = 0.4;       // segundos máximos por sonido
+const MIN_PAUSE = 0.05;    // silencio mínimo entre sonidos
+const MAX_PAUSE = 0.5;     // silencio máximo entre sonidos
+
+/* ===== AUDIO ===== */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let running = false;
+let timeout;
+
+function noise(){            // genera números aleatorios
+  return Math.random();
+}
+function rand(min,max){      // float entre min y max
+  return min + noise()*(max-min);
+}
+function playTone(){
+  /* duración y frecuencia aleatorias */
+  const dur = rand(MIN_DUR, MAX_DUR);
+  const freq = rand(MIN_FREQ, MAX_FREQ);
+
+  /* forma de onda aleatoria */
+  const types = ['sine','square','sawtooth','triangle'];
+  const osc = audioCtx.createOscillator();
+  osc.type = types[Math.floor(noise()*types.length)];
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+  /* volumen aleatorio (suave o fuerte) */
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(rand(0.05,0.5), audioCtx.currentTime);
+  osc.connect(gain).connect(audioCtx.destination);
+
+  /* arranca y para */
+  osc.start();
+  osc.stop(audioCtx.currentTime + dur);
+}
+
+function schedule(){
+  playTone();
+  const pause = rand(MIN_PAUSE, MAX_PAUSE)*1000;
+  timeout = setTimeout(schedule, pause);
+}
+
+/* ===== CONTROL ===== */
+document.getElementById('start').addEventListener('click', ()=>{
+  if(running){
+    clearTimeout(timeout);
+    running = false;
+  }else{
+    running = true;
+    schedule();
+  }
+});
+</script>
+
+</body>
+</html>
+```
