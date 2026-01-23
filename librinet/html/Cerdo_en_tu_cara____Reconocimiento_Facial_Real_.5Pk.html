@@ -1,0 +1,567 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cerdo en tu cara - ¡Reconocimiento Facial Real!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background: linear-gradient(135deg, #ff9a9e, #fecfef, #fecfef);
+            color: #fff;
+            overflow: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 3rem;
+            background: linear-gradient(45deg, #ff6b6b, #ffa500, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: bounce 2s infinite;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .video-container {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            margin-bottom: 20px;
+            border: 5px dashed #ff6b6b;
+            border-radius: 20px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
+        }
+
+        #video, #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 15px;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .cerdo-part {
+            position: absolute;
+            z-index: 10;
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        .cerdo-hat {
+            width: 120px;
+            height: 80px;
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            border-radius: 60px 60px 0 0;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .cerdo-hat::before {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 20px;
+            background: #ff4757;
+            border-radius: 50px;
+        }
+
+        .cerdo-hat::after {
+            content: '🐽';
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2rem;
+            animation: wiggle 1s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+        }
+
+        .cerdo-nariz {
+            width: 60px;
+            height: 40px;
+            background: linear-gradient(45deg, #ff9a9e, #fecfef);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            animation: snort 2s ease-in-out infinite;
+        }
+
+        @keyframes snort {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .cerdo-orejas {
+            width: 40px;
+            height: 60px;
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            border-radius: 50%;
+            animation: twitch 3s ease-in-out infinite;
+        }
+
+        .cerdo-orejas::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 30px;
+            background: #ff4757;
+            border-radius: 50%;
+        }
+
+        @keyframes twitch {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .effect-btn {
+            padding: 15px 25px;
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .effect-btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.5);
+        }
+
+        .effect-btn.active {
+            background: linear-gradient(45deg, #ffa500, #ff6b6b);
+            color: #fff;
+            box-shadow: 0 0 30px rgba(255, 165, 0, 0.7);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px 30px;
+            border-radius: 30px;
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #ff6b6b;
+            text-align: center;
+        }
+
+        .loading::after {
+            content: '🐷';
+            display: block;
+            font-size: 3rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>¡Cerdo en tu cara - Detección Real!</h1>
+        
+        <div class="video-container">
+            <video id="video" autoplay></video>
+            <canvas id="canvas"></canvas>
+            <div class="loading" id="loading">
+                <p>Cargando detección de cerdo...</p>
+            </div>
+            
+            <!-- Partes del cerdo -->
+            <div class="cerdo-part cerdo-hat" id="cerdoHat"></div>
+            <div class="cerdo-part cerdo-nariz" id="cerdoNariz">🐽</div>
+            <div class="cerdo-part cerdo-orejas" id="cerdoOrejaIzq"></div>
+            <div class="cerdo-part cerdo-orejas" id="cerdoOrejaDer"></div>
+        </div>
+
+        <div class="controls">
+            <button class="effect-btn active" data-effect="normal">Normal</button>
+            <button class="effect-btn" data-effect="cerdo">Cerdo Completo</button>
+            <button class="effect-btn" data-effect="cerdo-3d">Cerdo 3D</button>
+            <button class="effect-btn" data-effect="cerdo-rainbow">Cerdo Arcoiris</button>
+            <button class="effect-btn" data-effect="cerdo-glitch">Cerdo Glitch</button>
+            <button class="effect-btn" data-effect="cerdo-vintage">Cerdo Vintage</button>
+        </div>
+
+        <div class="info">
+            <p>¡Permite la cámara y el cerdo aparecerá en tu cabeza!</p>
+            <p>🐷 ¡Oink Oink! 🐷</p>
+        </div>
+    </div>
+
+    <!-- Cargar face-api.js -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const loading = document.getElementById('loading');
+        let currentEffect = 'normal';
+        let frame = 0;
+        let faceDetected = false;
+
+        // Cargar modelos de face-api
+        async function loadModels() {
+            loading.style.display = 'block';
+            
+            try {
+                await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+                await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model');
+                
+                loading.style.display = 'none';
+                console.log('Modelos de detección facial cargados');
+            } catch (error) {
+                console.error('Error al cargar modelos:', error);
+                loading.innerHTML = '<p>Error al cargar detección 😢</p>';
+            }
+        }
+
+        // Inicializar la cámara
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 },
+                    audio: false 
+                });
+                video.srcObject = stream;
+                
+                // Esperar a que el video esté listo
+                video.addEventListener('loadedmetadata', () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    detectFaces();
+                });
+            } catch (err) {
+                console.error('Error al acceder a la cámara:', err);
+                alert('¡El cerdo no puede verte! Permite el acceso a la cámara 🐷');
+            }
+        }
+
+        // Detectar rostros
+        async function detectFaces() {
+            const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+            
+            try {
+                const detections = await faceapi.detectAllFaces(video, options).withFaceLandmarks();
+                
+                if (detections.length > 0) {
+                    faceDetected = true;
+                    // Mostrar partes del cerdo
+                    document.querySelectorAll('.cerdo-part').forEach(el => {
+                        el.style.display = 'block';
+                    });
+                    
+                    // Colocar partes del cerdo en el rostro detectado
+                    detections.forEach(detection => {
+                        const landmarks = detection.landmarks;
+                        const nose = landmarks.getNose();
+                        const leftEye = landmarks.getLeftEye();
+                        const rightEye = landmarks.getRightEye();
+                        
+                        // Calcular posición de la nariz
+                        const noseX = nose[3].x;
+                        const noseY = nose[3].y;
+                        
+                        // Calcular distancia entre ojos para escala
+                        const eyeDistance = Math.sqrt(
+                            Math.pow(rightEye[0].x - leftEye[0].x, 2) + 
+                            Math.pow(rightEye[0].y - leftEye[0].y, 2)
+                        );
+                        const scale = eyeDistance / 80; // 80 es la distancia base
+                        
+                        // Posicionar elementos del cerdo
+                        const nariz = document.getElementById('cerdoNariz');
+                        if (nariz) {
+                            nariz.style.left = (noseX - 30) + 'px';
+                            nariz.style.top = (noseY - 20) + 'px';
+                            nariz.style.transform = `scale(${scale})`;
+                        }
+                        
+                        // Sombrero encima de la cabeza
+                        const hat = document.getElementById('cerdoHat');
+                        if (hat) {
+                            const headTop = Math.min(leftEye[0].y, rightEye[0].y) - 60;
+                            const headCenterX = (leftEye[0].x + rightEye[0].x) / 2;
+                            hat.style.left = (headCenterX - 60) + 'px';
+                            hat.style.top = (headTop - 40) + 'px';
+                            hat.style.transform = `scale(${scale})`;
+                        }
+                        
+                        // Orejas
+                        const orejaIzq = document.getElementById('cerdoOrejaIzq');
+                        const orejaDer = document.getElementById('cerdoOrejaDer');
+                        
+                        if (orejaIzq) {
+                            orejaIzq.style.left = (leftEye[0].x - 50) + 'px';
+                            orejaIzq.style.top = (leftEye[0].y - 30) + 'px';
+                            orejaIzq.style.transform = `scale(${scale})`;
+                        }
+                        
+                        if (orejaDer) {
+                            orejaDer.style.left = (rightEye[0].x + 10) + 'px';
+                            orejaDer.style.top = (rightEye[0].y - 30) + 'px';
+                            orejaDer.style.transform = `scale(${scale})`;
+                        }
+                    });
+                } else {
+                    faceDetected = false;
+                    // Si no hay rostro, ocultar partes del cerdo
+                    if (currentEffect !== 'normal') {
+                        document.querySelectorAll('.cerdo-part').forEach(el => {
+                            el.style.display = 'none';
+                        });
+                    }
+                }
+                
+                // Continuar detectando
+                setTimeout(() => detectFaces(), 100);
+                
+            } catch (error) {
+                console.error('Error en detección:', error);
+                setTimeout(() => detectFaces(), 1000);
+            }
+        }
+
+        // Aplicar efectos de cerdo
+        function applyCerdoEffect(imageData, effect) {
+            const data = imageData.data;
+            const width = imageData.width;
+            const height = imageData.height;
+
+            switch(effect) {
+                case 'cerdo-3d':
+                    // Efecto 3D rosa cerdo
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+                        
+                        // Rosa cerdo con efecto 3D
+                        data[i] = Math.min(255, r * 1.5 + 50);
+                        data[i + 1] = Math.min(255, g * 0.8 + 30);
+                        data[i + 2] = Math.min(255, b * 0.6 + 80);
+                        
+                        // Efecto de profundidad
+                        const pixelIndex = i / 4;
+                        const x = pixelIndex % width;
+                        const y = Math.floor(pixelIndex / width);
+                        const depth = Math.sin(x * 0.01 + frame * 0.05) * 20;
+                        
+                        data[i] = Math.min(255, data[i] + depth);
+                    }
+                    break;
+
+                case 'cerdo-rainbow':
+                    // Cerdo arcoiris
+                    for (let i = 0; i < data.length; i += 4) {
+                        const pixelIndex = i / 4;
+                        const x = pixelIndex % width;
+                        const y = Math.floor(pixelIndex / width);
+                        
+                        const hue = (x / width + y / height + frame * 0.01) % 1;
+                        const r = Math.sin(hue * Math.PI * 2) * 255;
+                        const g = Math.sin(hue * Math.PI * 2 + Math.PI * 2/3) * 255;
+                        const b = Math.sin(hue * Math.PI * 2 + Math.PI * 4/3) * 255;
+                        
+                        // Mezclar con rosa cerdo
+                        data[i] = (data[i] * 0.3 + r * 0.7);
+                        data[i + 1] = (data[i + 1] * 0.3 + g * 0.7);
+                        data[i + 2] = (data[i + 1] * 0.3 + b * 0.7);
+                    }
+                    break;
+
+                case 'cerdo-glitch':
+                    // Efecto glitch cerdo
+                    if (Math.random() < 0.1) {
+                        const glitchHeight = Math.floor(Math.random() * 100);
+                        const glitchY = Math.floor(Math.random() * (height - glitchHeight));
+                        const glitchX = Math.floor(Math.random() * width);
+                        
+                        for (let y = glitchY; y < glitchY + glitchHeight; y++) {
+                            for (let x = 0; x < width; x++) {
+                                const i = (y * width + x) * 4;
+                                const shiftI = (y * width + (x + glitchX) % width) * 4;
+                                
+                                // Colores cerdo glitch
+                                data[i] = data[shiftI] ^ 255;
+                                data[i + 1] = data[shiftI + 1] ^ 100;
+                                data[i + 2] = data[shiftI + 2] ^ 50;
+                            }
+                        }
+                    }
+                    break;
+
+                case 'cerdo-vintage':
+                    // Vintage cerdo
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+                        
+                        // Rosa vintage
+                        data[i] = Math.min(255, r * 1.2 + 30);
+                        data[i + 1] = Math.min(255, g * 0.7 + 20);
+                        data[i + 2] = Math.min(255, b * 0.5 + 40);
+                        
+                        // Efecto de viejo
+                        const noise = (Math.random() - 0.5) * 30;
+                        data[i] = Math.max(0, Math.min(255, data[i] + noise));
+                        data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise));
+                        data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise));
+                    }
+                    break;
+            }
+            
+            return imageData;
+        }
+
+        // Procesar el video
+        function processVideo() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                ctx.drawImage(video, 0, 0);
+                
+                if (currentEffect.startsWith('cerdo')) {
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const processed = applyCerdoEffect(imageData, currentEffect);
+                    ctx.putImageData(processed, 0, 0);
+                }
+                
+                canvas.style.display = 'block';
+                video.style.display = 'none';
+            } else {
+                canvas.style.display = 'none';
+                video.style.display = 'block';
+            }
+            
+            frame++;
+            requestAnimationFrame(processVideo);
+        }
+
+        // Event Listeners
+        document.querySelectorAll('.effect-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentEffect = this.dataset.effect;
+                
+                // Si es modo normal, ocultar partes del cerdo
+                if (currentEffect === 'normal') {
+                    document.querySelectorAll('.cerdo-part').forEach(el => {
+                        el.style.display = 'none';
+                    });
+                }
+            });
+        });
+
+        // Inicializar todo
+        async function init() {
+            await loadModels();
+            await initCamera();
+            processVideo();
+        }
+
+        // Iniciar cuando se carga la página
+        init();
+    </script>
+</body>
+</html>
+```
