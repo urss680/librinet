@@ -1,0 +1,120 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lápiz mágico en directo</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #video {
+            width: 100%;
+            max-width: 800px;
+            transform: scaleX(-1);
+            border: 2px solid #fff;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        .controls {
+            margin: 10px;
+        }
+        button {
+            padding: 8px 14px;
+            margin: 0 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <div class="controls">
+        <button id="btnTinta">Tinta mágica</button>
+        <button id="btnBorrar">Borrar</button>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const btnTinta = document.getElementById('btnTinta');
+        const btnBorrar = document.getElementById('btnBorrar');
+
+        let lapizActivo = false;
+        let dibujando = false;
+        let anterior = {x:0, y:0};
+
+        // Acceder a la cámara
+        navigator.mediaDevices.getUserMedia({video:true})
+            .then(stream => {
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                };
+            })
+            .catch(err => alert('No se pudo acceder a la cámara: ' + err));
+
+        // Activar/desactivar lápiz
+        btnTinta.addEventListener('click', () => {
+            lapizActivo = !lapizActivo;
+            btnTinta.textContent = lapizActivo ? 'Desactivar lápiz' : 'Tinta mágica';
+            canvas.style.pointerEvents = lapizActivo ? 'auto' : 'none';
+        });
+
+        // Dibujar
+        function empezar(e){
+            if(!lapizActivo) return;
+            dibujando = true;
+            actualizarPos(e);
+        }
+        function mover(e){
+            if(!lapizActivo || !dibujando) return;
+            ctx.strokeStyle = '#00ffcc';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(anterior.x, anterior.y);
+            actualizarPos(e);
+            ctx.lineTo(anterior.x, anterior.y);
+            ctx.stroke();
+        }
+        function terminar(){
+            dibujando = false;
+        }
+        function actualizarPos(e){
+            const rect = canvas.getBoundingClientRect();
+            anterior.x = e.clientX - rect.left;
+            anterior.y = e.clientY - rect.top;
+        }
+
+        canvas.addEventListener('mousedown', empezar);
+        canvas.addEventListener('mousemove', mover);
+        canvas.addEventListener('mouseup', terminar);
+        canvas.addEventListener('mouseout', terminar);
+
+        // Táctil
+        canvas.addEventListener('touchstart', e=>{e.preventDefault(); empezar(e.touches[0]);});
+        canvas.addEventListener('touchmove', e=>{e.preventDefault(); mover(e.touches[0]);});
+        canvas.addEventListener('touchend', terminar);
+
+        // Borrar
+        btnBorrar.addEventListener('click', () => ctx.clearRect(0,0,canvas.width,canvas.height));
+    </script>
+
+</body>
+</html>
+```
