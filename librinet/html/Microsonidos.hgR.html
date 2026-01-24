@@ -1,0 +1,41 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Microsonidos</title>
+  <style>
+    html,body{margin:0;height:100%;background:#000;overflow:hidden}
+    canvas{display:block;width:100%;height:100%}
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <script>
+    const c=document.getElementById('c'),x=c.getContext('2d');
+    let w,h,a;
+    function resize(){w=c.width=innerWidth;h=c.height=innerHeight;}
+    addEventListener('resize',resize);resize();
+    navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{
+      a=new AudioContext();
+      const src=a.createMediaStreamSource(s);
+      const an=a.createAnalyser();
+      an.fftSize=2048;
+      src.connect(an);
+      const buf=new Uint8Array(an.frequencyBinCount);
+      function draw(){
+        an.getByteFrequencyData(buf);
+        x.fillStyle='#000';x.fillRect(0,0,w,h);
+        x.fillStyle='#0f0';
+        for(let i=0;i<buf.length;i++){
+          const H=buf[i]/255*h;
+          x.fillRect(i*w/buf.length,h-H,1,H);
+        }
+        requestAnimationFrame(draw);
+      };
+      draw();
+    });
+  </script>
+</body>
+</html>
+```
