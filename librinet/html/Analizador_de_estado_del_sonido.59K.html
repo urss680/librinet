@@ -1,0 +1,134 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Analizador de estado del sonido</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+        }
+        #resultado {
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 15px 30px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,.15);
+        }
+        .feliz {
+            color: #2ecc71;
+        }
+        .triste {
+            color: #3498db;
+        }
+        .desconocido {
+            color: #7f8c8d;
+        }
+        audio {
+            margin-top: 20px;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>¿El sonido que estás escuchando es feliz o triste?</h1>
+
+    <!-- Opción 1: Escuchar directamente un archivo de audio -->
+    <input type="file" id="audioFile" accept="audio/*">
+    <audio id="audioPlayer" controls></audio>
+
+    <!-- Opción 2: Activar micrófono en tiempo real -->
+    <button id="btnMic">Usar micrófono</button>
+
+    <div id="resultado" class="desconocido">Estado: —</div>
+
+    <script>
+        const fileInput = document.getElementById('audioFile');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const btnMic = document.getElementById('btnMic');
+        const resultado = document.getElementById('resultado');
+
+        let mediaStream;
+        let audioContext;
+        let analyser;
+        let dataArray;
+
+        // Cargar archivo de audio
+        fileInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if(file){
+                const url = URL.createObjectURL(file);
+                audioPlayer.src = url;
+                audioPlayer.play();
+                iniciarAnalisis(audioPlayer);
+            }
+        });
+
+        // Usar micrófono
+        btnMic.addEventListener('click', async () => {
+            if(mediaStream){
+                mediaStream.getTracks().forEach(t=>t.stop());
+            }
+            mediaStream = await navigator.mediaDevices.getUserMedia({audio:true});
+            const micSource = audioContext.createMediaStreamSource(mediaStream);
+            iniciarAnalisis(null, micSource);
+        });
+
+        function iniciarAnalisis(mediaElement, sourceNode){
+            if(!audioContext){
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if(analyser) analyser.disconnect();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+
+            let node;
+            if(mediaElement){
+                node = audioContext.createMediaElementSource(mediaElement);
+            } else {
+                node = sourceNode;
+            }
+            node.connect(analyser);
+            if(mediaElement) analyser.connect(audioContext.destination);
+
+            interpretar();
+        }
+
+        function interpretar(){
+            analyser.getByteFrequencyData(dataArray);
+            const high = dataArray.slice(60,120).reduce((a,b)=>a+b,0);
+            const low = dataArray.slice(0,60).reduce((a,b)=>a+b,0);
+
+            if(high > low * 1.5){
+                resultado.textContent = "Estado: Feliz";
+                resultado.className = "feliz";
+            } else if(low > high * 1.5){
+                resultado.textContent = "Estado: Triste";
+                resultado.className = "triste";
+            } else {
+                resultado.textContent = "Estado: Neutro / desconocido";
+                resultado.className = "desconocido";
+            }
+
+            requestAnimationFrame(interpretar);
+        }
+    </script>
+
+</body>
+</html>
+```
