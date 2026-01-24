@@ -1,0 +1,96 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Detección dinámica con cámara</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #video {
+            width: 100%;
+            max-width: 800px;
+            transform: scaleX(-1);
+            border: 2px solid #fff;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        #results {
+            margin: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <div id="results">Cargando modelo...</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const results = document.getElementById('results');
+
+        let model;
+
+        // Acceder a la cámara
+        navigator.mediaDevices.getUserMedia({video: true})
+            .then(stream => {
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                };
+            })
+            .catch(err => {
+                results.textContent = 'No se pudo acceder a la cámara: ' + err;
+            });
+
+        // Cargar COCO-SSD
+        cocoSsd.load().then(m => {
+            model = m;
+            results.textContent = 'Detectando...';
+            detectar();
+        });
+
+        function detectar() {
+            model.detect(video).then(predicciones => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let texto = '';
+                predicciones.forEach(p => {
+                    // Dibujar caja
+                    ctx.strokeStyle = '#0f0';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(...p.bbox);
+                    // Etiqueta
+                    ctx.fillStyle = '#0f0';
+                    ctx.font = '16px Arial';
+                    ctx.fillText(p.class, p.bbox[0], p.bbox[1] - 5);
+                    texto += p.class + ' (' + (p.score * 100).toFixed(0) + '%) ';
+                });
+                results.textContent = texto || 'Sin objetos detectados';
+                requestAnimationFrame(detectar);
+            });
+        }
+    </script>
+
+</body>
+</html>
+```
