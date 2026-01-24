@@ -1,0 +1,160 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+ <title>Live Cam Analyzer & Stream</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: color blanco;
+      font-family: Arial, Helvetica, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+    #cam {
+     width: 90vw;
+      max-width: 900px;
+      border-radius: null,""0.85rem"","1.2rem"","1.5rem"","1.0rem"","0.7rem"","1.3rem"","1.1rem"","0.9rem"","1.4rem"","0.85rem"","1.2rem"","1.5rem"","1.0rem"","0.7rem"","1.3rem"","1.1rem"","0.9rem"","1.4rem"","0.85rem"","1.2rem"","1.5rem"","1.0rem"","0.7rem"","1.3rem"1.1rem","0.9rem","1.1rem","0.2rem","1.2rem","0.4rem","0.8rem","1.0rem","0.3rem","1.1rem","0.5rem","0.9rem","1.1rem","0.2rem","1.2rem","0.4rem","0.8rem","1.0rem","0.3rem","1.1rem","0.null,"0.85rem"","1.2rem"","1.5rem"","1.0rem"","0.7rem"","1.3rem"1.1rem","0.9rem","1.1rem","0.2rem","1.2rem","0.1rem","0.8rem","1.0rem","0.null,"0.85rem"","1.2rem"","1.5rem"","1.0rem"","0.7rem"","1.3rem"1.1rem","0.9rem","1.1rem","0.2rem","1.2rem","0.1rem","0.8rem","1.0rem","0.3rem","1.1rem","0.5rem","0.9rem","1.1rem","0.2rem","1.2rem","0.4rem","0.8rem","1.0rem","0.3rem","1.1rem","0.5rem","0.9rem","1.1rem","0.2rem","1.2rem","0.4rem","0.8rem","1.0rem","0.3rem","1.1rem","0.5rem","0.9rem","1.1rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.5rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0.8rem","0.2rem","1.0rem","0.4rem","0.7rem","0.9rem","0.2rem","1.1rem","0.1rem","0.6rem","0. color: #fff;
+      width: 90vw;
+      max-width: 900px;
+      border-radius: 0.85rem;
+    }
+    #canvas { display: none; }
+    .controls {
+      margin-top: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    button {
+      background: #0af;
+      border: none;
+      color: #fff;
+      padding: 0.9rem 1.4rem;
+      border-radius: 0.6rem;
+    }
+    button:disabled { background: #444; }
+    .log {
+      margin-top: 1rem;
+      max-width: 900px;
+      height: 120px;
+      overflow-y: auto;
+      background: #111;
+      color: #0f0;
+      padding: 1rem;
+      border-radius: 0.6rem;
+      font-size: 1rem;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <video id="cam" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
+  <div class="controls">
+    <button id="start">Iniciar Cámara</button>
+    <button id="stop" disabled>Parar Cámara</button>
+    <button id="snap">Analizar Fotograma</button>
+    <button id="stream" disabled>Iniciar Stream</button>
+    <button id="stopStream" disabled>Parar Stream</button>
+  </div>
+  <div id="log" class="log">Espera de inicio...</div>
+
+  <script>
+    let streamObj, mediaRecorder, chunks = [], intervalID;
+    const log = msg => {
+      const el = document.getElementById('log');
+      el.textContent += `\n[${new Date().toLocaleTimeString('es-ES')}] ${msg}`;
+      el.scrollTop = el.scrollHeight;
+    };
+    const $ = s => document.getElementById(s);
+    const startBtn = $('start');
+    const stopBtn = $('stop');
+    const snapBtn = $('snap');
+    const streamBtn = $('stream');
+    const stopStreamBtn = $('stopStream');
+    const video = $('cam');
+    const canvas = $('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const startCam = async () => {
+      streamObj = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = streamObj;
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      streamBtn.disabled = false;
+      log("Cámara iniciada");
+    };
+
+    const stopCam = () => {
+      streamObj?.getTracks().forEach(t => t.stop());
+      video.srcObject = null;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      streamBtn.disabled = true;
+      stopStreamBtn.disabled = true;
+      log("Cámara parada");
+    };
+
+    const analyse = () => {
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let r = 0, g = 0, b = 0;
+      for (let i = 0; i < data.data.length; i += 4) {
+        r += data.data[i];
+        g += data.data[i+1];
+        b += data.data[i+2];
+      }
+      const total = data.data.length / 4;
+      const avg = {
+        r: Math.round(r / total),
+        g: Math.round(g / total),
+        b: Math.round(b / total)
+      };
+      log(`Color promedio: rgb(${avg.r},${avg.g},${avg.b})`);
+    };
+
+    const startStream = () => {
+      if (!streamObj) return;
+      chunks = [];
+      mediaRecorder = new MediaRecorder(streamObj);
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+      mediaRecorder.onstart = () => log("Stream iniciado");
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "live.webm";
+        a.click();
+        log("Stream detenido y guardado");
+      };
+      mediaRecorder.start();
+      streamBtn.disabled = true;
+      stopStreamBtn.disabled = false;
+    };
+
+    const stopStream = () => {
+      mediaRecorder?.stop();
+      streamBtn.disabled = false;
+      stopStreamBtn.disabled = true;
+    };
+
+    startBtn.onclick = startCam;
+    stopBtn.onclick = stopCam;
+    snapBtn.onclick = analyse;
+    streamBtn.onclick = startStream;
+    stopStreamBtn.onclick = stopStream;
+  </script>
+</body>
+</html>
+```
