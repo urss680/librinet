@@ -1,0 +1,23 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Análisis de microsonidos y microvisiones</title>
+  <style>
+    body { margin: 0; background: #000; color: #0f0; font-family: monospace; }
+    #canvas, #video { width: 100vw; height: 50vh; display: block; }
+    #log { height: 10vh; overflow-y: scroll; background: #111; padding: 0.5rem; }
+    button { background: #0f0; color: #000; border: none; padding: 0.5rem 1rem; }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
+  <button id="toggle">Iniciar / Detener</button>
+  <div id="log"></div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const video = document.getElementIn
