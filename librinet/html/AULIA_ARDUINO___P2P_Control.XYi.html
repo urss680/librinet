@@ -1,0 +1,307 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AULIA ARDUINO - P2P Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        .aulia-gradient {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        }
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 28px;
+            height: 28px;
+            background: #6366f1;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 4px solid #ffffff;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+        }
+        .message-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        #debug-console::-webkit-scrollbar { width: 4px; }
+        #debug-console::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        .neural-bg {
+            background-image: url('https://raw.githubusercontent.com/iannstronaut/arduino-p2p/main/assets/neural-bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .arduino-icon {
+            background-image: url('https://raw.githubusercontent.com/iannstronaut/arduino-p2p/main/assets/arduino-icon.svg');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .emisor-icon {
+            background-image: url('https://raw.githubusercontent.com/iannstronaut/arduino-p2p/main/assets/emisor-icon.svg');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .receptor-icon {
+            background-image: url('https://raw.githubusercontent.com/iannstronaut/arduino-p2p/main/assets/receptor-icon.svg');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+
+    <!-- Pantalla de Inicio -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 p-6 neural-bg">
+        <div class="max-w-md w-full bg-slate-800/90 backdrop-blur-md border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl text-center space-y-6">
+            <div class="inline-flex p-4 aulia-gradient rounded-3xl mb-2 shadow-xl shadow-indigo-500/20">
+                <div class="w-10 h-10 arduino-icon"></div>
+            </div>
+            <h2 class="text-2xl font-bold italic tracking-tighter uppercase">Aulia <span class="text-indigo-400">Arduino</span></h2>
+            <p class="text-slate-400 text-sm px-4 font-medium italic">Protocolo P2P de Baja Latencia</p>
+            
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="startApp('RECEPTOR')" class="w-full bg-slate-700 hover:bg-slate-600 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border border-slate-600 flex items-center justify-center gap-3">
+                    <div class="w-6 h-6 receptor-icon"></div>
+                    MODO RECEPTOR (Nodo Arduino)
+                </button>
+                <button onclick="startApp('EMISOR')" class="w-full aulia-gradient hover:opacity-90 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3">
+                    <div class="w-6 h-6 emisor-icon"></div>
+                    MODO EMISOR (Mando a Distancia)
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Asegúrate de usar HTTPS</p>
+        </div>
+    </div>
+
+    <!-- UI Principal -->
+    <div id="main-ui" class="hidden w-full max-w-lg space-y-4">
+        
+        <header class="bg-slate-800/50 backdrop-blur-md p-6 rounded-[2rem] border border-slate-700 shadow-xl text-center relative overflow-hidden">
+            <div id="connection-glow" class="absolute inset-0 bg-red-500/10 transition-colors duration-500"></div>
+            <div class="relative z-10">
+                <span id="role-badge" class="px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-full text-[10px] font-black tracking-widest uppercase border border-indigo-500/30">
+                    Sincronizando...
+                </span>
+                <h1 id="status-text" class="text-xl font-bold mt-3 text-slate-300">Conectando a red PeerJS...</h1>
+                <p id="peer-id-display" class="text-[10px] text-slate-500 font-mono mt-1">ID: Cargando...</p>
+            </div>
+        </header>
+
+        <!-- Receptor -->
+        <div id="receptor-panel" class="hidden message-in bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl space-y-6">
+            <div class="text-center">
+                <button id="btn-serial" onclick="connectSerial()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-bold text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    CONECTAR ARDUINO (SERIAL)
+                </button>
+            </div>
+            <div class="flex justify-between items-center bg-slate-900/50 p-6 rounded-3xl border border-slate-700/50">
+                <div class="text-left">
+                    <p class="text-[10px] font-black text-indigo-400 uppercase italic">Pin 2 Output</p>
+                    <p class="text-2xl font-black italic">GRADOS</p>
+                </div>
+                <div id="receptor-angle" class="text-6xl font-black text-white tabular-nums">090°</div>
+            </div>
+        </div>
+
+        <!-- Emisor -->
+        <div id="emisor-panel" class="hidden message-in bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl space-y-8">
+            <div class="text-center space-y-2">
+                <div id="emisor-angle-display" class="text-8xl font-black italic tracking-tighter text-white">90°</div>
+            </div>
+
+            <div class="relative py-4">
+                <input type="range" id="servo-slider" min="0" max="180" value="90" 
+                    class="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-thumb outline-none">
+            </div>
+        </div>
+
+        <!-- Consola de Depuración (Importante para saber qué falla) -->
+        <div class="bg-black/40 p-4 rounded-2xl border border-white/5 font-mono text-[10px] space-y-1">
+            <p class="text-slate-500 uppercase font-bold mb-1">Log del Sistema:</p>
+            <div id="debug-console" class="h-20 overflow-y-auto text-slate-400">
+                <div>> Aplicación iniciada.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ID FIJO para el receptor
+        const MASTER_ID = "AULIA_ARDUINO_CONTROL_FIXED"; 
+        let peer;
+        let connection = null;
+        let serialPort, serialWriter;
+        let userRole = "";
+
+        function log(msg, color = "text-slate-400") {
+            const consoleEl = document.getElementById('debug-console');
+            const entry = document.createElement('div');
+            entry.className = color;
+            entry.innerText = `> ${msg}`;
+            consoleEl.appendChild(entry);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            console.log(msg);
+        }
+
+        function startApp(role) {
+            userRole = role;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-ui').classList.remove('hidden');
+            document.getElementById('role-badge').innerText = role;
+
+            // Configuración común de PeerJS con servidor de respaldo
+            const peerConfig = {
+                debug: 3,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            };
+
+            if (role === 'RECEPTOR') {
+                document.getElementById('receptor-panel').classList.remove('hidden');
+                initReceptor(peerConfig);
+            } else {
+                document.getElementById('emisor-panel').classList.remove('hidden');
+                initEmisor(peerConfig);
+            }
+        }
+
+        // --- RECEPTOR ---
+        function initReceptor(config) {
+            log("Iniciando receptor con ID fijo...");
+            peer = new Peer(MASTER_ID, config);
+
+            peer.on('open', (id) => {
+                log(`Registrado en red PeerJS como: ${id}`, "text-emerald-400");
+                updateStatus("Listo para recibir", "text-emerald-400", "bg-emerald-500/5");
+                document.getElementById('peer-id-display').innerText = `ID: ${id}`;
+            });
+
+            peer.on('connection', (conn) => {
+                log("¡Emisor detectado! Intentando conectar...", "text-indigo-400");
+                connection = conn;
+                
+                conn.on('open', () => {
+                    log("Vínculo establecido con éxito.", "text-emerald-400");
+                    updateStatus("Emisor Conectado", "text-indigo-400", "bg-indigo-500/5");
+                });
+
+                conn.on('data', (data) => {
+                    if (data.type === 'servo') {
+                        document.getElementById('receptor-angle').innerText = data.value.toString().padStart(3, '0') + "°";
+                        sendToArduino(data.value);
+                    }
+                });
+
+                conn.on('close', () => {
+                    log("El emisor cerró la conexión.", "text-red-400");
+                    updateStatus("Esperando Emisor...", "text-yellow-500", "bg-yellow-500/5");
+                });
+            });
+
+            peer.on('error', (err) => {
+                log(`ERROR PEER: ${err.type}`, "text-red-500");
+                if(err.type === 'unavailable-id') {
+                    alert("El ID 'ARDUINO' ya está ocupado por otro receptor.");
+                }
+            });
+        }
+
+        // --- EMISOR ---
+        function initEmisor(config) {
+            log("Iniciando emisor...");
+            peer = new Peer(config);
+
+            peer.on('open', (id) => {
+                log(`Mi ID de emisor es: ${id}`);
+                document.getElementById('peer-id-display').innerText = `MI ID: ${id}`;
+                tryConnect();
+            });
+
+            const slider = document.getElementById('servo-slider');
+            const display = document.getElementById('emisor-angle-display');
+
+            slider.oninput = () => {
+                const val = slider.value;
+                display.innerText = val + "°";
+                if (connection && connection.open) {
+                    connection.send({ type: 'servo', value: val });
+                }
+            };
+        }
+
+        function tryConnect() {
+            log(`Buscando al receptor en la red...`, "text-yellow-500");
+            updateStatus("Buscando Receptor...", "text-yellow-500", "bg-yellow-500/5");
+            
+            connection = peer.connect(MASTER_ID, {
+                reliable: true
+            });
+
+            connection.on('open', () => {
+                log("¡Conexión establecida con el Arduino!", "text-emerald-400");
+                updateStatus("Vinculado con Receptor", "text-emerald-400", "bg-emerald-500/5");
+            });
+
+            connection.on('close', () => {
+                log("Conexión perdida con el receptor.", "text-red-400");
+                updateStatus("Reconectando...", "text-red-400", "bg-red-500/5");
+                setTimeout(tryConnect, 3000);
+            });
+
+            connection.on('error', (err) => {
+                log(`Error de conexión: ${err.message}`, "text-red-400");
+            });
+        }
+
+        // --- SERIAL ---
+        async function connectSerial() {
+            if (!("serial" in navigator)) {
+                alert("Tu navegador no soporta Web Serial. Usa Chrome o Edge en PC.");
+                return;
+            }
+            try {
+                serialPort = await navigator.serial.requestPort();
+                await serialPort.open({ baudRate: 9600 });
+                serialWriter = serialPort.writable.getWriter();
+                const btn = document.getElementById('btn-serial');
+                btn.innerHTML = "✅ ARDUINO CONECTADO";
+                btn.className = "w-full py-4 bg-slate-700 rounded-2xl font-bold text-sm text-emerald-400 border border-emerald-500/30";
+                log("Comunicación Serial iniciada a 9600 bps.", "text-emerald-400");
+            } catch (err) {
+                log(`Error Serial: ${err.message}`, "text-red-400");
+            }
+        }
+
+        async function sendToArduino(val) {
+            if (serialWriter) {
+                const encoder = new TextEncoder();
+                await serialWriter.write(encoder.encode(val + "\n"));
+            }
+        }
+
+        function updateStatus(text, colorClass, bgClass) {
+            const statusText = document.getElementById('status-text');
+            const glow = document.getElementById('connection-glow');
+            statusText.innerText = text;
+            statusText.className = `text-xl font-bold mt-3 transition-colors ${colorClass}`;
+            glow.className = `absolute inset-0 transition-colors duration-500 ${bgClass}`;
+        }
+
+        window.onbeforeunload = () => { if (peer) peer.destroy(); };
+    </script>
+</body>
+</html>
+```
