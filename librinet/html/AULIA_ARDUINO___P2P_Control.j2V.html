@@ -1,0 +1,256 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AULIA ARDUINO - P2P Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        .aulia-gradient {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        }
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 28px;
+            height: 28px;
+            background: #6366f1;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 4px solid #ffffff;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+        }
+        .message-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        #debug-console::-webkit-scrollbar { width: 4px; }
+        #debug-console::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+
+    <!-- Pantalla de Inicio -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 p-6">
+        <div class="max-w-md w-full bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl text-center space-y-6">
+            <div class="inline-flex p-4 aulia-gradient rounded-3xl mb-2 shadow-xl shadow-indigo-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold italic tracking-tighter uppercase">Aulia <span class="text-indigo-400">Arduino</span></h2>
+            <p class="text-slate-400 text-sm px-4 font-medium italic">Control P2P Estable</p>
+            
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="startApp('RECEPTOR')" class="w-full bg-slate-700 hover:bg-slate-600 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border border-slate-600">
+                    MODO RECEPTOR (Nodo Arduino)
+                </button>
+                <button onclick="startApp('EMISOR')" class="w-full aulia-gradient hover:opacity-90 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95">
+                    MODO EMISOR (Mando a Distancia)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI Principal -->
+    <div id="main-ui" class="hidden w-full max-w-lg space-y-4">
+        
+        <header class="bg-slate-800/50 backdrop-blur-md p-6 rounded-[2rem] border border-slate-700 shadow-xl text-center relative overflow-hidden">
+            <div id="connection-glow" class="absolute inset-0 bg-red-500/10 transition-colors duration-500"></div>
+            <div class="relative z-10">
+                <span id="role-badge" class="px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-full text-[10px] font-black tracking-widest uppercase border border-indigo-500/30">
+                    Sincronizando...
+                </span>
+                <h1 id="status-text" class="text-xl font-bold mt-3 text-slate-300">Conectando...</h1>
+                <p id="peer-id-display" class="text-[10px] text-slate-500 font-mono mt-1">ID: Cargando...</p>
+            </div>
+        </header>
+
+        <!-- Receptor -->
+        <div id="receptor-panel" class="hidden message-in bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl space-y-6">
+            <div class="text-center">
+                <button id="btn-serial" onclick="connectSerial()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-bold text-sm transition-all shadow-lg flex items-center justify-center gap-2">
+                    CONECTAR ARDUINO (SERIAL)
+                </button>
+            </div>
+            <div class="flex justify-between items-center bg-slate-900/50 p-6 rounded-3xl border border-slate-700/50">
+                <div class="text-left">
+                    <p class="text-[10px] font-black text-indigo-400 uppercase italic">Pin 2 Output</p>
+                    <p class="text-2xl font-black italic">GRADOS</p>
+                </div>
+                <div id="receptor-angle" class="text-6xl font-black text-white tabular-nums">090°</div>
+            </div>
+        </div>
+
+        <!-- Emisor -->
+        <div id="emisor-panel" class="hidden message-in bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl space-y-8">
+            <div class="text-center">
+                <div id="emisor-angle-display" class="text-8xl font-black italic tracking-tighter text-white">90°</div>
+            </div>
+
+            <div class="relative py-4">
+                <input type="range" id="servo-slider" min="0" max="180" value="90" 
+                    class="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-thumb outline-none">
+            </div>
+            <p class="text-center text-[10px] text-slate-500 uppercase font-bold tracking-widest">El valor se mantiene al soltar</p>
+        </div>
+
+        <!-- Consola -->
+        <div class="bg-black/40 p-4 rounded-2xl border border-white/5 font-mono text-[10px] space-y-1">
+            <p class="text-slate-500 uppercase font-bold mb-1">Estado del Sistema:</p>
+            <div id="debug-console" class="h-16 overflow-y-auto text-slate-400">
+                <div>> Listo.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MASTER_ID = "AULIA_ARDUINO_CONTROL_STABLE"; 
+        let peer;
+        let connection = null;
+        let serialPort, serialWriter;
+        let currentAngle = 90; // Memoria del ángulo actual
+
+        function log(msg, color = "text-slate-400") {
+            const consoleEl = document.getElementById('debug-console');
+            const entry = document.createElement('div');
+            entry.className = color;
+            entry.innerText = `> ${msg}`;
+            consoleEl.appendChild(entry);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        function startApp(role) {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-ui').classList.remove('hidden');
+            document.getElementById('role-badge').innerText = role;
+
+            const peerConfig = {
+                debug: 1,
+                config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+            };
+
+            if (role === 'RECEPTOR') {
+                document.getElementById('receptor-panel').classList.remove('hidden');
+                initReceptor(peerConfig);
+            } else {
+                document.getElementById('emisor-panel').classList.remove('hidden');
+                initEmisor(peerConfig);
+            }
+        }
+
+        // --- RECEPTOR ---
+        function initReceptor(config) {
+            peer = new Peer(MASTER_ID, config);
+
+            peer.on('open', (id) => {
+                log(`Receptor listo en ID: ${id}`, "text-emerald-400");
+                updateStatus("Esperando mando...", "text-emerald-400", "bg-emerald-500/5");
+                document.getElementById('peer-id-display').innerText = `ID: ${id}`;
+            });
+
+            peer.on('connection', (conn) => {
+                log("Mando conectado.");
+                connection = conn;
+                
+                conn.on('open', () => {
+                    updateStatus("Mando Vinculado", "text-indigo-400", "bg-indigo-500/10");
+                });
+
+                conn.on('data', (data) => {
+                    if (data.type === 'servo') {
+                        // Actualizamos solo si recibimos un valor válido
+                        const val = parseInt(data.value);
+                        document.getElementById('receptor-angle').innerText = val.toString().padStart(3, '0') + "°";
+                        sendToArduino(val);
+                    }
+                });
+
+                conn.on('close', () => {
+                    log("Mando desconectado.", "text-red-400");
+                    updateStatus("Conexión perdida", "text-red-400", "bg-red-500/5");
+                });
+            });
+        }
+
+        // --- EMISOR ---
+        function initEmisor(config) {
+            peer = new Peer(config);
+
+            peer.on('open', (id) => {
+                log(`Mando iniciado.`);
+                document.getElementById('peer-id-display').innerText = `MI ID: ${id}`;
+                tryConnect();
+            });
+
+            const slider = document.getElementById('servo-slider');
+            const display = document.getElementById('emisor-angle-display');
+
+            // Solo envía si el valor cambia físicamente
+            slider.oninput = () => {
+                const val = parseInt(slider.value);
+                if(val !== currentAngle) {
+                    currentAngle = val;
+                    display.innerText = val + "°";
+                    if (connection && connection.open) {
+                        connection.send({ type: 'servo', value: val });
+                    }
+                }
+            };
+        }
+
+        function tryConnect() {
+            log("Buscando receptor...");
+            updateStatus("Buscando...", "text-yellow-500", "bg-yellow-500/5");
+            
+            connection = peer.connect(MASTER_ID, { reliable: true });
+
+            connection.on('open', () => {
+                log("¡Conectado!", "text-emerald-400");
+                updateStatus("En línea", "text-emerald-400", "bg-emerald-500/10");
+                // Al conectar, sincronizamos la posición actual del slider
+                connection.send({ type: 'servo', value: currentAngle });
+            });
+
+            connection.on('close', () => {
+                log("Reconectando en 3s...", "text-slate-500");
+                setTimeout(tryConnect, 3000);
+            });
+        }
+
+        // --- SERIAL ---
+        async function connectSerial() {
+            try {
+                serialPort = await navigator.serial.requestPort();
+                await serialPort.open({ baudRate: 9600 });
+                serialWriter = serialPort.writable.getWriter();
+                document.getElementById('btn-serial').innerText = "✅ ARDUINO CONECTADO";
+                log("Serial OK.");
+            } catch (err) {
+                log("Error Serial: " + err.message, "text-red-400");
+            }
+        }
+
+        async function sendToArduino(val) {
+            if (serialWriter) {
+                const encoder = new TextEncoder();
+                await serialWriter.write(encoder.encode(val + "\n"));
+            }
+        }
+
+        function updateStatus(text, colorClass, bgClass) {
+            const statusText = document.getElementById('status-text');
+            const glow = document.getElementById('connection-glow');
+            statusText.innerText = text;
+            statusText.className = `text-xl font-bold mt-3 transition-colors ${colorClass}`;
+            glow.className = `absolute inset-0 transition-colors duration-500 ${bgClass}`;
+        }
+    </script>
+</body>
+</html>
+```
