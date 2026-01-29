@@ -1,0 +1,427 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AULIA ARDUINO - LCD P2P</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        .aulia-gradient {
+            background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+        }
+        .lcd-font {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #064e3b;
+            color: #4ade80;
+            text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
+        }
+        .message-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .lcd-pixel {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+
+    <!-- Pantalla de Inicio -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 p-6">
+        <div class="max-w-md w-full bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl text-center space-y-6">
+            <div class="inline-flex p-4 aulia-gradient rounded-3xl mb-2 shadow-xl shadow-blue-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold italic tracking-tighter uppercase">Aulia <span class="text-sky-400">LCD Remote</span></h2>
+            <p class="text-slate-400 text-sm px-4 font-medium italic">Envío Constante para I2C</p>
+            
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="startApp('RECEPTOR')" class="w-full bg-slate-700 hover:bg-slate-600 py-4 rounded-2xl font-bold transition-all shadow-lg border border-slate-600">
+                    MODO RECEPTOR (Arduino LCD)
+                </button>
+                <button onclick="startApp('EMISOR')" class="w-full aulia-gradient hover:opacity-90 py-4 rounded-2xl font-bold transition-all shadow-lg">
+                    MODO EMISOR (Teclado Remoto)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI Principal -->
+    <div id="main-ui" class="hidden w-full max-w-lg space-y-4">
+        
+        <header class="bg-slate-800/50 backdrop-blur-md p-6 rounded-[2rem] border border-slate-700 shadow-xl text-center relative overflow-hidden">
+            <div id="connection-glow" class="absolute inset-0 bg-red-500/10 transition-colors duration-500"></div>
+            <div class="relative z-10">
+                <span id="role-badge" class="px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full text-[10px] font-black tracking-widest uppercase border border-sky-500/30">
+                    Sincronizando...
+                </span>
+                <h1 id="status-text" class="text-xl font-bold mt-3 text-slate-300">Conectando...</h1>
+                <p id="peer-id-display" class="text-[10px] text-slate-500 font-mono mt-1 italic">ID: Cargando...</p>
+            </div>
+        </header>
+
+        <!-- Receptor LCD View -->
+        <div id="receptor-panel" class="hidden message-in bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl space-y-6">
+            <div class="text-center">
+                <button id="btn-serial" onclick="connectSerial()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-bold text-sm transition-all shadow-lg flex items-center justify-center gap-2">
+                    CONECTAR SERIAL (ARDUINO)
+                </button>
+            </div>
+            <div class="space-y-2">
+                <p class="text-[10px] font-black text-sky-400 uppercase tracking-widest ml-2">Vista Previa LCD 16x2</p>
+                <div class="lcd-font p-6 rounded-xl border-4 border-slate-900 min-h-[100px] flex items-center justify-center text-2xl font-bold break-all">
+                    <span id="receptor-text">ESPERANDO DATOS...</span>
+                </div>
+            </div>
+            <div class="space-y-4">
+                <p class="text-[10px] font-black text-sky-400 uppercase tracking-widest ml-2">Simulación Gráfica LCD</p>
+                <canvas id="lcd-canvas" width="320" height="160" class="w-full rounded-lg border-4 border-slate-900 lcd-pixel"></canvas>
+            </div>
+        </div>
+
+        <!-- Emisor Input -->
+        <div id="emisor-panel" class="hidden message-in bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl space-y-6">
+            <div class="space-y-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-widest ml-2">Mensaje para la pantalla</label>
+                <input type="text" id="lcd-input" maxlength="32" placeholder="Escribe algo..." 
+                    class="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl px-6 py-4 text-xl font-bold focus:outline-none focus:border-sky-500 transition-all text-white">
+                <p class="text-[10px] text-slate-500 text-center italic">El texto se enviará automáticamente cada 500ms</p>
+            </div>
+            <div class="space-y-4">
+                <p class="text-[10px] font-black text-sky-400 uppercase tracking-widest ml-2">Vista Previa LCD</p>
+                <canvas id="emisor-canvas" width="320" height="160" class="w-full rounded-lg border-4 border-slate-900 lcd-pixel"></canvas>
+            </div>
+        </div>
+
+        <!-- Consola -->
+        <div class="bg-black/40 p-4 rounded-2xl border border-white/5 font-mono text-[10px]">
+            <div id="debug-console" class="h-12 overflow-y-auto text-slate-400">
+                <div>> Sistema listo.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MASTER_ID = "AULIA_LCD_STABLE_V1"; 
+        let peer;
+        let connection = null;
+        let serialPort, serialWriter;
+        let currentText = "";
+        let transmitInterval = null;
+
+        // LCD Canvas Setup
+        let lcdCanvas, lcdCtx, emisorCanvas, emisorCtx;
+        const LCD_COLS = 16;
+        const LCD_ROWS = 2;
+        const CHAR_WIDTH = 5;
+        const CHAR_HEIGHT = 8;
+        const PIXEL_SIZE = 3;
+        const CHAR_SPACING = 1;
+        const ROW_SPACING = 2;
+
+        // LCD Character Font (5x8 pixels)
+        const lcdFont = {
+            ' ': [0b00000,0b00000,0b00000,0b00000,0b00000,0b00000,0b00000,0b00000],
+            '!': [0b00100,0b00100,0b00100,0b00100,0b00100,0b00000,0b00100,0b00000],
+            '"': [0b01101,0b01101,0b00000,0b00000,0b00000,0b00000,0b00000,0b00000],
+            '#': [0b01010,0b11111,0b01010,0b11111,0b01010,0b00000,0b00000,0b00000],
+            '$': [0b01110,0b01000,0b11110,0b00001,0b11100,0b10000,0b01110,0b00000],
+            '%': [0b11000,0b11001,0b00010,0b00100,0b01000,0b10011,0b00011,0b00000],
+            '&': [0b00100,0b01010,0b00100,0b01010,0b10101,0b10000,0b01010,0b00000],
+            "'": [0b01100,0b01100,0b00100,0b00000,0b00000,0b00000,0b00000,0b00000],
+            '(': [0b00100,0b01000,0b01000,0b01000,0b01000,0b01000,0b00100,0b00000],
+            ')': [0b00100,0b00010,0b00010,0b00010,0b00010,0b00010,0b00100,0b00000],
+            '*': [0b00100,0b10101,0b01110,0b11111,0b01110,0b10101,0b00100,0b00000],
+            '+': [0b00100,0b00100,0b11111,0b00100,0b00100,0b00000,0b00000,0b00000],
+            ',': [0b00000,0b00000,0b00000,0b00000,0b00100,0b00100,0b01000,0b00000],
+            '-': [0b00000,0b00000,0b11111,0b00000,0b00000,0b00000,0b00000,0b00000],
+            '.': [0b00000,0b00000,0b00000,0b00000,0b00000,0b00100,0b00000,0b00000],
+            '/': [0b00001,0b00010,0b00100,0b01000,0b10000,0b00000,0b00000,0b00000],
+            '0': [0b01110,0b10001,0b10011,0b10101,0b11001,0b10001,0b01110,0b00000],
+            '1': [0b00100,0b01100,0b00100,0b00100,0b00100,0b00100,0b01110,0b00000],
+            '2': [0b01110,0b10001,0b00001,0b00010,0b00100,0b01000,0b11111,0b00000],
+            '3': [0b11111,0b00010,0b00100,0b00010,0b00001,0b10001,0b01110,0b00000],
+            '4': [0b00010,0001010,0b00100,0b01010,0b11111,0b00010,0b00010,0b00000],
+            '5': [0b11111,0b10000,0b11110,0b00001,0b00001,0b10001,0b01110,0b00000],
+            '6': [0b01110,0b10001,0b10000,0b11110,0b10001,0b10001,0b01110,0b00000],
+            '7': [0b11111,0b00001,0b00010,0b00100,0b00100,0b00100,0b00100,0b00000],
+            '8': [0b01110,0b10001,0b10001,0b01110,0b10001,0b10001,0b01110,0b00000],
+            '9': [0b01110,0b10001,0b10001,0b01111,0b00001,0b10001,0b01110,0b00000],
+            ':': [0b00000,0b00100,0b00000,0b00000,0b00000,0b00100,0b00000,0b00000],
+            ';': [0b00000,0b00100,0b00000,0b00000,0b00100,0b00100,0b01000,0b00000],
+            '<': [0b00010,0b00100,0b01000,0b10000,0b01000,0b00100,0b00010,0b00000],
+            '=': [0b00000,0b00000,0b11111,0b00000,0b11111,0b00000,0b00000,0b00000],
+            '>': [0b01000,0b00100,0b00010,0b00001,0b00010,0b00100,0b01000,0b00000],
+            '?': [0b01110,0b10001,0b00001,0b00010,0b00100,0b00000,0b00100,0b00000],
+            '@': [0b01110,0b10001,0b10001,0b10111,0b10101,0b10101,0b01110,0b00000],
+            'A': [0b00100,0b01010,0b10001,0b10001,0b11111,0b10001,0b10001,0b00000],
+            'B': [0b11110,0b10001,0b10001,0b11110,0b10001,0b10001,0b11110,0b00000],
+            'C': [0b01110,0b10001,0b10000,0b10000,0b10000,0b10001,0b01110,0b00000],
+            'D': [0b11100,0b10010,0b10001,0b10001,0b10001,0b10010,0b11100,0b00000],
+            'E': [0b11111,0b10000,0b10000,0b11100,0b10000,0b10000,0b11111,0b00000],
+            'F': [0b11111,0b10000,0b10000,0b11100,0b10000,0b10000,0b10000,0b00000],
+            'G': [0b01110,0b10001,0b10000,0b10111,0b10001,0b10001,0b01110,0b00000],
+            'H': [0b10001,0b10001,0b10001,0b11111,0b10001,0b10001,0b10001,0b00000],
+            'I': [0b01110,0b00100,0b00100,0b00100,0b00100,0b00100,0b01110,0b00000],
+            'J': [0b00111,0b00010,0b00010,0b00010,0b00010,0b10010,0b01100,0b00000],
+            'K': [0b10001,0b10010,0b10100,0b11000,0b10100,0b10010,0b10001,0b00000],
+            'L': [0b10000,0b10000,0b10000,0b10000,0b10000,0b10000,0b11111,0b00000],
+            'M': [0b10001,0b11011,0b10101,0b10101,0b10001,0b10001,0b10001,0b00000],
+            'N': [0b10001,0b10001,0b11001,0b10101,0b10011,0b10001,0b10001,0b00000],
+            'O': [0b01110,0b10001,0b10001,0b10001,0b10001,0b10001,0b01110,0b00000],
+            'P': [0b11110,0b10001,0b10001,0b11110,0b10000,0b10000,0b10000,0b00000],
+            'Q': [0b01110,0b10001,0b10001,0b10001,0b10101,0b10010,0b01111,0b00000],
+            'R': [0b11110,0b10001,0b10001,0b11110,0b10100,0b10010,0b10001,0b00000],
+            'S': [0b01111,0b10000,0b10000,0b01110,0b00001,0b00001,0b11110,0b00000],
+            'T': [0b11111,0b00100,0b00100,0b00100,0b00100,0b00100,0b00100,0b00000],
+            'U': [0b10001,0b10001,0b10001,0b10001,0b10001,0b10001,0b01110,0b00000],
+            'V': [0b10001,0b10001,0b10001,0b10001,0b10001,0b01010,0b00100,0b00000],
+            'W': [0b10001,0b10001,0b10001,0b10101,0b10101,0b11011,0b10001,0b00000],
+            'X': [0b10001,0b10001,0b01010,0b00100,0b01010,0b10001,0b10001,0b00000],
+            'Y': [0b10001,0b10001,0b10001,0b01010,0b00100,0b00100,0b00100,0b00000],
+            'Z': [0b11111,0b00001,0b00010,0b00100,0b01000,0b10000,0b11111,0b00000],
+            '[': [0b11111,0b10001,0b10001,0b10001,0b10001,0b10001,0b11111,0b00000],
+            '\\':[0b10000,0b01000,0b00100,0b00010,0b00001,0b00000,0b00000,0b00000],
+            ']': [0b11111,0b10001,0b10001,0b10001,0b10001,0b10001,0b11111,0b00000],
+            '^': [0b00100,0b01010,0b10001,0b00000,0b00000,0b00000,0b00000,0b00000],
+            '_': [0b00000,0b00000,0b00000,0b00000,0b00000,0b00000,0b11111,0b00000],
+            '`': [0b00100,0b01000,0b00000,0b00000,0b00000,0b00000,0b00000,0b00000],
+            'a': [0b00000,0b00000,0b01110,0b00001,0b11111,0b10001,0b01111,0b00000],
+            'b': [0b10000,0b10000,0b10110,0b11001,0b10001,0b10001,0b11110,0b00000],
+            'c': [0b00000,0b00000,0b01110,0b10000,0b10000,0b10000,0b01110,0b00000],
+            'd': [0b00001,0b00001,0b01111,0b10001,0b10001,0b10001,0b01111,0b00000],
+            'e': [0b00000,0b00000,0b01110,0b10001,0b11111,0b10000,0b01110,0b00000],
+            'f': [0b00110,0b01001,0b01000,0b11100,0b01000,0b01000,0b01000,0b00000],
+            'g': [0b00000,0b00000,0b01111,0b10001,0b10001,0b01111,0b00001,0b11110],
+            'h': [0b10000,0b10000,0b10110,0b11001,0b10001,0b10001,0b10001,0b00000],
+            'i': [0b00100,0b00000,0b01100,0b00100,0b00100,0b00100,0b01110,0b00000],
+            'j': [0b00010,0b00000,0b00010,0b00010,0b00010,0b10010,0b01100,0b00000],
+            'k': [0b10000,0b10000,0b10010,0b10100,0b11000,0b10100,0b10010,0b00000],
+            'l': [0b01100,0b00100,0b00100,0b00100,0b00100,0b00100,0b01110,0b00000],
+            'm': [0b00000,0b00000,0b11010,0b10101,0b10101,0b10101,0b10101,0b00000],
+            'n': [0b00000,0b00000,0b10110,0b11001,0b10001,0b10001,0b10001,0b00000],
+            'o': [0b00000,0b00000,0b01110,0b10001,0b10001,0b10001,0b01110,0b00000],
+            'p': [0b00000,0b00000,0b11110,0b10001,0b11110,0b10000,0b10000,0b00000],
+            'q': [0b00000,0b00000,0b01111,0b10001,0b10001,0b01111,0b00001,0b00001],
+            'r': [0b00000,0b00000,0b10110,0b11001,0b10000,0b10000,0b10000,0b00000],
+            's': [0b00000,0b00000,0b01111,0b10000,0b01110,0b00001,0b11110,0b00000],
+            't': [0b01000,0b01000,0b11110,0b01000,0b01000,0b01001,0b00110,0b00000],
+            'u': [0b00000,0b00000,0b10001,0b10001,0b10001,0b10001,0b01111,0b00000],
+            'v': [0b00000,0b00000,0b10001,0b10001,0b10001,0b01010,0b00100,0b00000],
+            'w': [0b00000,0b00000,0b10001,0b10101,0b10101,0b10101,0b01010,0b00000],
+            'x': [0b00000,0b00000,0b10001,0b01010,0b00100,0b01010,0b10001,0b00000],
+            'y': [0b00000,0b00000,0b10001,0b10001,0b01111,0b00001,0b10000,0b11111],
+            'z': [0b00000,0b00000,0b11111,0b00010,0b00100,0b01000,0b11111,0b00000],
+            '{': [0b00110,0b01000,0b01000,0b01100,0b01000,0b01000,0b00110,0b00000],
+            '|': [0b00100,0b00100,0b00100,0b00100,0b00100,0b00100,0b00100,0b00100],
+            '}': [0b01100,0b00010,0b00010,0b00110,0b00010,0b00010,0b01100,0b00000],
+            '~': [0b00000,0b00000,0b00000,0b01110,0b10001,0b00000,0b00000,0b00000]
+        };
+
+        function initLCDCanvas() {
+            lcdCanvas = document.getElementById('lcd-canvas');
+            lcdCtx = lcdCanvas.getContext('2d');
+            lcdCtx.imageSmoothingEnabled = false;
+            
+            emisorCanvas = document.getElementById('emisor-canvas');
+            emisorCtx = emisorCanvas.getContext('2d');
+            emisorCtx.imageSmoothingEnabled = false;
+            
+            drawLCD(lcdCtx, "ESPERANDO DATOS...");
+            drawLCD(emisorCtx, "");
+        }
+
+        function drawLCD(ctx, text) {
+            // Clear background
+            ctx.fillStyle = '#064e3b';
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            // Draw grid lines
+            ctx.strokeStyle = '#065f46';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= LCD_COLS; i++) {
+                const x = i * (CHAR_WIDTH + CHAR_SPACING) * PIXEL_SIZE;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, LCD_ROWS * (CHAR_HEIGHT + ROW_SPACING) * PIXEL_SIZE);
+                ctx.stroke();
+            }
+            for (let i = 0; i <= LCD_ROWS; i++) {
+                const y = i * (CHAR_HEIGHT + ROW_SPACING) * PIXEL_SIZE;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(LCD_COLS * (CHAR_WIDTH + CHAR_SPACING) * PIXEL_SIZE, y);
+                ctx.stroke();
+            }
+            
+            // Draw text
+            const paddedText = text.padEnd(LCD_COLS * LCD_ROWS, ' ');
+            for (let row = 0; row < LCD_ROWS; row++) {
+                for (let col = 0; col < LCD_COLS; col++) {
+                    const charIndex = row * LCD_COLS + col;
+                    const char = paddedText[charIndex] || ' ';
+                    drawChar(ctx, char, col, row);
+                }
+            }
+        }
+
+        function drawChar(ctx, char, col, row) {
+            const charData = lcdFont[char] || lcdFont['?'];
+            const startX = col * (CHAR_WIDTH + CHAR_SPACING) * PIXEL_SIZE;
+            const startY = row * (CHAR_HEIGHT + ROW_SPACING) * PIXEL_SIZE;
+            
+            ctx.fillStyle = '#4ade80';
+            for (let y = 0; y < CHAR_HEIGHT; y++) {
+                for (let x = 0; x < CHAR_WIDTH; x++) {
+                    if (charData[y] & (1 << (CHAR_WIDTH - 1 - x))) {
+                        ctx.fillRect(
+                            startX + x * PIXEL_SIZE,
+                            startY + y * PIXEL_SIZE,
+                            PIXEL_SIZE,
+                            PIXEL_SIZE
+                        );
+                    }
+                }
+            }
+        }
+
+        function log(msg, color = "text-slate-400") {
+            const consoleEl = document.getElementById('debug-console');
+            const entry = document.createElement('div');
+            entry.className = color;
+            entry.innerText = `> ${msg}`;
+            consoleEl.appendChild(entry);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        function startApp(role) {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-ui').classList.remove('hidden');
+            document.getElementById('role-badge').innerText = role;
+
+            const peerConfig = {
+                debug: 1,
+                config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+            };
+
+            if (role === 'RECEPTOR') {
+                document.getElementById('receptor-panel').classList.remove('hidden');
+                initReceptor(peerConfig);
+            } else {
+                document.getElementById('emisor-panel').classList.remove('hidden');
+                initEmisor(peerConfig);
+            }
+
+            initLCDCanvas();
+        }
+
+        // --- RECEPTOR (Recibe y manda a Arduino) ---
+        function initReceptor(config) {
+            peer = new Peer(MASTER_ID, config);
+
+            peer.on('open', (id) => {
+                log(`LCD Receptor ID: ${id}`, "text-sky-400");
+                updateStatus("Listo para recibir", "text-sky-400", "bg-sky-500/5");
+                document.getElementById('peer-id-display').innerText = `ID: ${id}`;
+            });
+
+            peer.on('connection', (conn) => {
+                log("Emisor conectado.");
+                connection = conn;
+                
+                conn.on('data', (data) => {
+                    if (data.type === 'lcd') {
+                        if (currentText !== data.value) {
+                            currentText = data.value;
+                            document.getElementById('receptor-text').innerText = currentText || "(VACÍO)";
+                            drawLCD(lcdCtx, currentText);
+                            sendToArduino(currentText);
+                        }
+                    }
+                });
+
+                conn.on('close', () => {
+                    log("Emisor desconectado.", "text-red-400");
+                    updateStatus("Conexión perdida", "text-red-400", "bg-red-500/5");
+                });
+            });
+        }
+
+        // --- EMISOR (Manda constantemente) ---
+        function initEmisor(config) {
+            peer = new Peer(config);
+
+            peer.on('open', (id) => {
+                log(`Emisor iniciado.`);
+                document.getElementById('peer-id-display').innerText = `MI ID: ${id}`;
+                tryConnect();
+            });
+
+            const input = document.getElementById('lcd-input');
+            input.oninput = () => { 
+                currentText = input.value;
+                drawLCD(emisorCtx, currentText);
+            };
+
+            transmitInterval = setInterval(() => {
+                if (connection && connection.open) {
+                    connection.send({ type: 'lcd', value: currentText });
+                }
+            }, 500);
+        }
+
+        function tryConnect() {
+            log("Buscando LCD...");
+            updateStatus("Buscando...", "text-yellow-500", "bg-yellow-500/5");
+            connection = peer.connect(MASTER_ID, { reliable: true });
+
+            connection.on('open', () => {
+                log("¡Conectado!", "text-emerald-400");
+                updateStatus("Transmitiendo...", "text-emerald-400", "bg-emerald-500/10");
+            });
+
+            connection.on('close', () => {
+                log("Reintentando conexión...", "text-slate-500");
+                setTimeout(tryConnect, 3000);
+            });
+        }
+
+        async function connectSerial() {
+            try {
+                serialPort = await navigator.serial.requestPort();
+                await serialPort.open({ baudRate: 9600 });
+                serialWriter = serialPort.writable.getWriter();
+                document.getElementById('btn-serial').innerText = "✅ ARDUINO CONECTADO";
+                log("Puerto Serial abierto.");
+            } catch (err) {
+                log("Error Serial: " + err.message, "text-red-400");
+            }
+        }
+
+        async function sendToArduino(text) {
+            if (serialWriter) {
+                const encoder = new TextEncoder();
+                await serialWriter.write(encoder.encode(text + "\n"));
+            }
+        }
+
+        function updateStatus(text, colorClass, bgClass) {
+            const statusText = document.getElementById('status-text');
+            const glow = document.getElementById('connection-glow');
+            statusText.innerText = text;
+            statusText.className = `text-xl font-bold mt-3 transition-colors ${colorClass}`;
+            glow.className = `absolute inset-0 transition-colors duration-500 ${bgClass}`;
+        }
+    </script>
+</body>
+</html>
+```
