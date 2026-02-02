@@ -1,0 +1,563 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inmersive Video Creator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #000; color: white; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .app-container { height: 100vh; width: 100vw; position: relative; }
+        
+        /* Feed Estilo TikTok */
+        .video-feed {
+            height: 100vh;
+            width: 100%;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+        }
+        .video-feed::-webkit-scrollbar { display: none; }
+        
+        .video-card {
+            height: 100vh;
+            width: 100%;
+            scroll-snap-align: start;
+            position: relative;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Reproductor Personalizado */
+        .custom-player {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .custom-player video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .video-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.3) 100%);
+            pointer-events: none;
+        }
+        .video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            pointer-events: auto;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            margin-bottom: 80px;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #ff0050;
+            width: 0%;
+            border-radius: 2px;
+        }
+
+        /* Botón de Creación */
+        .fab-create {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 40px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+        }
+        .fab-create::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            background: linear-gradient(90deg, #00f2ea 0%, #ff0050 100%);
+            z-index: -1;
+            transform: scale(1.1);
+        }
+
+        /* Modal TikTok Style */
+        #recorderModal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 100;
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.1, 0.7, 0.1, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        #recorderModal.open { transform: translateY(0); }
+
+        .preview-fullscreen {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background: #111;
+        }
+        .preview-fullscreen video { width: 100%; height: 100%; object-fit: cover; }
+        
+        .mirror { transform: scaleX(-1); }
+
+        .recorder-ui {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 40px 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 15%, transparent 85%, rgba(0,0,0,0.6) 100%);
+        }
+
+        .btn-record-pro {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 6px solid rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .btn-record-pro div {
+            width: 60px;
+            height: 60px;
+            background: #ff0050;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        .btn-record-pro.active div {
+            border-radius: 8px;
+            transform: scale(0.5);
+        }
+
+        .side-tool {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        /* Indicador de Silencio */
+        .mute-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px;
+            border-radius: 50%;
+            z-index: 20;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .error-placeholder {
+            background: #1a1a1a;
+            color: #444;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Overlay de inicio para desbloquear audio -->
+        <div id="startOverlay" class="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center cursor-pointer">
+            <div class="text-center">
+                <div class="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                    <svg width="40" height="40" fill="white" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm36.44-94.66-48-32A8,8,0,0,1,112,88a7.83,7.83,0,0,1,3.2-.67L83.2,141.73,50.34,174.6a8,8,0,0,1-11.32-11.32L71.9,130.4,45.47,104a8,8,0,0,1,11.32-11.32l26.43,26.43,25.6-25.6a8,8,0,0,1,11.32,11.32L94.53,130.4l25.6,25.6A24,24,0,0,0,136,128V40a8,8,0,0,1,12.89-6.42l54.43,40.82a8,8,0,0,1,0,12.84Z"></path></svg>
+                </div>
+                <p class="text-sm font-bold tracking-widest text-white/70">TOCA PARA EMPEZAR</p>
+            </div>
+        </div>
+
+        <div id="videoFeed" class="video-feed">
+            <div class="video-card">
+                <div class="text-center animate-pulse">
+                    <p class="text-sm font-bold tracking-widest text-zinc-500">CARGANDO CONTENIDO...</p>
+                </div>
+            </div>
+        </div>
+        <button class="fab-create" onclick="openRecorder()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="black"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </button>
+    </div>
+
+    <!-- CREADOR TIPO TIKTOK -->
+    <div id="recorderModal">
+        <div class="preview-fullscreen">
+            <video id="videoPreview" autoplay muted playsinline class="hidden"></video>
+            <div id="audioOnlyScreen" class="hidden w-full h-full flex items-center justify-center bg-zinc-900">
+                <canvas id="audioCanvas" class="w-full h-64"></canvas>
+            </div>
+            <div id="idleScreen" class="w-full h-full flex items-center justify-center bg-zinc-950">
+                <p class="text-zinc-600 text-xs uppercase tracking-widest font-bold">Cámara no conectada</p>
+            </div>
+        </div>
+
+        <div class="recorder-ui">
+            <div class="flex justify-between items-start">
+                <button onclick="closeRecorder()" class="p-2">
+                    <svg width="30" height="30" fill="white" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L71.9,130.4,45.47,104a8,8,0,0,1,11.32,11.32L94.53,130.4l25.6,25.6A24,24,0,0,0,136,128V40a8,8,0,0,1,12.89-6.42l54.43,40.82a8,8,0,0,1,0,12.84Z"></path></svg>
+                </button>
+                <div id="timer" class="bg-black/20 backdrop-blur-md px-4 py-1 rounded-full text-xs font-mono hidden">00:00</div>
+                <div class="w-8"></div>
+            </div>
+
+            <div class="absolute right-4 top-1/4 side-tool">
+                <div class="flex flex-col items-center">
+                    <button onclick="resetSetup()" class="w-10 h-10 bg-black/40 rounded-full flex items-center justify-center mb-1">
+                        <svg width="20" height="20" fill="white" viewBox="0 0 256 256"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Zm0,0a8,8,0,0,0-8,8v56l-22.3-22.3A40,40,0,0,0,152,168a39.6,39.6,0,0,0,28.28-11.72l-14.6-14.6A24,24,0,0,1,152,152a23.6,23.6,0,0,1-16.97-7.03l-14.6,14.6A39.6,39.6,0,0,0,152,176a40,40,0,0,0,40-40,39.41,39.41,0,0,0-2.34-13.36L224,128Zm-96,0a40,40,0,0,0-40,40,39.6,39.6,0,0,0,28.28,11.72l14.6-14.6A24,24,0,0,1,152,152a23.6,23.6,0,0,1-16.97,7.03l-14.6-14.6A39.6,39.6,0,0,0,104,128a40,40,0,0,0,40,40,39.41,39.41,0,0,0,13.36-2.34L184,184V128a8,8,0,0,0-8-8Z"></path></svg>
+                    </button>
+                    <span class="text-[9px] font-bold">REINICIAR</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center gap-6">
+                <div id="setupHUD" class="w-full max-w-xs bg-black/60 backdrop-blur-xl p-4 rounded-3xl border border-white/10">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="text-[9px] text-zinc-500 font-bold block mb-1">VIDEO</label>
+                            <select id="vSource" class="bg-transparent text-xs w-full outline-none">
+                                <option value="camera">Cámara</option>
+                                <option value="screen">Pantalla</option>
+                                <option value="none">Sin Video</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-zinc-500 font-bold block mb-1">AUDIO</label>
+                            <select id="aSource" class="bg-transparent text-xs w-full outline-none">
+                                <option value="mic">Micro</option>
+                                <option value="system">Sistema</option>
+                                <option value="none">Sin Audio</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="applySettings()" id="btnApply" class="w-full bg-white text-black text-[10px] font-bold py-2 rounded-xl">CONECTAR</button>
+                </div>
+
+                <div id="recordControl" class="hidden">
+                    <button id="mainRecordBtn" onclick="toggleRecording()" class="btn-record-pro">
+                        <div></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE PUBLICACIÓN -->
+    <div id="uploadModal" class="fixed inset-0 bg-black z-[200] hidden flex-col items-center justify-center p-6">
+        <div class="w-full max-w-sm">
+            <h2 class="text-3xl font-black mb-1">PUBLICAR</h2>
+            <textarea id="vTitle" placeholder="Escribe algo..." class="w-full h-32 bg-zinc-900 rounded-2xl p-4 mb-6 outline-none focus:ring-1 ring-white/20 resize-none"></textarea>
+            <div class="flex gap-4">
+                <button onclick="location.reload()" class="flex-1 py-4 font-bold text-zinc-400">DESCARTAR</button>
+                <button onclick="uploadFinal()" id="btnFinal" class="flex-1 py-4 font-bold bg-[#ff0050] rounded-xl">PUBLICAR</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxpYbyGn0USlATzYjIC1mySpfw0GrLQntErEDn_zjb6qMGC45V5K8kgWImwfzLi9YWN/exec';
+
+        let mediaRecorder, chunks = [], stream, finalBlob;
+        let audioCtx, analyser, timerInt, sec = 0;
+        let isGlobalMuted = true;
+
+        // Desbloquear audio con la primera interacción
+        document.getElementById('startOverlay').addEventListener('click', () => {
+            document.getElementById('startOverlay').classList.add('hidden');
+            isGlobalMuted = false;
+            // Intentar reproducir los videos visibles
+            document.querySelectorAll('video, audio').forEach(m => {
+                m.muted = false;
+                if(m.src) m.play().catch(() => {});
+            });
+            loadFeed();
+        });
+
+        async function loadFeed() {
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error("Network response error");
+                const json = await res.json();
+                renderFeed(json.data);
+            } catch(e) {
+                console.error("Error cargando feed:", e);
+                document.getElementById('videoFeed').innerHTML = `
+                    <div class="video-card flex flex-col gap-4 text-center px-10">
+                        <p class="text-zinc-500 font-bold">ERROR DE CONEXIÓN</p>
+                        <button onclick="loadFeed()" class="bg-white/10 px-6 py-2 rounded-full text-xs">REINTENTAR</button>
+                    </div>`;
+            }
+        }
+
+        function renderFeed(videos) {
+            const container = document.getElementById('videoFeed');
+            if (!videos || !Array.isArray(videos) || videos.length === 0) {
+                container.innerHTML = '<div class="video-card text-zinc-600">No hay contenido disponible</div>';
+                return;
+            }
+            container.innerHTML = '';
+            videos.forEach((v, index) => {
+                if (!v.url) return; // Saltar si no hay fuente compatible
+
+                const isAudio = v.url.includes('audio') || v.url.endsWith('.mp3') || v.url.endsWith('.wav');
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                card.innerHTML = `
+                    <div class="custom-player" id="player-${index}">
+                        ${isAudio ? 
+                            `<div class="bg-zinc-900 w-full h-full flex items-center justify-center"><audio src="${v.url}" ${isGlobalMuted ? 'muted' : ''}></audio><p class="text-xs font-bold text-zinc-500">VOZ ACTIVA</p></div>` : 
+                            `<video src="${v.url}" loop playsinline ${isGlobalMuted ? 'muted' : ''} onerror="handleMediaError(this)"></video>`
+                        }
+                        <div class="mute-indicator" onclick="toggleMute(event, ${index})">
+                            <svg id="mute-icon-${index}" width="20" height="20" fill="white" viewBox="0 0 256 256">
+                                ${isGlobalMuted ? 
+                                '<path d="M152,128A40,40,0,0,1,112,168a7.83,7.83,0,0,1-3.2-.67L83.2,141.73,50.34,174.6a8,8,0,0,1-11.32-11.32L71.9,130.4,45.47,104a8,8,0,0,1,11.32-11.32l26.43,26.43,25.6-25.6a8,8,0,0,1,11.32,11.32L94.53,130.4l25.6,25.6A24,24,0,0,0,136,128V40a8,8,0,0,1,12.89-6.42l54.43,40.82a8,8,0,0,1,0,12.84Z" opacity="0.2"></path><path d="M213.38,154.62a8,8,0,0,1,0,11.32l-128,128a8,8,0,0,1-11.32-11.32L116.69,240,84,215.51a8,8,0,0,1,9.6-12.8l22.4,16.8V174.63l26,26A55.85,55.85,0,0,0,192,128a8,8,0,0,1,16,0,71.84,71.84,0,0,1-13.41,41.9l18.79,18.79A8,8,0,0,1,213.38,154.62Z"></path>' : 
+                                '<path d="M160,128a32,32,0,0,1-32,32H80V96h48A32,32,0,0,1,160,128Z" opacity="0.2"></path><path d="M128,88H88a8,8,0,0,0-8,8v64a8,8,0,0,0,8,8h40a40,40,0,0,0,0-80Zm0,64H96V104h32a24,24,0,0,1,0,48Z"></path>'}
+                            </svg>
+                        </div>
+                        <div class="video-overlay"></div>
+                        <div class="video-controls">
+                            <div class="progress-bar"><div class="progress-fill" id="progress-${index}"></div></div>
+                            <div class="absolute bottom-10 left-5">
+                                <p class="font-bold text-lg">@${v.name || 'Usuario'}</p>
+                                <p class="text-sm opacity-70">${v.date || 'Reciente'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+                setupPlayer(card, index);
+            });
+        }
+
+        function handleMediaError(el) {
+            console.warn("Fallo al cargar fuente multimedia:", el.src);
+            const parent = el.parentElement;
+            if (parent) {
+                parent.innerHTML = `
+                    <div class="w-full h-full error-placeholder">
+                        <svg width="40" height="40" fill="currentColor" viewBox="0 0 256 256" class="mb-2 opacity-20"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"></path></svg>
+                        <span class="text-[10px] uppercase tracking-widest font-bold">Fuente no disponible</span>
+                    </div>`;
+            }
+        }
+
+        function toggleMute(e, id) {
+            e.stopPropagation();
+            isGlobalMuted = !isGlobalMuted;
+            document.querySelectorAll('video, audio').forEach(m => m.muted = isGlobalMuted);
+            // Re-render feed simple para actualizar iconos
+            const svgPaths = isGlobalMuted ? 
+                '<path d="M152,128A40,40,0,0,1,112,168a7.83,7.83,0,0,1-3.2-.67L83.2,141.73,50.34,174.6a8,8,0,0,1-11.32-11.32L71.9,130.4,45.47,104a8,8,0,0,1,11.32-11.32l26.43,26.43,25.6-25.6a8,8,0,0,1,11.32,11.32L94.53,130.4l25.6,25.6A24,24,0,0,0,136,128V40a8,8,0,0,1,12.89-6.42l54.43,40.82a8,8,0,0,1,0,12.84Z" opacity="0.2"></path><path d="M213.38,154.62a8,8,0,0,1,0,11.32l-128,128a8,8,0,0,1-11.32-11.32L116.69,240,84,215.51a8,8,0,0,1,9.6-12.8l22.4,16.8V174.63l26,26A55.85,55.85,0,0,0,192,128a8,8,0,0,1,16,0,71.84,71.84,0,0,1-13.41,41.9l18.79,18.79A8,8,0,0,1,213.38,154.62Z"></path>' : 
+                '<path d="M160,128a32,32,0,0,1-32,32H80V96h48A32,32,0,0,1,160,128Z" opacity="0.2"></path><path d="M128,88H88a8,8,0,0,0-8,8v64a8,8,0,0,0,8,8h40a40,40,0,0,0,0-80Zm0,64H96V104h32a24,24,0,0,1,0,48Z"></path>';
+            document.querySelectorAll('.mute-indicator svg').forEach(svg => svg.innerHTML = svgPaths);
+        }
+
+        function setupPlayer(card, id) {
+            const video = card.querySelector('video') || card.querySelector('audio');
+            const fill = document.getElementById(`progress-${id}`);
+            if (!video) return;
+
+            card.onclick = () => {
+                if (!video.src) return;
+                if (video.paused) {
+                    video.play().catch(err => console.log("Play bloqueado:", err));
+                } else {
+                    video.pause();
+                }
+            };
+
+            video.ontimeupdate = () => {
+                const p = (video.currentTime / video.duration) * 100;
+                if (fill) fill.style.width = p + '%';
+            };
+
+            const obs = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && video.src) {
+                        video.play().catch(() => {
+                            video.muted = true;
+                            video.play().catch(() => {});
+                        });
+                    } else {
+                        video.pause();
+                    }
+                });
+            }, { threshold: 0.6 });
+            obs.observe(card);
+        }
+
+        function openRecorder() { document.getElementById('recorderModal').classList.add('open'); }
+        function closeRecorder() { 
+            document.getElementById('recorderModal').classList.remove('open');
+            stopAll();
+        }
+
+        function stopAll() {
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            if (audioCtx && audioCtx.state !== 'closed') audioCtx.close();
+            clearInterval(timerInt);
+        }
+
+        async function applySettings() {
+            const vS = document.getElementById('vSource').value;
+            const aS = document.getElementById('aSource').value;
+            const btn = document.getElementById('btnApply');
+            
+            btn.innerText = "CONECTANDO...";
+            stopAll();
+
+            try {
+                let vStream = null;
+                if (vS === 'camera') vStream = await navigator.mediaDevices.getUserMedia({ video: { height: 1280, facingMode: 'user' } });
+                else if (vS === 'screen') vStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+
+                const tracks = [];
+                if (vStream) tracks.push(...vStream.getVideoTracks());
+
+                if (aS !== 'none') {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const dest = audioCtx.createMediaStreamDestination();
+                    const aStream = (aS === 'mic') ? await navigator.mediaDevices.getUserMedia({ audio: true }) : await navigator.mediaDevices.getDisplayMedia({ audio: true, video: {width:1} });
+                    audioCtx.createMediaStreamSource(aStream).connect(dest);
+                    analyser = audioCtx.createAnalyser();
+                    audioCtx.createMediaStreamSource(dest.stream).connect(analyser);
+                    tracks.push(...dest.stream.getAudioTracks());
+                }
+
+                stream = new MediaStream(tracks);
+                
+                document.getElementById('idleScreen').classList.add('hidden');
+                if (vS !== 'none') {
+                    const vp = document.getElementById('videoPreview');
+                    vp.srcObject = stream;
+                    vp.classList.remove('hidden');
+                    if (vS === 'camera') vp.classList.add('mirror');
+                    document.getElementById('audioOnlyScreen').classList.add('hidden');
+                } else {
+                    document.getElementById('videoPreview').classList.add('hidden');
+                    document.getElementById('audioOnlyScreen').classList.remove('hidden');
+                    startVisualizer();
+                }
+
+                document.getElementById('setupHUD').classList.add('hidden');
+                document.getElementById('recordControl').classList.remove('hidden');
+            } catch(e) {
+                alert("Error de acceso: Asegúrate de dar permisos a la cámara/micro.");
+                btn.innerText = "REINTENTAR";
+            }
+        }
+
+        function toggleRecording() {
+            const btn = document.getElementById('mainRecordBtn');
+            const timer = document.getElementById('timer');
+
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                chunks = [];
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
+                mediaRecorder.ondataavailable = e => { if(e.data.size > 0) chunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        finalBlob = reader.result;
+                        document.getElementById('uploadModal').classList.replace('hidden', 'flex');
+                    };
+                    reader.readAsDataURL(blob);
+                };
+                mediaRecorder.start();
+                btn.classList.add('active');
+                timer.classList.remove('hidden');
+                sec = 0;
+                timerInt = setInterval(() => {
+                    sec++;
+                    const m = Math.floor(sec/60).toString().padStart(2,'0');
+                    const s = (sec%60).toString().padStart(2,'0');
+                    timer.innerText = `${m}:${s}`;
+                }, 1000);
+            } else {
+                mediaRecorder.stop();
+                btn.classList.remove('active');
+            }
+        }
+
+        function startVisualizer() {
+            const canvas = document.getElementById('audioCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            const draw = () => {
+                if (document.getElementById('audioOnlyScreen').classList.contains('hidden')) return;
+                requestAnimationFrame(draw);
+                const data = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(data);
+                ctx.clearRect(0,0,canvas.width, canvas.height);
+                ctx.fillStyle = '#ff0050';
+                for(let i=0; i<60; i++) {
+                    const h = data[i * 2] / 2;
+                    ctx.fillRect(i * (canvas.width / 60), (canvas.height - h)/2, 2, h);
+                }
+            };
+            draw();
+        }
+
+        async function uploadFinal() {
+            const title = document.getElementById('vTitle').value || "Video de Usuario";
+            const btn = document.getElementById('btnFinal');
+            btn.disabled = true; btn.innerText = "PUBLICANDO...";
+            try {
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify({ video: finalBlob, name: title }) });
+                location.reload();
+            } catch(e) { 
+                alert("Error al subir el video. Comprueba tu conexión."); 
+                btn.disabled = false; 
+                btn.innerText = "REINTENTAR";
+            }
+        }
+
+        function resetSetup() {
+            stopAll();
+            document.getElementById('setupHUD').classList.remove('hidden');
+            document.getElementById('recordControl').classList.add('hidden');
+            document.getElementById('videoPreview').classList.add('hidden');
+            document.getElementById('audioOnlyScreen').classList.add('hidden');
+            document.getElementById('idleScreen').classList.remove('hidden');
+            document.getElementById('timer').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
+```
