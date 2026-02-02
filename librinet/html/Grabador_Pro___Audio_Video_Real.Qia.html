@@ -1,0 +1,372 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grabador Pro - Audio/Video Real</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+        .record-pulse {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .mirror {
+            transform: scaleX(-1);
+        }
+        #audioCanvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-white font-sans flex flex-col items-center p-4">
+
+    <div class="max-w-5xl w-full bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-700">
+        <!-- Header -->
+        <div class="p-6 border-b border-slate-700 flex flex-wrap justify-between items-center bg-slate-900/80 gap-4">
+            <div>
+                <h1 class="text-xl font-bold text-blue-400">Grabador Multi-Fuente</h1>
+                <p id="statusText" class="text-xs text-slate-400 uppercase tracking-widest mt-1">Configuración de medios</p>
+            </div>
+            
+            <div id="recordingIndicator" class="hidden flex items-center gap-3 bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20">
+                <span class="w-2 h-2 bg-red-500 rounded-full record-pulse"></span>
+                <span id="timer" class="text-red-500 font-mono font-bold text-sm">00:00</span>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="p-4 bg-slate-800/50 border-b border-slate-700 flex flex-wrap gap-6 items-end">
+            <!-- Fuente de Video -->
+            <div class="flex flex-col min-w-[180px]">
+                <label class="text-[10px] text-slate-500 font-bold mb-1 uppercase tracking-tighter">Imagen</label>
+                <select id="sourceSelect" onchange="updateUIControls()" class="bg-slate-800 border border-slate-600 text-sm rounded-lg px-2 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="camera">Cámara Web</option>
+                    <option value="screen">Compartir Pantalla</option>
+                    <option value="audioOnly">Solo Audio</option>
+                </select>
+            </div>
+
+            <!-- Fuente de Audio (Nuevo) -->
+            <div id="audioSourceContainer" class="flex flex-col min-w-[180px]">
+                <label class="text-[10px] text-slate-500 font-bold mb-1 uppercase tracking-tighter">Fuente de Audio</label>
+                <select id="audioModeSelect" class="bg-slate-800 border border-slate-600 text-sm rounded-lg px-2 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="mic">Mi Micrófono</option>
+                    <option value="tab">Audio de Pestaña/PC</option>
+                </select>
+            </div>
+
+            <button onclick="setupStream()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-lg">
+                Cargar Configuración
+            </button>
+        </div>
+
+        <!-- Viewport -->
+        <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+            <video id="videoPreview" autoplay muted playsinline class="w-full h-full object-contain mirror"></video>
+            
+            <!-- Visualizador de Audio Real -->
+            <div id="audioWaveContainer" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-slate-900">
+                <canvas id="audioCanvas"></canvas>
+                <div class="absolute bottom-10 text-blue-400 font-bold animate-pulse uppercase tracking-widest text-xs">Capturando Audio...</div>
+            </div>
+
+            <!-- Botón de Alternar Fuente -->
+            <button id="switchBtn" onclick="switchVideoSource()" class="hidden absolute top-4 right-4 bg-slate-900/80 hover:bg-slate-800 backdrop-blur-md text-white px-4 py-2 rounded-full border border-slate-700 flex items-center gap-2 transition-all z-20 shadow-2xl">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                <span class="text-[10px] font-black uppercase tracking-widest" id="switchLabel">Cambiar Imagen</span>
+            </button>
+
+            <div id="overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/95 z-10 text-center p-6">
+                <p class="text-slate-500 text-sm font-medium italic">Configura el audio y la cámara arriba</p>
+            </div>
+        </div>
+
+        <!-- Controles -->
+        <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-800/50">
+            <button id="startBtn" onclick="startRecording()" disabled class="flex flex-col items-center p-4 bg-slate-800 rounded-2xl hover:bg-slate-700 transition-colors disabled:opacity-20">
+                <div class="w-12 h-12 bg-red-600 rounded-full mb-2 flex items-center justify-center shadow-lg">
+                    <div class="w-4 h-4 bg-white rounded-full"></div>
+                </div>
+                <span class="text-[10px] font-bold uppercase">Grabar</span>
+            </button>
+
+            <button id="stopBtn" onclick="stopRecording()" disabled class="flex flex-col items-center p-4 bg-slate-800 rounded-2xl hover:bg-slate-700 transition-colors disabled:opacity-20">
+                <div class="w-12 h-12 bg-white rounded-xl mb-2 flex items-center justify-center">
+                    <div class="w-4 h-4 bg-slate-900 rounded-sm"></div>
+                </div>
+                <span class="text-[10px] font-bold uppercase text-slate-300">Detener</span>
+            </button>
+
+            <button id="copyBtn" onclick="copyResult()" disabled class="flex flex-col items-center p-4 bg-slate-800 rounded-2xl hover:bg-slate-700 transition-colors disabled:opacity-20">
+                <div class="w-12 h-12 bg-emerald-600 rounded-xl mb-2 flex items-center justify-center shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                </div>
+                <span class="text-[10px] font-bold uppercase">Copiar Data</span>
+            </button>
+
+            <button id="downloadBtn" onclick="downloadResult()" disabled class="flex flex-col items-center p-4 bg-slate-800 rounded-2xl hover:bg-slate-700 transition-colors disabled:opacity-20">
+                <div class="w-12 h-12 bg-blue-600 rounded-xl mb-2 flex items-center justify-center shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                </div>
+                <span class="text-[10px] font-bold uppercase">Descargar</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="resultSection" class="hidden mt-6 w-full max-w-5xl p-6 bg-slate-900 rounded-3xl border border-slate-700">
+        <div class="flex flex-col lg:flex-row gap-6">
+            <div class="w-full lg:w-1/2 flex items-center justify-center bg-black rounded-xl overflow-hidden p-4">
+                <video id="playbackVideo" controls class="w-full hidden"></video>
+                <audio id="playbackAudio" controls class="w-full hidden"></audio>
+            </div>
+            <div class="w-full lg:w-1/2 flex flex-col justify-between">
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-[8px] h-48 overflow-y-auto" id="dataText"></div>
+                <p id="sizeLabel" class="text-right text-blue-400 font-bold text-sm mt-2"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+        let outputStream; 
+        let activeVideoMode = 'camera'; 
+        let activeAudioMode = 'mic';
+        let isRecording = false;
+        
+        let audioCtx, analyser, dataArray, animationId;
+        let timerVal = 0, timerInt, resultData = null;
+
+        const vPreview = document.getElementById('videoPreview');
+        const sSelect = document.getElementById('sourceSelect');
+        const aSelect = document.getElementById('audioModeSelect');
+        const waveCont = document.getElementById('audioWaveContainer');
+        const ovl = document.getElementById('overlay');
+        const swBtn = document.getElementById('switchBtn');
+        const stBtn = document.getElementById('startBtn');
+        const spBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('statusText');
+
+        function updateUIControls() {
+            // No hay lógica extra necesaria aquí por ahora, pero permite expandir
+        }
+
+        async function setupStream() {
+            if (outputStream) outputStream.getTracks().forEach(t => t.stop());
+            if (animationId) cancelAnimationFrame(animationId);
+            
+            try {
+                activeVideoMode = sSelect.value;
+                activeAudioMode = aSelect.value;
+                const tracks = [];
+
+                // 1. GESTIÓN DE VIDEO
+                if (activeVideoMode === 'camera') {
+                    const cam = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+                    vPreview.classList.add('mirror');
+                    vPreview.classList.remove('hidden');
+                    waveCont.classList.add('hidden');
+                    tracks.push(...cam.getVideoTracks());
+                } else if (activeVideoMode === 'screen') {
+                    const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    vPreview.classList.remove('mirror');
+                    vPreview.classList.remove('hidden');
+                    waveCont.classList.add('hidden');
+                    tracks.push(...screen.getVideoTracks());
+                } else {
+                    vPreview.classList.add('hidden');
+                    waveCont.classList.remove('hidden');
+                }
+
+                // 2. GESTIÓN DE AUDIO (SEGÚN MODO SELECCIONADO)
+                if (activeAudioMode === 'mic') {
+                    const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    tracks.push(...mic.getAudioTracks());
+                    if (activeVideoMode === 'audioOnly') setupVisualizer(mic);
+                } else {
+                    // Capturar audio de pestaña/sistema mediante getDisplayMedia
+                    status.innerText = "Selecciona la pestaña con audio...";
+                    const sysAudio = await navigator.mediaDevices.getDisplayMedia({ 
+                        video: { width: 1, height: 1 }, // Video mínimo necesario para activar el diálogo
+                        audio: { echoCancellation: false, noiseSuppression: false } 
+                    });
+                    
+                    if (sysAudio.getAudioTracks().length === 0) {
+                        throw new Error("No seleccionaste compartir audio en el diálogo del sistema");
+                    }
+                    
+                    tracks.push(...sysAudio.getAudioTracks());
+                    // Detenemos el track de video temporal de este stream de audio
+                    sysAudio.getVideoTracks().forEach(t => t.stop());
+                    
+                    if (activeVideoMode === 'audioOnly') setupVisualizer(sysAudio);
+                }
+
+                if (tracks.length === 0) throw new Error("No hay pistas disponibles");
+
+                outputStream = new MediaStream(tracks);
+                if (activeVideoMode !== 'audioOnly') vPreview.srcObject = outputStream;
+                
+                ovl.classList.add('hidden');
+                stBtn.disabled = false;
+                status.innerText = `Cargado: Video(${activeVideoMode}) + Audio(${activeAudioMode})`;
+                updateSwitchUI();
+
+            } catch (err) {
+                status.innerText = "Error: " + err.message;
+            }
+        }
+
+        function setupVisualizer(stream) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioCtx.createMediaStreamSource(stream);
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+            const canvas = document.getElementById('audioCanvas');
+            const ctx = canvas.getContext('2d');
+            function draw() {
+                animationId = requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(dataArray);
+                ctx.fillStyle = 'rgb(15, 23, 42)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                const barWidth = (canvas.width / bufferLength) * 2.5;
+                let x = 0;
+                for(let i = 0; i < bufferLength; i++) {
+                    const barHeight = dataArray[i] / 2;
+                    ctx.fillStyle = `rgb(59, 130, 246)`;
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
+            }
+            draw();
+        }
+
+        async function switchVideoSource() {
+            if (!isRecording || activeVideoMode === 'audioOnly') return;
+            try {
+                let fresh;
+                if (activeVideoMode === 'camera') {
+                    fresh = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    activeVideoMode = 'screen';
+                    vPreview.classList.remove('mirror');
+                } else {
+                    fresh = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+                    activeVideoMode = 'camera';
+                    vPreview.classList.add('mirror');
+                }
+
+                const newT = fresh.getVideoTracks()[0];
+                const oldT = outputStream.getVideoTracks()[0];
+                if (oldT) {
+                    outputStream.removeTrack(oldT);
+                    oldT.stop();
+                }
+                outputStream.addTrack(newT);
+                vPreview.srcObject = outputStream;
+                updateSwitchUI();
+            } catch (e) { console.warn("Cambio cancelado"); }
+        }
+
+        function updateSwitchUI() {
+            swBtn.classList.toggle('hidden', activeVideoMode === 'audioOnly' || !isRecording);
+            const label = activeVideoMode === 'camera' ? "Cambiar a Pantalla" : "Cambiar a Cámara";
+            document.getElementById('switchLabel').innerText = label;
+        }
+
+        function startRecording() {
+            recordedChunks = [];
+            isRecording = true;
+            const type = activeVideoMode === 'audioOnly' ? 'audio/webm' : 'video/webm; codecs=vp9,opus';
+            
+            mediaRecorder = new MediaRecorder(outputStream, { mimeType: type });
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+            mediaRecorder.onstop = finalize;
+            mediaRecorder.start(1000);
+            
+            stBtn.disabled = true;
+            spBtn.disabled = false;
+            updateSwitchUI();
+            document.getElementById('recordingIndicator').classList.remove('hidden');
+            status.innerText = "Grabando...";
+            
+            timerVal = 0;
+            timerInt = setInterval(() => {
+                timerVal++;
+                const m = Math.floor(timerVal/60).toString().padStart(2, '0');
+                const s = (timerVal%60).toString().padStart(2, '0');
+                document.getElementById('timer').innerText = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            mediaRecorder.stop();
+            clearInterval(timerInt);
+            spBtn.disabled = true;
+            stBtn.disabled = false;
+            swBtn.classList.add('hidden');
+            document.getElementById('recordingIndicator').classList.add('hidden');
+            status.innerText = "Guardando...";
+        }
+
+        function finalize() {
+            const blobType = activeVideoMode === 'audioOnly' ? 'audio/webm' : 'video/webm';
+            const blob = new Blob(recordedChunks, { type: blobType });
+            const fr = new FileReader();
+            fr.onloadend = () => {
+                resultData = fr.result;
+                const pbV = document.getElementById('playbackVideo');
+                const pbA = document.getElementById('playbackAudio');
+                
+                if (activeVideoMode === 'audioOnly') {
+                    pbV.classList.add('hidden'); pbA.classList.remove('hidden');
+                    pbA.src = resultData;
+                } else {
+                    pbA.classList.add('hidden'); pbV.classList.remove('hidden');
+                    pbV.src = resultData;
+                }
+                
+                document.getElementById('dataText').innerText = resultData;
+                const mb = (resultData.length * 0.75 / 1024 / 1024).toFixed(2);
+                document.getElementById('sizeLabel').innerText = `${mb} MB - Formato: ${blobType.split('/')[1]}`;
+                document.getElementById('resultSection').classList.remove('hidden');
+                document.getElementById('copyBtn').disabled = false;
+                document.getElementById('downloadBtn').disabled = false;
+            };
+            fr.readAsDataURL(blob);
+        }
+
+        function copyResult() {
+            const ta = document.createElement('textarea');
+            ta.value = resultData;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            status.innerText = "¡Copiado!";
+        }
+
+        function downloadResult() {
+            const a = document.createElement('a');
+            a.href = resultData;
+            a.download = `grabacion_${Date.now()}.webm`;
+            a.click();
+        }
+    </script>
+</body>
+</html>
+```
