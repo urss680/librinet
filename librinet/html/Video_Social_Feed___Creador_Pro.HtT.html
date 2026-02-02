@@ -1,0 +1,423 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Social Feed - Creador Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #000; color: white; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .app-container { height: 100vh; width: 100vw; position: relative; }
+        
+        .video-feed {
+            height: 100%;
+            width: 100%;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+        }
+        .video-feed::-webkit-scrollbar { display: none; }
+        
+        .video-card {
+            height: 100vh;
+            width: 100%;
+            scroll-snap-align: start;
+            position: relative;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-info {
+            position: absolute;
+            bottom: 110px;
+            left: 20px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .fab-create {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(to right, #ff0050, #00f2ea);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 0 20px rgba(0,242,234,0.4);
+            z-index: 50;
+            cursor: pointer;
+            border: 4px solid white;
+        }
+
+        /* MODAL DE GRABACIÓN REDISEÑADO */
+        #recorderModal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #0a0a0c;
+            z-index: 100;
+            transform: translateY(100%);
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        #recorderModal.open { transform: translateY(0); }
+
+        .preview-box {
+            position: relative;
+            flex: 1;
+            background: #111;
+            margin: 15px;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mirror { transform: scaleX(-1); }
+        
+        .control-panel {
+            background: #18181b;
+            padding: 24px;
+            border-radius: 32px 32px 0 0;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+        }
+
+        .source-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .source-btn {
+            background: #27272a;
+            padding: 12px;
+            border-radius: 16px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            text-align: left;
+        }
+        .source-btn.active {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .btn-record {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            border: 4px solid #fff;
+            padding: 5px;
+            transition: all 0.3s;
+        }
+        .btn-record div {
+            width: 100%;
+            height: 100%;
+            background: #ef4444;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        .btn-record.recording div {
+            border-radius: 12px;
+            transform: scale(0.6);
+        }
+
+        .pulse-red { animation: pulseR 1.5s infinite; }
+        @keyframes pulseR { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div id="videoFeed" class="video-feed">
+            <div class="video-card">
+                <div class="text-center">
+                    <div class="animate-spin h-12 w-12 border-4 border-blue-500 rounded-full border-t-transparent mx-auto mb-4"></div>
+                    <p class="text-gray-400">Sincronizando feed...</p>
+                </div>
+            </div>
+        </div>
+        <button class="fab-create" onclick="openRecorder()">+</button>
+    </div>
+
+    <!-- MODAL DE GRABACIÓN PROFESIONAL -->
+    <div id="recorderModal">
+        <!-- Header -->
+        <div class="p-6 flex justify-between items-center">
+            <button onclick="closeRecorder()" class="bg-white/10 p-3 rounded-full hover:bg-white/20">
+                <svg width="24" height="24" fill="white" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg>
+            </button>
+            <div id="statusBadge" class="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-full border border-slate-700">
+                <span id="statusDot" class="w-2 h-2 bg-gray-500 rounded-full"></span>
+                <span id="timerText" class="text-xs font-mono font-bold tracking-widest text-gray-400">00:00</span>
+            </div>
+            <div class="w-10"></div>
+        </div>
+
+        <!-- Zona de Previsualización -->
+        <div class="preview-box">
+            <video id="videoPreview" autoplay muted playsinline class="w-full h-full object-cover hidden"></video>
+            <div id="audioVisualizer" class="hidden w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 to-black">
+                <canvas id="vCanvas" class="w-full h-40"></canvas>
+                <p class="text-blue-400 text-xs mt-4 tracking-widest font-bold">SOLO AUDIO ACTIVO</p>
+            </div>
+            <div id="idleState" class="text-center p-8">
+                <div class="text-5xl mb-4">🎥</div>
+                <p class="text-gray-500 text-sm">Configura las fuentes abajo para empezar</p>
+            </div>
+        </div>
+
+        <!-- Panel de Control -->
+        <div class="control-panel">
+            <div id="setupSection">
+                <div class="source-grid">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase">Fuente Video</label>
+                        <select id="vSource" class="w-full bg-zinc-800 p-3 rounded-xl text-sm border-none outline-none ring-1 ring-white/10">
+                            <option value="camera">🤳 Cámara Frontal</option>
+                            <option value="screen">💻 Compartir Pantalla</option>
+                            <option value="none">🔇 Sin Video (Solo Audio)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase">Fuente Audio</label>
+                        <select id="aSource" class="w-full bg-zinc-800 p-3 rounded-xl text-sm border-none outline-none ring-1 ring-white/10">
+                            <option value="mic">🎙️ Micrófono</option>
+                            <option value="system">🔊 Audio Sistema</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button id="btnApply" onclick="applySettings()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 mb-4">
+                    <span>APLICAR CONFIGURACIÓN</span>
+                </button>
+            </div>
+
+            <div id="recordSection" class="hidden flex flex-col items-center py-4">
+                <div class="flex items-center gap-8">
+                    <!-- Reset Settings -->
+                    <button onclick="resetSetup()" class="text-gray-400 text-xs uppercase font-bold hover:text-white">Cambiar Fuentes</button>
+                    
+                    <!-- Botón Grabar -->
+                    <button id="mainRecordBtn" onclick="toggleRecording()" class="btn-record">
+                        <div id="recordIcon"></div>
+                    </button>
+
+                    <!-- Modulador de Voz -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] text-amber-500 font-bold mb-1">PITCH</span>
+                        <input type="range" id="pitchSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="w-20 h-1 bg-zinc-700 rounded-lg appearance-none accent-amber-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE SUBIDA -->
+    <div id="uploadModal" class="fixed inset-0 bg-black/95 z-[200] hidden flex-col items-center justify-center p-6">
+        <div class="w-full max-w-sm bg-zinc-900 border border-white/10 p-8 rounded-[40px] shadow-2xl">
+            <h2 class="text-2xl font-bold mb-2">¡Grabación finalizada!</h2>
+            <p class="text-gray-400 text-sm mb-8">Escribe un título para tu publicación.</p>
+            
+            <input type="text" id="vTitle" placeholder="Título del video..." class="w-full bg-zinc-800 border-none rounded-2xl p-4 mb-6 focus:ring-2 focus:ring-blue-500 outline-none">
+            
+            <div class="flex gap-3">
+                <button onclick="location.reload()" class="flex-1 py-4 font-bold text-gray-400 bg-zinc-800 rounded-2xl">Descartar</button>
+                <button id="btnFinalUpload" onclick="uploadFinal()" class="flex-1 py-4 font-bold bg-blue-600 rounded-2xl">Subir Ahora</button>
+            </div>
+            <p id="upProgress" class="text-center text-blue-400 text-[10px] mt-4 font-mono"></p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxpYbyGn0USlATzYjIC1mySpfw0GrLQntErEDn_zjb6qMGC45V5K8kgWImwfzLi9YWN/exec';
+
+        let mediaRecorder, chunks = [], stream, finalBlobUrl;
+        let audioCtx, biquad, analyser, timerInt, sec = 0;
+
+        window.onload = () => fetch(API_URL).then(r => r.json()).then(j => render(j.data));
+
+        function render(data) {
+            const feed = document.getElementById('videoFeed');
+            feed.innerHTML = data.length ? '' : '<div class="video-card text-gray-500">No hay contenido aún</div>';
+            data.forEach(v => {
+                const isAudio = v.url.includes('audio');
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                card.innerHTML = `
+                    ${isAudio ? `<div class="p-10 bg-zinc-900 rounded-3xl"><audio src="${v.url}" controls></audio></div>` : `<video src="${v.url}" controls loop playsinline class="w-full h-full object-contain"></video>`}
+                    <div class="video-info">
+                        <h4 class="font-bold text-xl">@${v.name}</h4>
+                        <p class="text-xs text-white/50">${v.date}</p>
+                    </div>
+                `;
+                feed.appendChild(card);
+            });
+        }
+
+        function openRecorder() { document.getElementById('recorderModal').classList.add('open'); }
+        function closeRecorder() { stopAll(); document.getElementById('recorderModal').classList.remove('open'); resetSetup(); }
+
+        function stopAll() {
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            if (audioCtx) audioCtx.close();
+            clearInterval(timerInt);
+        }
+
+        function resetSetup() {
+            stopAll();
+            document.getElementById('setupSection').classList.remove('hidden');
+            document.getElementById('recordSection').classList.add('hidden');
+            document.getElementById('videoPreview').classList.add('hidden');
+            document.getElementById('audioVisualizer').classList.add('hidden');
+            document.getElementById('idleState').classList.remove('hidden');
+            document.getElementById('statusDot').className = "w-2 h-2 bg-gray-500 rounded-full";
+            document.getElementById('timerText').innerText = "00:00";
+            document.getElementById('timerText').classList.remove('text-red-500');
+        }
+
+        async function applySettings() {
+            const vS = document.getElementById('vSource').value;
+            const aS = document.getElementById('aSource').value;
+            const btn = document.getElementById('btnApply');
+            
+            btn.disabled = true;
+            btn.innerText = "Sincronizando...";
+
+            try {
+                let vStream = null;
+                if (vS === 'camera') vStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                else if (vS === 'screen') vStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+
+                audioCtx = new AudioContext();
+                const dest = audioCtx.createMediaStreamDestination();
+                let aStream = (aS === 'mic') ? await navigator.mediaDevices.getUserMedia({ audio: true }) : await navigator.mediaDevices.getDisplayMedia({ audio: true, video: {width:1} });
+                
+                const srcNode = audioCtx.createMediaStreamSource(aStream);
+                biquad = audioCtx.createBiquadFilter();
+                analyser = audioCtx.createAnalyser();
+                srcNode.connect(biquad).connect(dest);
+                biquad.connect(analyser);
+
+                const tracks = [...dest.stream.getTracks()];
+                if (vStream) tracks.push(...vStream.getVideoTracks());
+                stream = new MediaStream(tracks);
+
+                if (vStream) {
+                    const vp = document.getElementById('videoPreview');
+                    vp.srcObject = stream;
+                    vp.classList.remove('hidden');
+                    if (vS === 'camera') vp.classList.add('mirror');
+                    document.getElementById('idleState').classList.add('hidden');
+                } else {
+                    document.getElementById('audioVisualizer').classList.remove('hidden');
+                    document.getElementById('idleState').classList.add('hidden');
+                    startVisualizer();
+                }
+
+                document.getElementById('setupSection').classList.add('hidden');
+                document.getElementById('recordSection').classList.remove('hidden');
+                document.getElementById('statusDot').className = "w-2 h-2 bg-green-500 rounded-full";
+            } catch (e) {
+                alert("Error de acceso: " + e.message);
+                resetSetup();
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "APLICAR CONFIGURACIÓN";
+            }
+        }
+
+        function toggleRecording() {
+            const btn = document.getElementById('mainRecordBtn');
+            const dot = document.getElementById('statusDot');
+            const time = document.getElementById('timerText');
+
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                chunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        finalBlobUrl = reader.result;
+                        document.getElementById('uploadModal').classList.replace('hidden', 'flex');
+                    };
+                    reader.readAsDataURL(blob);
+                };
+
+                mediaRecorder.start();
+                btn.classList.add('recording');
+                dot.classList.add('pulse-red', 'bg-red-500');
+                time.classList.add('text-red-500');
+                sec = 0;
+                timerInt = setInterval(() => {
+                    sec++;
+                    const m = Math.floor(sec/60).toString().padStart(2,'0');
+                    const s = (sec%60).toString().padStart(2,'0');
+                    time.innerText = `${m}:${s}`;
+                }, 1000);
+            } else {
+                mediaRecorder.stop();
+                btn.classList.remove('recording');
+                dot.classList.remove('pulse-red');
+                clearInterval(timerInt);
+            }
+        }
+
+        function startVisualizer() {
+            const canvas = document.getElementById('vCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            const buffer = analyser.frequencyBinCount;
+            const data = new Uint8Array(buffer);
+            const draw = () => {
+                if (document.getElementById('audioVisualizer').classList.contains('hidden')) return;
+                requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(data);
+                ctx.clearRect(0,0,canvas.width, canvas.height);
+                ctx.fillStyle = '#3b82f6';
+                let x = 0;
+                for(let i=0; i<buffer; i++) {
+                    let h = data[i]/2;
+                    ctx.fillRect(x, (canvas.height-h)/2, 2, h);
+                    x += 4;
+                }
+            };
+            draw();
+        }
+
+        document.getElementById('pitchSlider').oninput = (e) => {
+            if (!biquad) return;
+            const v = parseFloat(e.target.value);
+            if (v < 1) { biquad.type = 'lowpass'; biquad.frequency.value = 500 * v; }
+            else if (v > 1) { biquad.type = 'highpass'; biquad.frequency.value = 1000 * v; }
+            else { biquad.type = 'allpass'; }
+        };
+
+        async function uploadFinal() {
+            const title = document.getElementById('vTitle').value;
+            if (!title) return alert("Título obligatorio");
+            const btn = document.getElementById('btnFinalUpload');
+            btn.disabled = true; btn.innerText = "Subiendo...";
+            
+            try {
+                const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ video: finalBlobUrl, name: title }) });
+                const j = await r.json();
+                if (j.status === 'success') location.reload();
+            } catch (e) { alert("Error"); btn.disabled = false; }
+        }
+    </script>
+</body>
+</html>
+```
