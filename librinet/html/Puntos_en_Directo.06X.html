@@ -1,0 +1,101 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Puntos en Directo</title>
+  <style>
+    body {margin:0; background:#111; color:#0f0; font-family:Arial,Helvetica,sans-serif; display:flex; flex-direction:column; align-items:center;}
+    canvas {background:#000; border:1px solid #0f0; margin:10px;}
+    button {padding:.6rem 1.2rem; font-size:1rem; margin:5px; border:none; border-radius:4px; cursor:pointer;}
+    #startBtn {background:#28a745; color:#fff;}
+    #stopBtn {background:#dc3545; color:#fff;}
+    #score {font-size:2rem; margin-top:10px;}
+  </style>
+</head>
+<body>
+  <h1>Espectro en tiempo real: Canción + Micrófono</h1>
+  <button id="startBtn">Iniciar</button>
+  <button id="stopBtn" disabled>Detener</button>
+
+  <canvas id="songCanvas" width="800" height="150"></canvas>
+  <canvas id="voiceCanvas" width="800" height="150"></canvas>
+
+  <div id="score">Puntos: <span id="points">0</span></div>
+
+<script>
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const songCanvas = document.getElementById('songCanvas');
+const voiceCanvas = document.getElementById('voiceCanvas');
+const songCtx = songCanvas.getContext('2d');
+const voiceCtx = voiceCanvas.getContext('2d');
+const pointsSpan = document.getElementById('points');
+
+let audioCtx, songAnalyser, voiceAnalyser, songSource, voiceSource;
+let running = false;
+let points = 0;
+
+function drawSpectrum(canvas, ctx, analyser, label) {
+  if (!running) return;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const barW = canvas.width / data.length;
+  ctx.fillStyle = '#0f0';
+  for (let i = 0; i < data.length; i++) {
+    const h = (data[i] / 255) * canvas.height;
+    ctx.fillRect(i * barW, canvas.height - h, barW, h);
+  }
+  ctx.fillStyle = '#fff';
+  ctx.font = '14px Arial';
+  ctx.fillText(label, 10, 20);
+  requestAnimationFrame(() => drawSpectrum(canvas, ctx, analyser, label));
+}
+
+function updatePoints() {
+  if (!running) return;
+  points++;
+  pointsSpan.textContent = points;
+  requestAnimationFrame(updatePoints);
+}
+
+async function start() {
+  running = true;
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  const songStream = await navigator.mediaDevices.getDisplayMedia({audio:true});
+  songAnalyser = audioCtx.createAnalyser();
+  songAnalyser.fftSize = 2048;
+  songSource = audioCtx.createMediaStreamSource(songStream);
+  songSource.connect(songAnalyser);
+
+  const voiceStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  voiceAnalyser = audioCtx.createAnalyser();
+  voiceAnalyser.fftSize = 2048;
+  voiceSource = audioCtx.createMediaStreamSource(voiceStream);
+  voiceSource.connect(voiceAnalyser);
+
+  drawSpectrum(songCanvas, songCtx, songAnalyser, 'Canción');
+  drawSpectrum(voiceCanvas, voiceCtx, voiceAnalyser, 'Voz');
+  updatePoints();
+}
+
+function stop() {
+  running = false;
+  if (songSource) songSource.disconnect();
+  if (voiceSource) voiceSource.disconnect();
+  if (audioCtx) audioCtx.close();
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+}
+
+startBtn.onclick = start;
+stopBtn.onclick = stop;
+</script>
+</body>
+</html>
+```
