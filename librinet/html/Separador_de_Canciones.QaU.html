@@ -1,0 +1,243 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Separador de Canciones</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .upload-area {
+            border: 2px dashed #4CAF50;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background-color: white;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .song-part {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .song-part h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .audio-player {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .controls {
+            margin: 20px 0;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .processing {
+            text-align: center;
+            color: #666;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Separador de Canciones por Audio</h1>
+    
+    <div class="upload-area" id="uploadArea">
+        <p>Arrastra aquí tu archivo de audio grande o haz clic para seleccionar</p>
+        <input type="file" id="fileInput" accept="audio/*" class="hidden">
+    </div>
+    
+    <div id="processing" class="processing hidden">
+        <p>Procesando archivo... Por favor espera</p>
+    </div>
+    
+    <div id="results" class="hidden">
+        <h2>Canciones detectadas:</h2>
+        <div id="songList"></div>
+    </div>
+
+    <script>
+        class SongSeparator {
+            constructor() {
+                this.uploadArea = document.getElementById('uploadArea');
+                this.fileInput = document.getElementById('fileInput');
+                this.processing = document.getElementById('processing');
+                this.results = document.getElementById('results');
+                this.songList = document.getElementById('songList');
+                
+                this.setupEventListeners();
+            }
+            
+            setupEventListeners() {
+                this.uploadArea.addEventListener('click', () => this.fileInput.click());
+                this.uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.uploadArea.style.backgroundColor = '#e8f5e9';
+                });
+                
+                this.uploadArea.addEventListener('dragleave', () => {
+                    this.uploadArea.style.backgroundColor = 'white';
+                });
+                
+                this.uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.uploadArea.style.backgroundColor = 'white';
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.processFile(files[0]);
+                    }
+                });
+                
+                this.fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.processFile(e.target.files[0]);
+                    }
+                });
+            }
+            
+            async processFile(file) {
+                this.showProcessing();
+                
+                // Crear URL temporal para el archivo
+                const audioUrl = URL.createObjectURL(file);
+                
+                // Crear elemento de audio para analizar
+                const audio = new Audio(audioUrl);
+                
+                // Esperar a que el audio esté cargado
+                audio.addEventListener('loadedmetadata', async () => {
+                    // Simular detección de canciones (en una implementación real, usarías análisis de audio)
+                    const songs = await this.detectSongs(audio);
+                    this.displaySongs(songs, audioUrl);
+                });
+            }
+            
+            async detectSongs(audio) {
+                // Simulación de detección de canciones
+                // En una implementación real, usarías:
+                // - Análisis de silencios
+                // - Detección de cambios de tono
+                // - Análisis de espectro
+                // - Machine learning
+                
+                const duration = audio.duration;
+                const numberOfSongs = Math.floor(duration / 180) || 1; // Asumir 3 minutos por canción
+                
+                const songs = [];
+                for (let i = 0; i < numberOfSongs; i++) {
+                    songs.push({
+                        id: i + 1,
+                        title: `Canción ${i + 1}`,
+                        startTime: i * 180,
+                        endTime: Math.min((i + 1) * 180, duration),
+                        duration: Math.min(180, duration - i * 180)
+                    });
+                }
+                
+                return songs;
+            }
+            
+            displaySongs(songs, audioUrl) {
+                this.songList.innerHTML = '';
+                
+                songs.forEach(song => {
+                    const songDiv = document.createElement('div');
+                    songDiv.className = 'song-part';
+                    
+                    const audioId = `audio-${song.id}`;
+                    
+                    songDiv.innerHTML = `
+                        <h3>${song.title}</h3>
+                        <p>Duración: ${this.formatTime(song.duration)}</p>
+                        <audio id="${audioId}" class="audio-player" controls>
+                            <source src="${audioUrl}" type="audio/mpeg">
+                            Tu navegador no soporta el elemento de audio.
+                        </audio>
+                        <div class="controls">
+                            <button onclick="songSeparator.playSong('${audioId}', ${song.startTime})">
+                                Reproducir desde inicio
+                            </button>
+                            <button onclick="songSeparator.downloadSong('${audioId}', '${song.title}')">
+                                Descargar esta parte
+                            </button>
+                        </div>
+                    `;
+                    
+                    this.songList.appendChild(songDiv);
+                });
+                
+                this.showResults();
+            }
+            
+            playSong(audioId, startTime) {
+                const audio = document.getElementById(audioId);
+                audio.currentTime = startTime;
+                audio.play();
+            }
+            
+            downloadSong(audioId, title) {
+                const audio = document.getElementById(audioId);
+                const startTime = audio.currentTime;
+                
+                // Crear un nuevo blob con la parte específica
+                // Nota: Esto es una simplificación. En producción necesitarías una biblioteca como FFmpeg.js
+                alert(`Descargando ${title} desde ${this.formatTime(startTime)}`);
+            }
+            
+            formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+            
+            showProcessing() {
+                this.processing.classList.remove('hidden');
+                this.results.classList.add('hidden');
+            }
+            
+            showResults() {
+                this.processing.classList.add('hidden');
+                this.results.classList.remove('hidden');
+            }
+        }
+        
+        // Inicializar la aplicación
+        const songSeparator = new SongSeparator();
+    </script>
+</body>
+</html>
+```
