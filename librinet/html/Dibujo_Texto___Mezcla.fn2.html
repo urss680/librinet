@@ -1,0 +1,146 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Dibujo+Texto → Mezcla</title>
+<style>
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;display:flex;height:100vh}
+#sidebar{width:260px;background:#fff;border-right:1px solid #ddd;padding:20px;box-sizing:border-box}
+#canvasArea{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}
+canvas#draw{border:2px solid #4caf50;border-radius:6px;background:#fff;cursor:crosshair}
+h2{margin-top:0;color:#2e7d32}
+label{display:block;margin:10px 0 4px;font-size:14px;color:#555}
+input[type="text"]{width:100%;padding:6px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px}
+button{padding:8px 14px;margin:6px 2px;border:none;border-radius:4px;background:#4caf50;color:#fff;cursor:pointer;font-size:14px}
+button:hover{background:#45a049}
+#lista{margin-top:10px;max-height:200px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:4px;padding:6px;background:#fafafa}
+.item{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:14px}
+#pred{color:#2e7d32;font-weight:bold;margin-top:10px}
+#mixArea{margin-top:10px}
+#mixCanvas{border:2px solid #2196f3;border-radius:6px;background:#fff}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h2>Etiquetas</h2>
+  <label for="label">Nombre del objeto:</label>
+  <input id="label" type="text" placeholder="Ej: casa">
+  <button onclick="guardarYEntrenar()">Guardar y Entrenar</button>
+  <button onclick="limpiarCanvas()">Limpiar</button>
+  <button onclick="predecir()">Predecir</button>
+  <h3>Muestras</h3>
+  <div id="lista"></div>
+  <h3>Mezcla por texto</h3>
+  <input id="mixText" type="text" placeholder="Ej: casa+sol">
+  <button onclick="mezclar()">Generar Mezcla</button>
+</div>
+<div id="canvasArea">
+  <canvas id="draw" width="400" height="400"></canvas>
+  <div id="pred"></div>
+  <canvas id="mixCanvas" width="400" height="400" style="display:none"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-layers@4.10.0/dist/tf-layers.min.js"></script>
+<script>
+const canvas=document.getElementById('draw');
+const ctx=canvas.getContext('2d');
+const mixCanvas=document.getElementById('mixCanvas');
+const mixCtx=mixCanvas.getContext('2d');
+let isDrawing=false;
+const datos=[];
+let modelo=null;
+let entrenado=false;
+ctx.strokeStyle='#000';
+ctx.lineWidth=4;
+ctx.lineCap='round';
+mixCtx.strokeStyle='#000';
+mixCtx.lineWidth=4;
+mixCtx.lineCap='round';
+canvas.onmousedown=e=>{isDrawing=true;ctx.beginPath();ctx.moveTo(e.offsetX,e.offsetY);};
+canvas.onmousemove=e=>{if(isDrawing){ctx.lineTo(e.offsetX,e.offsetY);ctx.stroke();}};
+canvas.onmouseup=()=>isDrawing=false;
+canvas.onmouseout=()=>isDrawing=false;
+function limpiarCanvas(){ctx.clearRect(0,0,400,400);}
+function actualizarLista(){
+  const lista=document.getElementById('lista');
+  lista.innerHTML='';
+  const etiquetas=[...new Set(datos.map(d=>d.label))];
+  etiquetas.forEach(e=>{
+    const div=document.createElement('div');
+    div.className='item';
+    div.textContent=e;
+    lista.appendChild(div);
+  });
+}
+function preprocess(imgData){
+  const tmp=document.createElement('canvas');
+  tmp.width=tmp.height=28;
+  const ttx=tmp.getContext('2d');
+  ttx.drawImage(canvas,0,0,28,28);
+  const data=ttx.getImageData(0,0,28,28).data;
+  const vals=[];
+  for(let i=0;i<data.length;i+=4) vals.push(data[i]/255);
+  return tf.tensor(vals).reshape([1,28,28,1]);
+}
+function guardarYEntrenar(){
+  const label=document.getElementById('label').value.trim();
+  if(!label){alert('Escribe un nombre');return;}
+  datos.push({label,img:ctx.getImageData(0,0,400,400)});
+  actualizarLista();
+  limpiarCanvas();
+  document.getElementById('label').value='';
+  entrenar();
+}
+async function entrenar(){
+  if(datos.length<1)return;
+  const labels=[...new Set(datos.map(d=>d.label))];
+  const xs=[],ys=[];
+  datos.forEach(d=>{
+    xs.push(preprocess(d.img));
+    const y=new Array(labels.length).fill(0);
+    y[labels.indexOf(d.label)]=1;
+    ys.push(tf.tensor(y).reshape([1,labels.length]));
+  });
+  const xTrain=tf.concat(xs);
+  const yTrain=tf.concat(ys);
+  modelo=tf.sequential();
+  modelo.add(tf.layers.conv2d({filters:8,kernelSize:3,activation:'relu',inputShape:[28,28,1]}));
+  modelo.add(tf.layers.maxPooling2d({poolSize:[2,2]}));
+  modelo.add(tf.layers.flatten());
+  modelo.add(tf.layers.dense({units:64,activation:'relu'}));
+  modelo.add(tf.layers.dense({units:labels.length,activation:'softmax'}));
+  modelo.compile({optimizer:'adam',loss:'categoricalCrossentropy',metrics:['accuracy']});
+  await modelo.fit(xTrain,yTrain,{epochs:4,batchSize:4});
+  modelo.labels=labels;
+  entrenado=true;
+}
+async function predecir(){
+  if(!entrenado){alert('Entrena primero');return;}
+  const pred=modelo.predict(preprocess(ctx.getImageData(0,0,400,400)));
+  const idx=(await pred.argMax(-1).data())[0];
+  const label=modelo.labels[idx];
+  const conf=(await pred.max(-1).data())[0];
+  document.getElementById('pred').textContent=`Parece: ${label} (${(conf*100).toFixed(1)}%)`;
+}
+function mezclar(){
+  const txt=document.getElementById('mixText').value.trim();
+  if(!txt){alert('Escribe algo');return;}
+  const parts=txt.split('+').map(p=>p.trim());
+  const labels=[...new Set(datos.map(d=>d.label))];
+  const idxs=parts.map(p=>labels.indexOf(p)).filter(i=>i!==-1);
+  if(idxs.length===0){alert('No hay coincidencias');return;}
+  mixCanvas.style.display='block';
+  mixCtx.clearRect(0,0,400,400);
+  const step=400/idxs.length;
+  idxs.forEach((idx,i)=>{
+    const samples=datos.filter(d=>d.label===labels[idx]);
+    if(samples.length===0)return;
+    const rnd=samples[Math.floor(Math.random()*samples.length)].img;
+    mixCtx.putImageData(rnd,step*i,0);
+  });
+}
+</script>
+</body>
+</html>
+```
