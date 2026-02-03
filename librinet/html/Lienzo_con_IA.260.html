@@ -1,0 +1,104 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lienzo con IA</title>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: sans-serif;
+            color: #fff;
+        }
+        canvas {
+            border: 2px solid #444;
+            cursor: crosshair;
+            background: #000;
+        }
+        #btnIA {
+            margin-top: 16px;
+            padding: 12px 28px;
+            font-size: 18px;
+            border: 2px solid #00aaff;
+            background: #002244;
+            color: #00aaff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all .4s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        #btnIA::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, #00aaff, #0066ff, #00aaff);
+            background-size: 200% 200%;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity .4s ease;
+            animation: gradientMove 3s linear infinite;
+        }
+        #btnIA:hover::before {
+            opacity: 1;
+        }
+        #btnIA:hover {
+            color: #fff;
+            border-color: transparent;
+        }
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        #mensaje {
+            margin-top: 12px;
+            height: 24px;
+            font-size: 16px;
+            color: #00aaff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="lienzo" width="600" height="400"></canvas>
+    <button id="btnIA">PULSAR</button>
+    <div id="mensaje"></div>
+
+    <script>
+        const canvas = document.getElementById('lienzo');
+        const ctx = canvas.getContext('2d');
+        let dibujando = false;
+
+        // Dibujar
+        canvas.addEventListener('mousedown', () => dibujando = true);
+        canvas.addEventListener('mouseup', () => dibujando = false);
+        canvas.addEventListener('mousemove', e => {
+            if (!dibujando) return;
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#0ff';
+            ctx.lineCap = 'round';
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        });
+
+        // Botón IA
+        document.getElementById('btnIA').addEventListener('click', () => {
+            document.getElementById('mensaje').textContent = 'IA tomando control…';
+            // Aquí iría la llamada real a tu modelo
+            setTimeout(() => {
+                document.getElementById('mensaje').textContent = 'IA completó el dibujo';
+            }, 1500);
+        });
+    </script>
+</body>
+</html>
+```
