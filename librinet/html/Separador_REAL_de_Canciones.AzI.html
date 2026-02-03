@@ -1,0 +1,139 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Separador REAL de Canciones</title>
+  <style>
+    body{
+      font-family:Arial,Helvetica,sans-serif;
+      background:#111;
+      color:#eee;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:40px 20px;
+    }
+    h1{margin-bottom:30px;}
+    #fileInput{
+      display:block;
+      margin:0 auto 30px;
+      font-size:1.1rem;
+    }
+    #progress{
+      width:100%;
+      max-width:600px;
+      height:20px;
+      background:#222;
+      border-radius:10px;
+      overflow:hidden;
+      margin-bottom:20px;
+      display:none;
+    }
+    #progressBar{
+      height:100%;
+      background:#0f0;
+      width:0%;
+      transition:width .2s;
+    }
+    #list{
+      width:100%;
+      max-width:600px;
+    }
+    .track{
+      background:#1e1e1e;
+      border-radius:8px;
+      padding:15px;
+      margin-bottom:15px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    .track span{flex:1;}
+    .track a{
+      margin-left:10px;
+      padding:8px 14px;
+      background:#0af;
+      color:#fff;
+      text-decoration:none;
+      border-radius:4px;
+      font-size:.9rem;
+    }
+    .track a:hover{background:#08c;}
+  </style>
+</head>
+<body>
+
+  <h1>Separador REAL de Canciones</h1>
+  <input type="file" id="fileInput" accept="audio/*"/>
+  <div id="progress"><div id="progressBar"></div></div>
+  <div id="list"></div>
+
+  <script type="module">
+    import ffmpegJsPath from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/+esm';
+    import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/+esm';
+    const ffmpeg = new FFmpeg();
+    await ffmpeg.load();
+
+    const fileInput = document.getElementById('fileInput');
+    const progress = document.getElementById('progress');
+    const progressBar = document.getElementById('progressBar');
+    const list = document.getElementById('list');
+
+    fileInput.addEventListener('change', async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      list.innerHTML='';
+      progress.style.display='block';
+      progressBar.style.width='0%';
+
+      const ext = file.name.split('.').pop();
+      const inName = `input.${ext}`;
+      const outPattern = 'out%03d.mp3';
+
+      ffmpeg.writeFile(inName, new Uint8Array(await file.arrayBuffer()));
+
+      ffmpeg.on('log', ({message})=>{
+        const m = message.match(/time=(\d{2}):(\d{2}):(\d{2})/);
+        if(m){
+          const secs = (+m[1])*3600 + (+m[2])*60 + (+m[3]);
+          const pct = Math.min(100, Math.round((secs/180)*100));
+          progressBar.style.width=pct+'%';
+        }
+      });
+
+      await ffmpeg.exec([
+        '-i',inName,
+        '-c','mp3',
+        '-f','segment',
+        '-segment_time','180',
+        '-reset_timestamps','1',
+        outPattern
+      ]);
+
+      progress.style.display='none';
+
+      let idx=1;
+      while(true){
+        const fname = outPattern.replace('%03d',String(idx).padStart(3,'0'));
+        try{
+          const data = await ffmpeg.readFile(fname);
+          const blob = new Blob([data.buffer],{type:'audio/mpeg'});
+          const url = URL.createObjectURL(blob);
+          const div=document.createElement('div');
+          div.className='track';
+          div.innerHTML=`
+            <span>Canción ${idx}</span>
+            <a href="${url}" download="cancion${idx}.mp3">Descargar</a>`;
+          list.appendChild(div);
+          idx++;
+        }catch{
+          break;
+        }
+      }
+    });
+  </script>
+
+</body>
+</html>
+```
