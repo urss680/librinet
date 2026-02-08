@@ -1,0 +1,340 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Editor de Audio Avanzado</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;background:#111;color:#eee;display:flex;flex-direction:column;align-items:center;padding:20px}
+    canvas{background:#000;border:1px solid #555;margin:10px 0}
+    button{margin:5px;padding:8px 14px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer}
+    button:disabled{background:#444;cursor:not-allowed}
+    input[type=file]{margin:5px}
+    .row{display:flex;flex-wrap:wrap;justify-content:center;gap:5px}
+    label{margin:0 5px;font-size:14px}
+  </style>
+</head>
+<body>
+
+  <h1>Editor de Audio Avanzado</h1>
+
+  <div class="row">
+    <input type="file" id="fileInput" accept="audio/*" multiple>
+    <button id="recBtn">Grabar micrófono</button>
+    <button id="stopBtn" disabled>Detener</button>
+    <button id="playBtn" disabled>Reproducir</button>
+    <button id="pauseBtn" disabled>Pausar</button>
+    <button id="cutBtn" disabled>Cortar selección</button>
+    <button id="trimBtn" disabled>Recortar selección</button>
+    <button id="mergeBtn" disabled>Unir audios</button>
+    <button id="splitBtn" disabled>Dividir en partes</button>
+    <button id="downloadBtn" disabled>Descargar WAV</button>
+    <button id="saveProjectBtn" disabled>Descargar .au (proyecto)</button>
+  </div>
+
+  <div class="row">
+    <label>Graves<input type="range" id="bass" min="-20" max="20" value="0"></label>
+    <label>Agudos<input type="range" id="treble" min="-20" max="20" value="0"></label>
+    <label>Robot <input type="checkbox" id="robot"></label>
+    <label>Rápido/Lento<input type="range" id="rate" min="0.5" max="2" step="0.1" value="1"></label>
+    <label>Zoom<input type="range" id="zoom" min="1" max="100" value="1"></label>
+  </div>
+
+  <canvas id="canvas" width="800" height="200"></canvas>
+
+  <script>
+    const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+    let audioCtx,source,buffer,recorder,recordedChunks=[],selection={start:0,end:0},buffers=[];
+    let mouseDown=false,mouseX=0,zoom=1,offset=0,playStartTime=0,pausedAt=0;
+
+    document.getElementById('fileInput').addEventListener('change',e=>{
+      const files=Array.from(e.target.files);
+      files.forEach(file=>{
+        const reader=new FileReader();
+        reader.onload=ev=>{
+          audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+          audioCtx.decodeAudioData(ev.target.result,decoded=>{
+            buffers.push(decoded);
+            buffer=decoded;
+            drawWaveform();
+            enableButtons();
+          });
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    });
+
+    document.getElementById('recBtn').onclick=()=>{
+      navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+        recordedChunks=[];
+        recorder=new MediaRecorder(stream);
+        recorder.ondataavailable=e=>recordedChunks.push(e.data);
+        recorder.onstop=()=>{
+          const blob=new Blob(recordedChunks,{type:'audio/wav'});
+          const reader=new FileReader();
+          reader.onloadend=()=>{
+            audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+            audioCtx.decodeAudioData(reader.result,decoded=>{
+              buffer=decoded;
+              buffers=[decoded];
+              drawWaveform();
+              enableButtons();
+            });
+          };
+          reader.readAsArrayBuffer(blob);
+        };
+        recorder.start();
+        document.getElementById('recBtn').disabled=true;
+        document.getElementById('stopBtn').disabled=false;
+        visualizeMic(stream);
+      });
+    };
+
+    function visualizeMic(stream){
+      const micSource=audioCtx.createMediaStreamSource(stream);
+      const analyser=audioCtx.createAnalyser();
+      analyser.fftSize=2048;
+      micSource.connect(analyser);
+      const dataArray=new Uint8Array(analyser.frequencyBinCount);
+      function draw(){
+        if(recorder.state!=='recording')return;
+        requestAnimationFrame(draw);
+        analyser.getByteTimeDomainData(dataArray);
+        ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.lineWidth=2;ctx.strokeStyle='#0f0';ctx.beginPath();
+        const sliceWidth=canvas.width/dataArray.length;
+        let x=0;
+        for(let i=0;i<dataArray.length;i++){
+          const v=dataArray[i]/128.0;
+          const y=v*canvas.height/2;
+          if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+          x+=sliceWidth;
+        }
+        ctx.stroke();
+      }
+      draw();
+    }
+
+    document.getElementById('stopBtn').onclick=()=>{
+      recorder.stop();
+      recorder.stream.getTracks().forEach(t=>t.stop());
+      document.getElementById('recBtn').disabled=false;
+      document.getElementById('stopBtn').disabled=true;
+    };
+
+    document.getElementById('playBtn').onclick=()=>{
+      if(source)source.stop();
+      source=audioCtx.createBufferSource();
+      source.buffer=applyEffects(buffer);
+      source.playbackRate.value=parseFloat(document.getElementById('rate').value);
+      source.connect(audioCtx.destination);
+      playStartTime=audioCtx.currentTime-pausedAt;
+      source.start(0,pausedAt);
+      document.getElementById('pauseBtn').disabled=false;
+    };
+
+    document.getElementById('pauseBtn').onclick=()=>{
+      if(source){
+        source.stop();
+        pausedAt=audioCtx.currentTime-playStartTime;
+        document.getElementById('pauseBtn').disabled=true;
+      }
+    };
+
+    canvas.addEventListener('mousedown',e=>{
+      mouseDown=true;
+      mouseX=e.offsetX;
+      selection.start=(mouseX/canvas.width)/zoom+offset;
+      selection.end=selection.start;
+      drawWaveform();
+    });
+    canvas.addEventListener('mousemove',e=>{
+      if(!mouseDown)return;
+      selection.end=(e.offsetX/canvas.width)/zoom+offset;
+      drawWaveform();
+    });
+    canvas.addEventListener('mouseup',e=>{
+      mouseDown=false;
+    });
+
+    document.getElementById('zoom').oninput=e=>{
+      zoom=parseFloat(e.target.value);
+      drawWaveform();
+    };
+
+    document.getElementById('cutBtn').onclick=()=>{
+      if(!buffer)return;
+      const start=Math.floor(selection.start*buffer.length);
+      const end=Math.floor(selection.end*buffer.length);
+      const newLength=buffer.length-(end-start);
+      const newBuffer=audioCtx.createBuffer(buffer.numberOfChannels,newLength,buffer.sampleRate);
+      for(let c=0;c<buffer.numberOfChannels;c++){
+        const oldData=buffer.getChannelData(c);
+        const newData=newBuffer.getChannelData(c);
+        newData.set(oldData.slice(0,start));
+        newData.set(oldData.slice(end),start);
+      }
+      buffer=newBuffer;
+      buffers=[buffer];
+      drawWaveform();
+    };
+
+    document.getElementById('trimBtn').onclick=()=>{
+      if(!buffer)return;
+      const start=Math.floor(selection.start*buffer.length);
+      const end=Math.floor(selection.end*buffer.length);
+      const newLength=end-start;
+      const newBuffer=audioCtx.createBuffer(buffer.numberOfChannels,newLength,buffer.sampleRate);
+      for(let c=0;c<buffer.numberOfChannels;c++){
+        const oldData=buffer.getChannelData(c);
+        const newData=newBuffer.getChannelData(c);
+        for(let i=0;i<newLength;i++)newData[i]=oldData[start+i];
+      }
+      buffer=newBuffer;
+      buffers=[buffer];
+      drawWaveform();
+    };
+
+    document.getElementById('mergeBtn').onclick=()=>{
+      if(buffers.length<2)return;
+      const totalLength=buffers.reduce((a,b)=>a+b.length,0);
+      const newBuffer=audioCtx.createBuffer(buffers[0].numberOfChannels,totalLength,buffers[0].sampleRate);
+      let pos=0;
+      buffers.forEach(buf=>{
+        for(let c=0;c<buf.numberOfChannels;c++){
+          const src=buf.getChannelData(c);
+          const dst=newBuffer.getChannelData(c);
+          dst.set(src,pos);
+        }
+        pos+=buf.length;
+      });
+      buffer=newBuffer;
+      buffers=[buffer];
+      drawWaveform();
+    };
+
+    document.getElementById('splitBtn').onclick=()=>{
+      if(!buffer)return;
+      const splitPoint=Math.floor(selection.start*buffer.length);
+      const buf1=audioCtx.createBuffer(buffer.numberOfChannels,splitPoint,buffer.sampleRate);
+      const buf2=audioCtx.createBuffer(buffer.numberOfChannels,buffer.length-splitPoint,buffer.sampleRate);
+      for(let c=0;c<buffer.numberOfChannels;c++){
+        const src=buffer.getChannelData(c);
+        buf1.getChannelData(c).set(src.slice(0,splitPoint));
+        buf2.getChannelData(c).set(src.slice(splitPoint));
+      }
+      buffers=[buf1,buf2];
+      buffer=buf1;
+      drawWaveform();
+    };
+
+    document.getElementById('downloadBtn').onclick=()=>{
+      const wav=toWav(applyEffects(buffer));
+      const blob=new Blob([wav],{type:'audio/wav'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download='editado.wav';a.click();
+    };
+
+    document.getElementById('saveProjectBtn').onclick=()=>{
+      const project={
+        sampleRate:buffer.sampleRate,
+        length:buffer.length,
+        numberOfChannels:buffer.numberOfChannels,
+        channels:[]
+      };
+      for(let c=0;c<buffer.numberOfChannels;c++){
+        project.channels.push(Array.from(buffer.getChannelData(c)));
+      }
+      const blob=new Blob([JSON.stringify(project)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download='proyecto.au';a.click();
+    };
+
+    function applyEffects(buffer){
+      const bass=parseFloat(document.getElementById('bass').value);
+      const treble=parseFloat(document.getElementById('treble').value);
+      const robot=document.getElementById('robot').checked;
+      const newBuffer=audioCtx.createBuffer(buffer.numberOfChannels,buffer.length,buffer.sampleRate);
+      for(let c=0;c<buffer.numberOfChannels;c++){
+        const src=buffer.getChannelData(c);
+        const dst=newBuffer.getChannelData(c);
+        for(let i=0;i<buffer.length;i++){
+          let s=src[i];
+          if(robot)s=Math.round(s*8)/8;
+          dst[i]=s;
+        }
+      }
+      return newBuffer;
+    }
+
+    function drawWaveform(){
+      if(!buffer)return;
+      const width=canvas.width,height=canvas.height,data=buffer.getChannelData(0);
+      ctx.fillStyle='#000';ctx.fillRect(0,0,width,height);
+      ctx.strokeStyle='#0f0';ctx.beginPath();
+      const step=Math.floor(buffer.length/zoom/width);
+      for(let i=0;i<width;i++){
+        let min=1,max=-1;
+        for(let j=0;j<step;j++){
+          const idx=Math.floor(i*step+j+offset*buffer.length);
+          if(idx>=buffer.length)break;
+          const d=data[idx];
+          if(d<min)min=d;
+          if(d>max)max=d;
+        }
+        const y0=(1+min)*height/2;
+        const y1=(1+max)*height/2;
+        ctx.moveTo(i,y0);ctx.lineTo(i,y1);
+      }
+      ctx.stroke();
+      if(selection.start!==selection.end){
+        ctx.fillStyle='rgba(255,255,255,0.3)';
+        const x0=(Math.min(selection.start,selection.end)-offset)*zoom*width;
+        const x1=(Math.max(selection.start,selection.end)-offset)*zoom*width;
+        ctx.fillRect(x0,0,x1-x0,height);
+      }
+    }
+
+    function enableButtons(){
+      document.getElementById('playBtn').disabled=false;
+      document.getElementById('pauseBtn').disabled=false;
+      document.getElementById('cutBtn').disabled=false;
+      document.getElementById('trimBtn').disabled=false;
+      document.getElementById('mergeBtn').disabled=false;
+      document.getElementById('splitBtn').disabled=false;
+      document.getElementById('downloadBtn').disabled=false;
+      document.getElementById('saveProjectBtn').disabled=false;
+    }
+
+    function toWav(buffer){
+      const length=buffer.length*buffer.numberOfChannels*2+44;
+      const arrayBuffer=new ArrayBuffer(length);
+      const view=new DataView(arrayBuffer);
+      const channels=[];
+      let offset=0;
+      const writeString=(str)=>{
+        for(let i=0;i<str.length;i++)view.setUint8(offset++,str.charCodeAt(i));
+      };
+      const writeUint32=(v)=>{view.setUint32(offset,v,true);offset+=4;};
+      const writeUint16=(v)=>{view.setUint16(offset,v,true);offset+=2;};
+      writeString('RIFF');writeUint32(length-8);
+      writeString('WAVE');writeString('fmt ');
+      writeUint32(16);writeUint16(1);writeUint16(buffer.numberOfChannels);
+      writeUint32(buffer.sampleRate);writeUint32(buffer.sampleRate*buffer.numberOfChannels*2);
+      writeUint16(buffer.numberOfChannels*2);writeUint16(16);
+      writeString('data');writeUint32(buffer.length*buffer.numberOfChannels*2);
+      for(let c=0;c<buffer.numberOfChannels;c++)channels.push(buffer.getChannelData(c));
+      for(let i=0;i<buffer.length;i++){
+        for(let c=0;c<buffer.numberOfChannels;c++){
+          let sample=Math.max(-1,Math.min(1,channels[c][i]));
+          sample=sample<0?sample*32768:sample*32767;
+          view.setInt16(offset,sample,true);offset+=2;
+        }
+      }
+      return arrayBuffer;
+    }
+  </script>
+
+</body>
+</html>
+```
