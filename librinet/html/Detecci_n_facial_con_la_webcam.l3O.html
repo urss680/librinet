@@ -1,0 +1,125 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Detección facial con la webcam</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    h1 { margin-bottom: 1rem; }
+    #video, #canvas {
+      width: 100%;
+      max-width: 640px;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 0 12px rgba(0,0,0,.6);
+    }
+    #canvas { position: absolute; top: 0; left: 0; }
+    .wrapper {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: .7rem 1.4rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      background: #00c853;
+      color: #fff;
+      cursor: pointer;
+      transition: background .3s;
+    }
+    button:hover { background: #009624; }
+    button:disabled { background: #555; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <h1>Detección facial en tiempo real</h1>
+
+  <div class="wrapper">
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <button id="toggle">Iniciar detección</button>
+
+  <!-- Face-API.js -->
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+  <script>
+    const video  = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx    = canvas.getContext('2d');
+    const btn    = document.getElementById('toggle');
+
+    let detecting = false;
+    let stream    = null;
+
+    // Cargar modelos
+    Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights'),
+      faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights')
+    ]).then(() => console.log('Modelos cargados'));
+
+    // Acceso a la webcam
+    async function startCamera() {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      return new Promise(res => video.onloadedmetadata = res);
+    }
+
+    // Dibujar detecciones
+    function drawDetections(detections) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#0f0';
+      ctx.lineWidth = 2;
+      detections.forEach(det => {
+        const box = det.detection.box;
+        ctx.strokeRect(box.x, box.y, box.width, box.height);
+      });
+    }
+
+    // Bucle de detección
+    async function detect() {
+      if (!detecting) return;
+      ctx.drawImage(video, 0, 0);
+      const detections = await faceapi
+        .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks();
+      drawDetections(detections);
+      requestAnimationFrame(detect);
+    }
+
+    // Botón toggle
+    btn.addEventListener('click', async () => {
+      if (!detecting) {
+        await startCamera();
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        detecting = true;
+        btn.textContent = 'Detener detección';
+        detect();
+      } else {
+        detecting = false;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+        btn.textContent = 'Iniciar detección';
+      }
+    });
+  </script>
+
+</body>
+</html>
+```
