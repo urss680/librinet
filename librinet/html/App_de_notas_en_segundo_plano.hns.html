@@ -1,0 +1,106 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>App de notas en segundo plano</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #121212;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    textarea {
+      width: 90%;
+      max-width: 500px;
+      height: 120px;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      resize: vertical;
+      background: #1e1e1e;
+      color: #eee;
+    }
+    button {
+      margin-top: 12px;
+      padding: 10px 24px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      background: #00c853;
+      color: #121212;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #009624;
+    }
+    p {
+      margin-top: 12px;
+      font-size: 14px;
+      opacity: .7;
+    }
+  </style>
+</head>
+<body>
+
+  <textarea id="nota" placeholder="Escribe tu nota aquí..."></textarea>
+  <button onclick="guardarNota()">Guardar nota</button>
+  <p id="estado"></p>
+
+  <script>
+    // Recuperar nota previa
+    window.onload = () => {
+      const n = localStorage.getItem("notaGuardada");
+      if (n) document.getElementById("nota").value = n;
+      // Pedir permiso de notificación
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    };
+
+    function guardarNota() {
+      const texto = document.getElementById("nota").value;
+      localStorage.setItem("notaGuardada", texto);
+      document.getElementById("estado").textContent = "Nota guardada localmente.";
+      setTimeout(() => document.getElementById("estado").textContent = "", 2000);
+    }
+
+    // Worker en línea para segundo plano
+    const workerCode = `
+      let timer = null;
+      self.onmessage = function(e) {
+        if (e.data.cmd === 'start') {
+          if (timer) clearInterval(timer);
+          timer = setInterval(() => {
+            self.postMessage({tick: true});
+          }, 60000); // 1 min
+        }
+        if (e.data.cmd === 'stop') {
+          clearInterval(timer);
+          timer = null;
+        }
+      };
+    `;
+    const blob = new Blob([workerCode], { type: "application/javascript" });
+    const worker = new Worker(URL.createObjectURL(blob));
+
+    worker.onmessage = () => {
+      if ("Notification" in window && Notification.permission === "granted") {
+        const nota = localStorage.getItem("notaGuardada") || "Sin nota";
+        new Notification("Tu nota", { body: nota, icon: "https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/light/note.svg" });
+      }
+    };
+
+    worker.postMessage({cmd: "start"});
+  </script>
+</body>
+</html>
+```
