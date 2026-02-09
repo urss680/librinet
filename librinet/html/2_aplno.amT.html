@@ -1,0 +1,20 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>2 aplno</title>
+  <style>
+    body{margin:0;background:#111;color:#0f0;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;font-size:2rem;}
+  </style>
+</head>
+<body>
+  <span id="msg">Esperando 2 aplno...</span>
+  <script>
+    let count=0;
+    const msg=document.getElementById('msg');
+    setInterval(()=>{count++;msg.textContent=`Mensaje ${count}`;},2000);
+  </script>
+</body>
+</html>
+```
