@@ -1,0 +1,133 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>LÓGICA</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    :root{
+      --bg:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+      --card:#111827cc;
+      --accent:#00f3ff;
+      --accent2:#bc13fe;
+      --text:#e5e7eb;
+    }
+    body{
+      margin:0;
+      height:100vh;
+      background:var(--bg);
+      font-family:'Orbitron',sans-serif;
+      color:var(--text);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+    .card{
+      width:90%;
+      max-width:520px;
+      background:var(--card);
+      border:2px solid var(--accent);
+      border-radius:16px;
+      padding:2.5rem 2rem;
+      box-shadow:0 0 20px var(--accent),inset 0 0 10px #0008;
+    }
+    h1{
+      text-align:center;
+      margin:0 0 1.5rem;
+      font-size:2rem;
+      letter-spacing:3px;
+      color:var(--accent);
+      text-shadow:0 0 8px var(--accent);
+    }
+    label{
+      display:block;
+      margin:.8rem 0 .3rem;
+      font-size:.9rem;
+      letter-spacing:1px;
+      color:var(--accent2);
+    }
+    textarea{
+      width:100%;
+      background:#1f2937;
+      border:1px solid var(--accent);
+      border-radius:6px;
+      padding:.7rem;
+      color:var(--text);
+      font-family:'Orbitron',sans-serif;
+      resize:vertical;
+      min-height:50px;
+    }
+    textarea:focus{
+      outline:none;
+      box-shadow:0 0 8px var(--accent);
+    }
+    button{
+      width:100%;
+      margin-top:1.8rem;
+      padding:.9rem;
+      border:none;
+      border-radius:6px;
+      background:var(--accent);
+      color:#000;
+      font-family:'Orbitron',sans-serif;
+      font-size:1rem;
+      font-weight:700;
+      letter-spacing:2px;
+      cursor:pointer;
+      transition:.3s;
+    }
+    button:hover{
+      background:var(--accent2);
+      color:#fff;
+      box-shadow:0 0 12px var(--accent2);
+    }
+    #result{
+      margin-top:1.5rem;
+      font-size:1.1rem;
+      text-align:center;
+      letter-spacing:1px;
+    }
+    .valid{color:#00ff95;text-shadow:0 0 6px #00ff95;}
+    .invalid{color:#ff4d4d;text-shadow:0 0 6px #ff4d4d;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>LÓGICA</h1>
+
+    <label>Premisa 1 (Mayor)</label>
+    <textarea id="p1" placeholder="Ej: Todos los hombres son mortales"></textarea>
+
+    <label>Premisa 2 (Menor)</label>
+    <textarea id="p2" placeholder="Ej: Todos los griegos son hombres"></textarea>
+
+    <label>Premisa 3 (Conclusión)</label>
+    <textarea id="p3" placeholder="Ej: Todos los griegos son mortales"></textarea>
+
+    <button onclick="resolver()">VALIDAR SILOGISMO</button>
+
+    <div id="result"></div>
+  </div>
+
+<script>
+function resolver(){
+  const p1=document.getElementById('p1').value.trim();
+  const p2=document.getElementById('p2').value.trim();
+  const p3=document.getElementById('p3').value.trim();
+  const out=document.getElementById('result');
+
+  if(!p1||!p2||!p3){
+    out.innerHTML='<span class="invalid">Completa las tres premisas.</span>';
+    return;
+  }
+  const juntas=(p1+' '+p2).toLowerCase();
+  const concl=p3.toLowerCase();
+  const valido=juntas.includes(concl)||(p1.includes('todos')&&p2.includes('todos')&&p3.includes('todos'));
+
+  out.innerHTML=valido?'<span class="valid">Silogismo VÁLIDO</span>':'<span class="invalid">Silogismo INVÁLIDO</span>';
+}
+</script>
+</body>
+</html>
+```
