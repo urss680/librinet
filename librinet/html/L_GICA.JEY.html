@@ -1,0 +1,194 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>LÓGICA</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    :root{
+      --bg:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+      --card:#111827cc;
+      --accent:#00f3ff;
+      --accent2:#bc13fe;
+      --text:#e5e7eb;
+    }
+    body{
+      margin:0;
+      min-height:100vh;
+      background:var(--bg);
+      font-family:'Orbitron',sans-serif;
+      color:var(--text);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:2rem;
+      gap:2rem;
+    }
+    .card{
+      width:90%;
+      max-width:520px;
+      background:var(--card);
+      border:2px solid var(--accent);
+      border-radius:16px;
+      padding:2.5rem 2rem;
+      box-shadow:0 0 20px var(--accent),inset 0 0 10px #0008;
+    }
+    h1{
+      text-align:center;
+      margin:0 0 1.5rem;
+      font-size:2rem;
+      letter-spacing:3px;
+      color:var(--accent);
+      text-shadow:0 0 8px var(--accent);
+    }
+    label{
+      display:block;
+      margin:.8rem 0 .3rem;
+      font-size:.9rem;
+      letter-spacing:1px;
+      color:var(--accent2);
+    }
+    textarea{
+      width:100%;
+      background:#1f2937;
+      border:1px solid var(--accent);
+      border-radius:6px;
+      padding:.7rem;
+      color:var(--text);
+      font-family:'Orbitron',sans-serif;
+      resize:vertical;
+      min-height:50px;
+    }
+    textarea:focus{
+      outline:none;
+      box-shadow:0 0 8px var(--accent);
+    }
+    button{
+      width:100%;
+      margin-top:1.8rem;
+      padding:.9rem;
+      border:none;
+      border-radius:6px;
+      background:var(--accent);
+      color:#000;
+      font-family:'Orbitron',sans-serif;
+      font-size:1rem;
+      font-weight:700;
+      letter-spacing:2px;
+      cursor:pointer;
+      transition:.3s;
+    }
+    button:hover{
+      background:var(--accent2);
+      color:#fff;
+      box-shadow:0 0 12px var(--accent2);
+    }
+    #result, #reasoning{
+      margin-top:1.5rem;
+      font-size:1.1rem;
+      text-align:center;
+      letter-spacing:1px;
+    }
+    .valid{color:#00ff95;text-shadow:0 0 6px #00ff95;}
+    .invalid{color:#ff4d4d;text-shadow:0 0 6px #ff4d4d;}
+    #type{
+      color:var(--accent2);
+      font-weight:700;
+      text-shadow:0 0 6px var(--accent2);
+    }
+    .tipoPremisa{
+      margin-top:.3rem;
+      font-size:.8rem;
+      color:var(--accent);
+      letter-spacing:1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>LÓGICA</h1>
+
+    <label>Premisa 1 (Mayor)</label>
+    <textarea id="p1" placeholder="Ej: Algunos hombres son mortales"></textarea>
+    <div id="t1" class="tipoPremisa">Tipo: -</div>
+
+    <label>Premisa 2 (Menor)</label>
+    <textarea id="p2" placeholder="Ej: Todos los griegos son hombres"></textarea>
+    <div id="t2" class="tipoPremisa">Tipo: -</div>
+
+    <label>Premisa 3 (Conclusión)</label>
+    <textarea id="p3" placeholder="Ej: Algunos griegos son mortales"></textarea>
+    <div id="t3" class="tipoPremisa">Tipo: -</div>
+
+    <button onclick="resolver()">VALIDAR SILOGISMO</button>
+
+    <div id="result"></div>
+  </div>
+
+  <div class="card">
+    <h1>LÓGICA RAZONANDO</h1>
+    <div id="type">Tipo de proposición: <span id="tipoLetra">-</span></div>
+    <div id="reasoning">Esperando razonamiento...</div>
+  </div>
+
+<script>
+function detectarTipo(texto){
+  const t=texto.toLowerCase();
+  if(t.includes('algunos')&&!t.includes('no')) return 'I (Particular Afirmativa)';
+  if(t.includes('todos')) return 'A (Universal Afirmativa)';
+  if(t.includes('ningún')||t.includes('ningun')) return 'E (Universal Negativa)';
+  if(t.includes('algunos')&&t.includes('no')) return 'O (Particular Negativa)';
+  return 'A (Universal Afirmativa)'; // por defecto
+}
+function detectarTipoLetra(texto){
+  const t=texto.toLowerCase();
+  if(t.includes('algunos')&&!t.includes('no')) return 'I';
+  if(t.includes('todos')) return 'A';
+  if(t.includes('ningún')||t.includes('ningun')) return 'E';
+  if(t.includes('algunos')&&t.includes('no')) return 'O';
+  return 'A';
+}
+
+// Actualizar tipos en tiempo real
+['p1','p2','p3'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',e=>{
+    const num=id.slice(-1);
+    document.getElementById('t'+num).textContent='Tipo: '+detectarTipo(e.target.value);
+  });
+});
+
+function resolver(){
+  const p1=document.getElementById('p1').value.trim();
+  const p2=document.getElementById('p2').value.trim();
+  const p3=document.getElementById('p3').value.trim();
+  const out=document.getElementById('result');
+  const tipo=document.getElementById('tipoLetra');
+  const reasoning=document.getElementById('reasoning');
+
+  if(!p1||!p2||!p3){
+    out.innerHTML='<span class="invalid">Completa las tres premisas.</span>';
+    tipo.textContent='-';
+    reasoning.textContent='Esperando razonamiento...';
+    return;
+  }
+
+  const tipoP1=detectarTipoLetra(p1);
+  const tipoP2=detectarTipoLetra(p2);
+  const tipoP3=detectarTipoLetra(p3);
+
+  const tipoSilogismo=tipoP1+tipoP2+tipoP3;
+  tipo.textContent=tipoP3;
+
+  const juntas=(p1+' '+p2).toLowerCase();
+  const concl=p3.toLowerCase();
+  const valido=juntas.includes(concl)||(p1.includes('algunos')&&p2.includes('todos')&&p3.includes('algunos'));
+
+  reasoning.textContent=valido?'El razonamiento es válido según la figura y el tipo detectado.':'El razonamiento no es válido para el tipo '+tipoP3+'.';
+
+  out.innerHTML=valido?'<span class="valid">Silogismo VÁLIDO</span>':'<span class="invalid">Silogismo INVÁLIDO</span>';
+}
+</script>
+</body>
+</html>
+```
