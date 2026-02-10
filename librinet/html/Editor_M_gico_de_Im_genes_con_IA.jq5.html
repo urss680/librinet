@@ -1,0 +1,395 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editor Mágico de Imágenes con IA</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #ffffff;
+            margin-bottom: 30px;
+            font-weight: 300;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+            justify-content: center;
+        }
+        .controls button, .controls input[type="file"] {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .controls button.active {
+            background: rgba(0, 123, 255, 0.3);
+            border: 1px solid rgba(0, 123, 255, 0.5);
+            box-shadow: 0 0 15px rgba(0, 123, 255, 0.4);
+        }
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            margin: 0 auto;
+            display: block;
+            width: fit-content;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        canvas {
+            display: block;
+            cursor: crosshair;
+            background: #1a1a1a;
+        }
+        .brush-size {
+            margin: 20px auto;
+            width: 300px;
+            text-align: center;
+        }
+        .brush-size label {
+            display: block;
+            margin-bottom: 10px;
+            color: #e0e0e0;
+            font-size: 18px;
+        }
+        .brush-size input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .brush-size input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00a8ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 168, 255, 0.7);
+        }
+        .brush-size span {
+            display: block;
+            margin-top: 10px;
+            color: #00a8ff;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .loader {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 168, 255, 0.5);
+            border: 1px solid rgba(0, 168, 255, 0.3);
+        }
+        .loader p {
+            color: #00a8ff;
+            font-size: 24px;
+            margin-top: 20px;
+        }
+        .spinner {
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-top: 5px solid #00a8ff;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 25px;
+            font-size: 16px;
+            line-height: 1.7;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .info strong {
+            color: #00a8ff;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>✨ Editor Mágico de Imágenes con IA</h1>
+        
+        <div class="controls">
+            <input type="file" id="imageLoader" accept="image/*">
+            <button id="brushTool" class="active">Pincel Mágico</button>
+            <button id="eraserTool">Borrador Inteligente</button>
+            <button id="fillTool">Rellenar con IA</button>
+            <button id="downloadBtn">Descargar Imagen</button>
+        </div>
+
+        <div class="brush-size">
+            <label>Tamaño del Pincel: <span id="brushSizeValue">20</span>px</label>
+            <input type="range" id="brushSize" min="5" max="100" value="20">
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div class="info">
+            <strong>Instrucciones:</strong><br>
+            1. Carga una imagen usando el botón "Examinar"<br>
+            2. Usa el <strong>Pincel Mágico</strong> para seleccionar áreas a eliminar<br>
+            3. Usa el <strong>Borrador Inteligente</strong> para correcciones finales<br>
+            4. Usa <strong>Rellenar con IA</strong> para rellenar las áreas eliminadas<br>
+            5. Descarga tu imagen editada
+        </div>
+    </div>
+
+    <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <p>Procesando con IA...</p>
+    </div>
+
+    <script>
+        let canvas, ctx;
+        let isDrawing = false;
+        let currentTool = 'brush';
+        let brushSize = 20;
+        let imageLoaded = false;
+        let maskCanvas, maskCtx;
+        let originalImage;
+
+        window.onload = function() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            
+            maskCanvas = document.createElement('canvas');
+            maskCtx = maskCanvas.getContext('2d');
+
+            // Eventos de herramientas
+            document.getElementById('brushTool').addEventListener('click', () => setTool('brush'));
+            document.getElementById('eraserTool').addEventListener('click', () => setTool('eraser'));
+            document.getElementById('fillTool').addEventListener('click', () => fillWithAI());
+            document.getElementById('downloadBtn').addEventListener('click', downloadImage);
+            
+            // Control del tamaño del pincel
+            document.getElementById('brushSize').addEventListener('input', (e) => {
+                brushSize = e.target.value;
+                document.getElementById('brushSizeValue').textContent = brushSize;
+            });
+
+            // Carga de imagen
+            document.getElementById('imageLoader').addEventListener('change', handleImage);
+            
+            // Eventos del canvas
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+        };
+
+        function handleImage(e) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    // Ajustar canvas al tamaño de la imagen
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    maskCanvas.width = img.width;
+                    maskCanvas.height = img.height;
+                    
+                    // Dibujar imagen original
+                    ctx.drawImage(img, 0, 0);
+                    originalImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    imageLoaded = true;
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+            
+            if (tool === 'brush') {
+                document.getElementById('brushTool').classList.add('active');
+                canvas.style.cursor = 'crosshair';
+            } else if (tool === 'eraser') {
+                document.getElementById('eraserTool').classList.add('active');
+                canvas.style.cursor = 'grab';
+            }
+        }
+
+        function startDrawing(e) {
+            if (!imageLoaded) return;
+            isDrawing = true;
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing || !imageLoaded) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ctx.globalCompositeOperation = currentTool === 'brush' ? 'destination-out' : 'source-over';
+            
+            ctx.beginPath();
+            ctx.arc(x, y, brushSize, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // También dibujar en la máscara
+            if (currentTool === 'brush') {
+                maskCtx.globalCompositeOperation = 'source-over';
+                maskCtx.fillStyle = 'black';
+                maskCtx.beginPath();
+                maskCtx.arc(x, y, brushSize, 0, Math.PI * 2);
+                maskCtx.fill();
+            }
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        async function fillWithAI() {
+            if (!imageLoaded) {
+                alert('Por favor, carga una imagen primero.');
+                return;
+            }
+            
+            showLoader(true);
+            
+            try {
+                // Obtener la imagen actual y la máscara
+                const currentImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const maskImage = maskCtx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // Simular procesamiento con IA
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Algoritmo simple de inpainting (simulado)
+                for (let i = 0; i < currentImage.data.length; i += 4) {
+                    // Si el píxel está enmascarado (negro en la máscara)
+                    if (maskImage.data[i] < 128) {
+                        // Interpolar con píxeles vecinos
+                        const neighbors = getNeighbors(currentImage, i);
+                        currentImage.data[i] = neighbors.r;
+                        currentImage.data[i + 1] = neighbors.g;
+                        currentImage.data[i + 2] = neighbors.b;
+                        maskImage.data[i] = 255; // Marcar como procesado
+                    }
+                }
+                
+                ctx.putImageData(currentImage, 0, 0);
+                alert('¡Relleno con IA completado!');
+            } catch (error) {
+                console.error('Error en el procesamiento:', error);
+                alert('Error al procesar la imagen. Intenta de nuevo.');
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        function getNeighbors(imageData, index) {
+            const width = canvas.width * 4;
+            const neighbors = [];
+            let r = 0, g = 0, b = 0, count = 0;
+            
+            // Buscar píxeles vecinos válidos
+            for (let dx = -10; dx <= 10; dx++) {
+                for (let dy = -10; dy <= 10; dy++) {
+                    const newIndex = index + dx * 4 + dy * width;
+                    if (newIndex >= 0 && newIndex < imageData.data.length) {
+                        neighbors.push({
+                            r: imageData.data[newIndex],
+                            g: imageData.data[newIndex + 1],
+                            b: imageData.data[newIndex + 2]
+                        });
+                    }
+                }
+            }
+            
+            // Promediar colores
+            neighbors.forEach(n => {
+                r += n.r;
+                g += n.g;
+                b += n.b;
+                count++;
+            });
+            
+            return {
+                r: Math.floor(r / count),
+                g: Math.floor(g / count),
+                b: Math.floor(b / count)
+            };
+        }
+
+        function downloadImage() {
+            if (!imageLoaded) {
+                alert('Por favor, carga y edita una imagen primero.');
+                return;
+            }
+            
+            const link = document.createElement('a');
+            link.download = 'imagen_editada.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        function showLoader(show) {
+            document.getElementById('loader').style.display = show ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
+```
