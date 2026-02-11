@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZOZ - Salas de Audio y Video</title>
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: white; overflow-x: hidden; }
+        
+        /* Animaciones */
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-150px) scale(1.5); opacity: 0; }
+        }
+        
+        .reaction-bubble {
+            position: absolute;
+            animation: floatUp 2s ease-out forwards;
+            pointer-events: none;
+            font-size: 2rem;
+            z-index: 50;
+            text-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        /* Ondas de sonido simuladas */
+        .sound-wave {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            height: 16px;
+        }
+        .wave-bar {
+            width: 3px;
+            background: #4ade80;
+            border-radius: 10px;
+            animation: wave 1s ease-in-out infinite;
+        }
+        .wave-bar:nth-child(1) { animation-delay: 0.0s; height: 6px; }
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; height: 10px; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; height: 14px; }
+        .wave-bar:nth-child(4) { animation-delay: 0.3s; height: 8px; }
+        .wave-bar:nth-child(5) { animation-delay: 0.4s; height: 12px; }
+
+        @keyframes wave {
+            0%, 100% { height: 4px; opacity: 0.5; }
+            50% { height: 100%; opacity: 1; }
+        }
+
+        .muted .wave-bar {
+            animation: none;
+            height: 2px;
+            background: #ef4444;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Controles Host y PiP */
+        .overlay-controls {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .speaker-card:hover .overlay-controls {
+            opacity: 1;
+        }
+
+        /* Panel Lateral */
+        .side-panel {
+            transition: all 0.3s ease-in-out;
+            border-left: 1px solid #334155;
+            background: #1e293b;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            z-index: 40;
+            width: 320px;
+        }
+
+        .side-panel.closed {
+            transform: translateX(100%);
+        }
+        
+        @media (min-width: 768px) {
+            .side-panel { position: relative; }
+            .side-panel.closed { width: 0; transform: translateX(0); opacity: 0; overflow: hidden; border-left: 0; }
+        }
+
+        /* Tooltip */
+        .tooltip-container {
+            position: relative;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            background-color: #334155;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 10px;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- ICONOS ---
+        const IconBase = ({ children, size = 20, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+
+        const Icons = {
+            Mic: (p) => <IconBase {...p}><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></IconBase>,
+            MicOff: (p) => <IconBase {...p}><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><path d="M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></IconBase>,
+            Radio: (p) => <IconBase {...p}><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></IconBase>,
+            Users: (p) => <IconBase {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></IconBase>,
+            LogOut: (p) => <IconBase {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></IconBase>,
+            Hand: (p) => <IconBase {...p}><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></IconBase>,
+            MessageSquare: (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></IconBase>,
+            Send: (p) => <IconBase {...p}><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></IconBase>,
+            X: (p) => <IconBase {...p}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></IconBase>,
+            Monitor: (p) => <IconBase {...p}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></IconBase>,
+            UserX: (p) => <IconBase {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></IconBase>,
+            Pip: (p) => <IconBase {...p}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><path d="M12 13h5v4"></path></IconBase>,
+            Video: (p) => <IconBase {...p}><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></IconBase>,
+            VideoOff: (p) => <IconBase {...p}><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/></IconBase>,
+            Split: (p) => <IconBase {...p}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="17"></line></IconBase>
+        };
+
+        const SoundWave = ({ isMuted }) => (
+            <div className={`sound-wave ${isMuted ? 'muted' : ''}`}>
+                <div className="wave-bar"></div>
+                <div className="wave-bar"></div>
+                <div className="wave-bar"></div>
+                <div className="wave-bar"></div>
+                <div className="wave-bar"></div>
+            </div>
+        );
+
+        // --- COMPONENTES UI ---
+        const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false, title = '' }) => {
+            const baseClass = "px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 relative";
+            const variants = {
+                primary: "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20",
+                danger: "bg-red-500 hover:bg-red-400 text-white",
+                ghost: "bg-slate-700/50 hover:bg-slate-600 text-slate-200",
+                success: "bg-emerald-600 hover:bg-emerald-500 text-white",
+                warning: "bg-yellow-600 hover:bg-yellow-500 text-white",
+                active: "bg-indigo-500 text-white ring-2 ring-indigo-300",
+            };
+            return (
+                <button onClick={onClick} disabled={disabled} title={title} className={`${baseClass} ${variants[variant]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}>
+                    {children}
+                </button>
+            );
+        };
+
+        const Input = ({ value, onChange, placeholder, icon: Icon, onKeyDown }) => (
+            <div className="relative w-full">
+                {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />}
+                <input 
+                    type="text" value={value} onChange={e => onChange(e.target.value)} onKeyDown={onKeyDown} placeholder={placeholder}
+                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg py-3 ${Icon ? 'pl-10' : 'pl-4'} pr-4 focus:ring-2 focus:ring-blue-500 focus:outline-none text-white placeholder-slate-500`}
+                />
+            </div>
+        );
+
+        // --- MEDIA PLAYER ---
+        const MediaPlayer = ({ stream, isMuted, isLocal, type }) => {
+            const videoRef = useRef(null);
+            const audioRef = useRef(null);
+            
+            const hasVideo = stream && stream.getVideoTracks().length > 0;
+
+            useEffect(() => {
+                if (stream) {
+                    if (hasVideo && videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                    } else if (!hasVideo && audioRef.current) {
+                        audioRef.current.srcObject = stream;
+                    }
+                }
+            }, [stream, hasVideo]);
+
+            const togglePiP = async (e) => {
+                e.stopPropagation();
+                if (videoRef.current && document.pictureInPictureEnabled) {
+                    try {
+                        if (document.pictureInPictureElement) await document.exitPictureInPicture();
+                        else await videoRef.current.requestPictureInPicture();
+                    } catch (err) { console.error(err); }
+                }
+            };
+
+            if (hasVideo) {
+                const isMirrored = isLocal && type === 'camera'; 
+                // CRUCIAL: Si es screen o dual, usamos object-contain para que se vea toda la pantalla. Si es cámara, object-cover.
+                const objectFitClass = (type === 'screen' || type === 'dual') ? 'object-contain bg-black' : 'object-cover';
+
+                return (
+                    <div className="absolute inset-0 bg-black rounded-2xl overflow-hidden z-10 group">
+                        <video 
+                            ref={videoRef} 
+                            autoPlay 
+                            playsInline 
+                            muted={isLocal} 
+                            className={`w-full h-full ${objectFitClass} ${isMirrored ? 'scale-x-[-1]' : ''}`}
+                        />
+                        <div className="absolute top-2 right-2 overlay-controls z-30 flex gap-2">
+                            <button onClick={togglePiP} className="p-2 bg-black/60 backdrop-blur rounded-full hover:bg-black/80 text-white transition-all" title="Picture in Picture">
+                                <Icons.Pip size={16} />
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return <audio ref={audioRef} autoPlay muted={isLocal} />;
+        };
+
+        // --- APP PRINCIPAL ---
+        const App = () => {
+            const [step, setStep] = useState('login'); 
+            const [username, setUsername] = useState('');
+            const [myPeerId, setMyPeerId] = useState(null);
+            
+            // Datos Sala
+            const [roomName, setRoomName] = useState('');
+            const [maxSlots, setMaxSlots] = useState(3);
+            const [isHost, setIsHost] = useState(false);
+            
+            // Estado Sala
+            const [usersInRoom, setUsersInRoom] = useState([]);
+            const [speakers, setSpeakers] = useState([]);
+            const [handRaised, setHandRaised] = useState(false);
+            const [reactions, setReactions] = useState([]);
+            
+            // Estado Media (Streams)
+            const [userStreams, setUserStreams] = useState({}); 
+            const [userMediaTypes, setUserMediaTypes] = useState({}); 
+            const [streamVersion, setStreamVersion] = useState(0); // NUEVO: Control de versiones del stream para forzar actualizaciones
+
+            // --- ESTADO DE MEDIOS SIMPLIFICADO ---
+            const [micEnabled, setMicEnabled] = useState(false);
+            const [cameraEnabled, setCameraEnabled] = useState(false);
+            const [mediaMode, setMediaMode] = useState('camera'); // 'camera', 'screen', 'dual'
+
+            // Refs de Media Críticos
+            const rawCameraStream = useRef(null);
+            const rawDisplayStream = useRef(null);
+            const rawMicStream = useRef(null);
+            
+            // Mixing Utils
+            const canvasRef = useRef(null);
+            const canvasIntervalRef = useRef(null);
+            const audioContextRef = useRef(null);
+            const audioDestinationRef = useRef(null);
+
+            // Chat y Logs
+            const [chatMessages, setChatMessages] = useState([]);
+            const [activityLog, setActivityLog] = useState([]);
+            const processedLogIds = useRef(new Set());
+            const [showSidePanel, setShowSidePanel] = useState(false);
+            const [activeTab, setActiveTab] = useState('chat');
+            const [newMessage, setNewMessage] = useState('');
+
+            // Monitoring
+            const lastSeenRef = useRef({}); 
+
+            // Lobby
+            const [activeRooms, setActiveRooms] = useState([]);
+            const lobbyPeerRef = useRef(null);
+
+            // Refs
+            const peerRef = useRef(null);
+            const myStreamRef = useRef(null);
+            const connectionsRef = useRef([]);
+            const callsRef = useRef({});
+            const LOBBY_ID = 'ZOZ-GLOBAL-LOBBY-V4-STABLE';
+            const HEARTBEAT_INTERVAL = 30000;
+
+            // --- LOBBY & NETWORK CODE ---
+            useEffect(() => {
+                if (step === 'lobby') connectToLobby();
+                return () => { if (step !== 'lobby' && lobbyPeerRef.current) { lobbyPeerRef.current.destroy(); lobbyPeerRef.current = null; }};
+            }, [step]);
+
+            useEffect(() => {
+                let interval;
+                if (isHost && step === 'room') {
+                    announceRoomToLobby(roomName, maxSlots);
+                    interval = setInterval(() => announceRoomToLobby(roomName, maxSlots), HEARTBEAT_INTERVAL);
+                }
+                return () => clearInterval(interval);
+            }, [isHost, step, roomName, maxSlots]);
+            
+            useEffect(() => {
+                if (step === 'room' && !isHost && connectionsRef.current[0]) {
+                    const interval = setInterval(() => { if(connectionsRef.current[0].open) connectionsRef.current[0].send({ type: 'heartbeat' }); }, 2000);
+                    return () => clearInterval(interval);
+                }
+            }, [step, isHost]);
+
+            // Detección de desconexiones
+            useEffect(() => {
+                if (isHost && step === 'room') {
+                    const interval = setInterval(() => {
+                        const now = Date.now();
+                        usersInRoom.forEach(u => {
+                            if (!u.isHost) {
+                                const last = lastSeenRef.current[u.id] || now; 
+                                if (now - last > 15000) { handleDisconnect(u.id); addLogAndBroadcast(`🔌 ${u.name} desconectado (timeout)`, 'danger'); }
+                            }
+                        });
+                    }, 5000);
+                    return () => clearInterval(interval);
+                }
+            }, [isHost, step, usersInRoom]);
+
+            // --- LÓGICA DE LOBBY ---
+            const connectToLobby = () => {
+                if (lobbyPeerRef.current) return;
+                const tempPeer = new Peer(null);
+                tempPeer.on('open', (id) => {
+                    const conn = tempPeer.connect(LOBBY_ID);
+                    conn.on('open', () => {
+                        conn.on('data', (data) => { if (data.type === 'room_list') setActiveRooms(data.payload); });
+                        conn.send({ type: 'get_rooms' });
+                    });
+                    conn.on('error', () => becomeLobbyHost());
+                });
+                tempPeer.on('error', (err) => { if (err.type === 'peer-unavailable') becomeLobbyHost(); });
+                lobbyPeerRef.current = tempPeer;
+            };
+
+            const becomeLobbyHost = () => {
+                if (lobbyPeerRef.current) lobbyPeerRef.current.destroy();
+                const hostPeer = new Peer(LOBBY_ID);
+                const currentRooms = new Map();
+                hostPeer.on('open', () => {
+                    setInterval(() => {
+                        const now = Date.now();
+                        let changed = false;
+                        for (const [key, room] of currentRooms) { if (now - room.lastPing > (HEARTBEAT_INTERVAL * 2)) { currentRooms.delete(key); changed = true; } }
+                        if (changed) broadcastLobby(Array.from(currentRooms.values()));
+                    }, 10000);
+                });
+                hostPeer.on('connection', (conn) => {
+                    conn.on('data', (data) => {
+                        if (data.type === 'announce_room') {
+                            currentRooms.set(data.payload.name, { ...data.payload, lastPing: Date.now() });
+                            broadcastLobby(Array.from(currentRooms.values()));
+                        }
+                        if (data.type === 'get_rooms') conn.send({ type: 'room_list', payload: Array.from(currentRooms.values()) });
+                    });
+                });
+                const broadcastLobby = (list) => {
+                    setActiveRooms(list);
+                    for (const connId in hostPeer.connections) { hostPeer.connections[connId].forEach(conn => { if(conn.open) conn.send({ type: 'room_list', payload: list }); }); }
+                };
+                lobbyPeerRef.current = hostPeer;
+            };
+
+            const announceRoomToLobby = (rName, rSlots) => {
+                if (!peerRef.current) return;
+                const announcer = new Peer();
+                announcer.on('open', () => {
+                    const conn = announcer.connect(LOBBY_ID);
+                    conn.on('open', () => { conn.send({ type: 'announce_room', payload: { name: rName, slots: rSlots, host: username } }); setTimeout(() => { conn.close(); announcer.destroy(); }, 2000); });
+                });
+            };
+
+            // --- GESTIÓN DE MEDIOS (NUEVA ARQUITECTURA ROBUSTA) ---
+            
+            const getLocalStream = async (type) => {
+                try {
+                    if (type === 'camera') {
+                        if (!rawCameraStream.current) {
+                            rawCameraStream.current = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: false });
+                        }
+                        return rawCameraStream.current;
+                    } 
+                    else if (type === 'mic') {
+                        if (!rawMicStream.current) {
+                            rawMicStream.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+                        }
+                        return rawMicStream.current;
+                    }
+                    else if (type === 'screen') {
+                        if (!rawDisplayStream.current) {
+                            rawDisplayStream.current = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+                            
+                            // Si el usuario da a "Dejar de compartir" en el navegador
+                            rawDisplayStream.current.getVideoTracks()[0].onended = () => {
+                                setMediaMode('camera'); 
+                                rawDisplayStream.current = null;
+                                addLog("Pantalla detenida", "warning");
+                            };
+                        }
+                        return rawDisplayStream.current;
+                    }
+                } catch (err) {
+                    console.error("Error obteniendo stream:", type, err);
+                    if (type === 'screen') setMediaMode('camera'); 
+                    if (type === 'mic') setMicEnabled(false);
+                    if (type === 'camera') setCameraEnabled(false);
+                    return null;
+                }
+            };
+
+            const composeStream = async () => {
+                if (canvasIntervalRef.current) clearInterval(canvasIntervalRef.current);
+                
+                if (!audioContextRef.current) {
+                    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+                    audioDestinationRef.current = audioContextRef.current.createMediaStreamDestination();
+                }
+
+                if (audioContextRef.current.state === 'suspended') {
+                    await audioContextRef.current.resume();
+                }
+
+                // Video
+                let finalVideoTrack = null;
+                if (cameraEnabled && mediaMode === 'camera') {
+                    const cam = await getLocalStream('camera');
+                    if (cam) finalVideoTrack = cam.getVideoTracks()[0];
+                } 
+                else if (mediaMode === 'screen') {
+                    const scr = await getLocalStream('screen');
+                    if (scr) finalVideoTrack = scr.getVideoTracks()[0];
+                }
+                else if (mediaMode === 'dual') {
+                    const cam = await getLocalStream('camera');
+                    const scr = await getLocalStream('screen');
+                    if (cam && scr) {
+                        if (!canvasRef.current) {
+                            canvasRef.current = document.createElement('canvas');
+                            canvasRef.current.width = 1280;
+                            canvasRef.current.height = 720;
+                        }
+                        const ctx = canvasRef.current.getContext('2d');
+                        const vidCam = document.createElement('video');
+                        const vidScreen = document.createElement('video');
+                        vidCam.srcObject = cam;
+                        vidScreen.srcObject = scr;
+                        await Promise.all([vidCam.play().catch(e=>{}), vidScreen.play().catch(e=>{})]);
+
+                        canvasIntervalRef.current = setInterval(() => {
+                            ctx.fillStyle = '#1e293b'; 
+                            ctx.fillRect(0, 0, 1280, 720);
+                            
+                            // Pantalla
+                            if(vidScreen.readyState === 4) {
+                                const sW = vidScreen.videoWidth;
+                                const sH = vidScreen.videoHeight;
+                                const scale = Math.min(896 / sW, 720 / sH);
+                                const drawW = sW * scale;
+                                const drawH = sH * scale;
+                                ctx.drawImage(vidScreen, (896 - drawW)/2, (720 - drawH)/2, drawW, drawH);
+                            }
+                            // Cámara
+                            if(vidCam.readyState === 4) {
+                                const cW = vidCam.videoWidth;
+                                const cH = vidCam.videoHeight;
+                                const targetRatio = 384/720;
+                                const camRatio = cW/cH;
+                                let sx=0, sy=0, sWidth=cW, sHeight=cH;
+                                if (camRatio > targetRatio) { sWidth = cH * targetRatio; sx = (cW - sWidth) / 2; } 
+                                else { sHeight = cW / targetRatio; sy = (cH - sHeight) / 2; }
+                                ctx.drawImage(vidCam, sx, sy, sWidth, sHeight, 896, 0, 384, 720);
+                            }
+                            ctx.strokeStyle = '#3b82f6';
+                            ctx.lineWidth = 4;
+                            ctx.beginPath(); ctx.moveTo(896,0); ctx.lineTo(896,720); ctx.stroke();
+                        }, 33);
+                        finalVideoTrack = canvasRef.current.captureStream(30).getVideoTracks()[0];
+                    }
+                }
+
+                // Audio
+                const newDest = audioContextRef.current.createMediaStreamDestination();
+                let sourcesAdded = 0;
+
+                if (micEnabled) {
+                    const mic = await getLocalStream('mic');
+                    if (mic && mic.getAudioTracks().length > 0) {
+                        const micSource = audioContextRef.current.createMediaStreamSource(mic);
+                        micSource.connect(newDest);
+                        sourcesAdded++;
+                    }
+                }
+
+                if (mediaMode === 'screen' || mediaMode === 'dual') {
+                    if (rawDisplayStream.current && rawDisplayStream.current.getAudioTracks().length > 0) {
+                        const sysSource = audioContextRef.current.createMediaStreamSource(rawDisplayStream.current);
+                        const gainNode = audioContextRef.current.createGain();
+                        gainNode.gain.value = 0.8; 
+                        sysSource.connect(gainNode).connect(newDest);
+                        sourcesAdded++;
+                    }
+                }
+
+                let finalAudioTrack = null;
+                if (sourcesAdded > 0) finalAudioTrack = newDest.stream.getAudioTracks()[0];
+
+                const tracks = [];
+                if (finalVideoTrack) tracks.push(finalVideoTrack);
+                if (finalAudioTrack) tracks.push(finalAudioTrack);
+
+                let newStream = null;
+                if (tracks.length > 0) newStream = new MediaStream(tracks);
+
+                myStreamRef.current = newStream;
+                setUserStreams(prev => ({...prev, [myPeerId]: newStream}));
+                setUserMediaTypes(prev => ({...prev, [myPeerId]: mediaMode}));
+                updateUserStatus(myPeerId, { isMuted: !micEnabled });
+
+                // CRÍTICO: Cortar llamadas anteriores para forzar re-negociación con el nuevo stream
+                const keys = Object.keys(callsRef.current);
+                if (keys.length > 0) {
+                   keys.forEach(pid => { if(callsRef.current[pid]) callsRef.current[pid].close(); });
+                   callsRef.current = {};
+                }
+                
+                const statusPayload = { userId: myPeerId, isMuted: !micEnabled, mediaType: mediaMode };
+                if (isHost) broadcast(statusPayload, 'status_update');
+                else connectionsRef.current[0]?.send({ type: 'status_update', payload: statusPayload });
+
+                // NUEVO: Incrementar versión para disparar el efecto de reconexión
+                setStreamVersion(v => v + 1);
+            };
+
+            // Trigger composición
+            useEffect(() => {
+                if (step === 'room') {
+                    composeStream();
+                }
+            }, [micEnabled, cameraEnabled, mediaMode]);
+
+            // --- LÓGICA DE RE-DIAL CENTRALIZADA ---
+            // Este efecto se asegura de que cualquier speaker (Host o Colaborador) envíe su stream
+            // a TODOS los presentes cuando cambia la "versión" de su stream.
+            useEffect(() => {
+                if (step !== 'room' || !myStreamRef.current) return;
+                
+                const amISpeaker = speakers.includes(myPeerId) || isHost;
+                
+                if (amISpeaker) {
+                    usersInRoom.forEach(user => {
+                        // Si no soy yo, y no tengo llamada activa, llamo.
+                        // Al haber limpiado callsRef en composeStream, esto garantiza que se llama a todos con el NUEVO stream.
+                        if (user.id !== myPeerId && !callsRef.current[user.id]) {
+                            console.log(`Llamando a ${user.name} con modo ${mediaMode}`);
+                            const call = peerRef.current.call(user.id, myStreamRef.current, {
+                                metadata: { mediaType: mediaMode, isSpeaker: true }
+                            });
+                            callsRef.current[user.id] = call;
+                            
+                            call.on('stream', rs => setUserStreams(p => ({...p, [user.id]: rs})));
+                            // Importante: Escuchar metadatos si fuera posible, pero PeerJS básico envía metadata en el call inicial.
+                            // Para actualizaciones en vivo, confiamos en 'status_update' websocket message, pero el metadata inicial ayuda a configurar el player.
+                            
+                            call.on('close', () => {
+                                delete callsRef.current[user.id];
+                                setUserStreams(p => { const n = {...p}; delete n[user.id]; return n; });
+                            });
+                        }
+                    });
+                }
+            }, [usersInRoom, speakers, myPeerId, step, isHost, streamVersion]); // Dependencia clave: streamVersion
+
+
+            // --- ACTIONS ---
+            const toggleMic = () => setMicEnabled(!micEnabled);
+            const toggleCam = () => {
+                if (!cameraEnabled) setMediaMode('camera'); 
+                setCameraEnabled(!cameraEnabled);
+            };
+            const changeMode = (mode) => {
+                if (mode === 'screen' || mode === 'dual') {
+                    setCameraEnabled(true); 
+                }
+                setMediaMode(mode);
+            };
+
+            // --- GENERIC HELPERS ---
+            const addLog = (text, type = 'info', id = null) => {
+                const logId = id || Date.now() + Math.random();
+                if (processedLogIds.current.has(logId)) return;
+                processedLogIds.current.add(logId);
+                setActivityLog(prev => [{ id: logId, time: new Date().toLocaleTimeString(), text, type }, ...prev]);
+            };
+
+            const addLogAndBroadcast = (text, type = 'info') => {
+                const id = Date.now() + Math.random();
+                addLog(text, type, id);
+                const payload = { id, text, type };
+                if (isHost) broadcast(payload, 'log_entry');
+                else connectionsRef.current[0]?.send({ type: 'log_entry', payload });
+            };
+
+            const updateUserStatus = (uid, changes) => setUsersInRoom(prev => prev.map(u => u.id === uid ? { ...u, ...changes } : u));
+            const broadcast = (payload, type) => connectionsRef.current.forEach(c => c.open && c.send({ type, payload }));
+
+            const sendChat = () => {
+                if (!newMessage.trim()) return;
+                const msg = { id: Date.now(), sender: username, text: newMessage };
+                setChatMessages(prev => [...prev, msg]);
+                setNewMessage('');
+                if (isHost) broadcast(msg, 'chat_message');
+                else connectionsRef.current[0]?.send({ type: 'chat_message', payload: msg });
+            };
+            
+            // --- SETUP ROOMS ---
+            const createRoom = async () => {
+                if (!roomName.trim()) return;
+                const peer = new Peer(roomName.trim());
+                peer.on('open', (id) => {
+                    setIsHost(true);
+                    setMyPeerId(id);
+                    setUsersInRoom([{ id, name: username, isHost: true, isMuted: true }]);
+                    setSpeakers([id]);
+                    setStep('room');
+                    setCameraEnabled(false);
+                    setMicEnabled(false);
+                });
+                peer.on('connection', (conn) => {
+                    if (connectionsRef.current.some(c => c.peer === conn.peer)) return;
+                    connectionsRef.current.push(conn);
+                    conn.on('data', (data) => handleHostData(data, conn));
+                    conn.on('close', () => handleDisconnect(conn.peer));
+                    conn.on('error', () => handleDisconnect(conn.peer));
+                });
+                peer.on('call', call => {
+                    call.answer(); 
+                    call.on('stream', remoteStream => {
+                        setUserStreams(prev => ({...prev, [call.peer]: remoteStream}));
+                        if(call.metadata && call.metadata.mediaType) setUserMediaTypes(prev => ({...prev, [call.peer]: call.metadata.mediaType}));
+                    });
+                });
+                peerRef.current = peer;
+            };
+
+            const joinRoom = async (targetRoom) => {
+                if (!targetRoom) return;
+                const peer = new Peer();
+                peer.on('open', (id) => {
+                    setMyPeerId(id);
+                    setIsHost(false);
+                    const conn = peer.connect(targetRoom);
+                    conn.on('open', () => {
+                        setStep('room');
+                        setRoomName(targetRoom);
+                        conn.send({ type: 'join', name: username });
+                        connectionsRef.current = [conn];
+                    });
+                    conn.on('data', handleGuestData);
+                });
+                peer.on('call', call => {
+                    call.answer();
+                    call.on('stream', remoteStream => {
+                        setUserStreams(prev => ({...prev, [call.peer]: remoteStream}));
+                        if(call.metadata && call.metadata.mediaType) setUserMediaTypes(prev => ({...prev, [call.peer]: call.metadata.mediaType}));
+                    });
+                });
+                peerRef.current = peer;
+            };
+
+            // HANDLERS
+            const handleHostData = (data, conn) => {
+                const { type, payload } = data;
+                lastSeenRef.current[conn.peer] = Date.now();
+                if (type === 'heartbeat') return; 
+
+                if (type === 'join') {
+                    setUsersInRoom(prev => {
+                         if (prev.some(u => u.id === conn.peer)) return prev;
+                         const updated = [...prev, { id: conn.peer, name: data.name, isHost: false, isMuted: true }];
+                         broadcast(updated, 'users_update');
+                         conn.send({ type: 'sync_log', payload: activityLog }); 
+                         addLogAndBroadcast(`${data.name} entró`, 'info');
+                         return updated;
+                    });
+                }
+                else if (type === 'chat_message') { setChatMessages(p => [...p, payload]); broadcast(payload, 'chat_message'); }
+                else if (type === 'status_update') { updateUserStatus(payload.userId, { isMuted: payload.isMuted }); setUserMediaTypes(p => ({...p, [payload.userId]: payload.mediaType})); broadcast(payload, 'status_update'); }
+                else if (type === 'log_entry') { addLog(payload.text, payload.type, payload.id); broadcast(payload, 'log_entry'); }
+                else if (type === 'request_speak') { updateUserStatus(conn.peer, { handRaised: true }); broadcast({ userId: conn.peer, handRaised: true }, 'hand_update'); }
+                else if (type === 'reaction') { triggerReaction(payload.emoji); broadcast(payload, 'reaction'); }
+            };
+
+            const handleGuestData = (data) => {
+                const { type, payload } = data;
+                if (type === 'users_update') { 
+                    setUsersInRoom(payload); 
+                    setSpeakers(payload.filter(u => u.isSpeaker || u.isHost).map(u => u.id)); 
+                }
+                else if (type === 'chat_message') setChatMessages(p => [...p, payload]);
+                else if (type === 'status_update') { updateUserStatus(payload.userId, { isMuted: payload.isMuted }); setUserMediaTypes(p => ({...p, [payload.userId]: payload.mediaType})); }
+                else if (type === 'hand_update') updateUserStatus(payload.userId, { handRaised: payload.handRaised });
+                else if (type === 'speaker_approved') {
+                    // Force refresh permissions
+                    setMicEnabled(false); 
+                    setCameraEnabled(false);
+                    addLog("¡Tienes el micrófono!", "success");
+                }
+                else if (type === 'speaker_revoked') stopSpeaking();
+                else if (type === 'reaction') triggerReaction(payload.emoji);
+                else if (type === 'role_update') {
+                    updateUserStatus(payload.userId, { isSpeaker: payload.isSpeaker, handRaised: false });
+                    setSpeakers(prev => {
+                        const exists = prev.includes(payload.userId);
+                        if (payload.isSpeaker && !exists) return [...prev, payload.userId];
+                        if (!payload.isSpeaker && exists) return prev.filter(id => id !== payload.userId);
+                        return prev;
+                    });
+                }
+                else if (type === 'kicked') { cleanup(); alert("Has sido expulsado."); }
+            };
+
+            const handleDisconnect = (peerId) => {
+                setUsersInRoom(prev => {
+                    const updated = prev.filter(u => u.id !== peerId);
+                    if (isHost) broadcast(updated, 'users_update');
+                    return updated;
+                });
+                setSpeakers(prev => prev.filter(id => id !== peerId));
+                setUserStreams(prev => { const n = {...prev}; delete n[peerId]; return n; });
+                if (callsRef.current[peerId]) { callsRef.current[peerId].close(); delete callsRef.current[peerId]; }
+            };
+
+            const approveSpeaker = (userId) => {
+                if (maxSlots > 0 && speakers.length >= maxSlots) return alert("Sala llena");
+                setSpeakers(prev => [...prev, userId]);
+                updateUserStatus(userId, { isSpeaker: true, handRaised: false, isMuted: true }); 
+                broadcast({ userId, isSpeaker: true }, 'role_update');
+                const conn = connectionsRef.current.find(c => c.peer === userId);
+                if (conn) conn.send({ type: 'speaker_approved' });
+            };
+
+            const stopSpeaking = () => {
+                setMicEnabled(false);
+                setCameraEnabled(false);
+                setSpeakers(prev => prev.filter(id => id !== myPeerId));
+                Object.values(callsRef.current).forEach(call => call.close());
+                callsRef.current = {};
+            };
+
+            const cleanup = () => {
+                if (peerRef.current) peerRef.current.destroy();
+                setStep('lobby');
+                setUsersInRoom([]);
+                setIsHost(false);
+                setUserStreams({});
+            };
+            
+            const triggerReaction = (emoji) => {
+                const id = Date.now() + Math.random();
+                setReactions(prev => [...prev, { id, emoji, left: (Math.random() * 80 + 10) + '%' }]);
+                setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 2000);
+            };
+
+            const kickUser = (targetId) => {
+                if (!isHost) return;
+                const conn = connectionsRef.current.find(c => c.peer === targetId);
+                if (conn) { conn.send({ type: 'kicked' }); setTimeout(() => conn.close(), 500); }
+                handleDisconnect(targetId);
+            };
+
+            const getGridClass = (count) => {
+                if (count <= 1) return "grid-cols-1 max-w-2xl mx-auto";
+                if (count === 2) return "grid-cols-1 md:grid-cols-2 max-w-5xl mx-auto items-center";
+                return "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4";
+            };
+
+            // --- RENDER ---
+            if (step === 'login') return (
+                <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900">
+                    <div className="glass-panel p-8 rounded-2xl w-full max-w-md text-center shadow-2xl">
+                        <Icons.Radio size={48} className="text-blue-500 mx-auto mb-4" />
+                        <h1 className="text-3xl font-bold mb-2">ZOZ</h1>
+                        <Input value={username} onChange={setUsername} placeholder="Elige un nombre" icon={Icons.Users} />
+                        <Button onClick={() => setStep('lobby')} disabled={!username.trim()} className="w-full mt-4">Entrar</Button>
+                    </div>
+                </div>
+            );
+
+            if (step === 'lobby') return (
+                <div className="min-h-screen p-4 md:p-8 max-w-5xl mx-auto">
+                    <header className="flex justify-between items-center mb-10">
+                        <div className="flex items-center gap-2 text-xl font-bold"><Icons.Radio className="text-blue-500" /> ZOZ</div>
+                        <div className="flex items-center gap-4">
+                            <span className="text-slate-400">{username}</span>
+                            <Button variant="ghost" onClick={() => setStep('login')}><Icons.LogOut size={18} /></Button>
+                        </div>
+                    </header>
+                    <div className="grid md:grid-cols-2 gap-8">
+                        <div className="glass-panel p-6 rounded-2xl border-t-4 border-blue-500">
+                            <h3 className="text-2xl font-bold mb-4">Crear Sala</h3>
+                            <Input value={roomName} onChange={setRoomName} placeholder="Nombre de la Sala" icon={Icons.Radio} />
+                            <div className="mt-4">
+                                <label className="text-xs text-slate-400 mb-2 block font-bold">Huecos para hablantes</label>
+                                <div className="flex gap-2">
+                                    {[1, 2, 3, 5, 8].map(num => (
+                                        <button key={num} onClick={() => setMaxSlots(num)} className={`flex-1 py-2 rounded-lg border ${maxSlots === num ? 'bg-blue-600 border-blue-500 text-white' : 'border-slate-600 text-slate-400 hover:bg-slate-800'}`}>{num}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            <Button onClick={createRoom} className="w-full mt-4"><Icons.Mic size={18} /> Iniciar</Button>
+                        </div>
+                        <div className="glass-panel p-6 rounded-2xl border-t-4 border-emerald-500">
+                            <h3 className="text-2xl font-bold mb-4">Salas Activas</h3>
+                            {activeRooms.length === 0 ? <div className="text-center py-8 text-slate-500">No hay salas activas.</div> : (
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {activeRooms.map((r, i) => (
+                                        <div key={i} className="flex justify-between items-center p-3 bg-slate-800 rounded-lg hover:bg-slate-700 cursor-pointer" onClick={() => { setRoomName(r.name); joinRoom(r.name); }}>
+                                            <div><div className="font-bold text-white">{r.name}</div><div className="text-xs text-slate-400">Host: {r.host} • {r.slots} slots</div></div>
+                                            <Button variant="success" className="px-2 py-1 text-xs">Entrar</Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const amISpeaker = speakers.includes(myPeerId) || isHost;
+            const stageUsers = usersInRoom.filter(u => u.isHost || u.isSpeaker);
+
+            return (
+                <div className="h-screen flex bg-slate-900 overflow-hidden relative">
+                    <div className="flex-1 flex flex-col relative">
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                            {reactions.map(r => <div key={r.id} className="reaction-bubble bottom-24" style={{ left: r.left }}>{r.emoji}</div>)}
+                        </div>
+
+                        <header className="p-4 bg-slate-900/90 border-b border-slate-800 flex justify-between items-center z-10">
+                            <div>
+                                <h2 className="font-bold flex items-center gap-2"><span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span> {roomName}</h2>
+                                <p className="text-xs text-slate-500">{usersInRoom.length} usuarios • {speakers.length} hablantes</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="ghost" className="z-50" onClick={() => setShowSidePanel(!showSidePanel)}>{showSidePanel ? <Icons.X /> : <Icons.MessageSquare />}</Button>
+                                <Button variant="danger" onClick={cleanup} className="px-3 py-1 text-xs">Salir</Button>
+                            </div>
+                        </header>
+
+                        <main className="flex-1 p-6 overflow-y-auto">
+                            <div className="max-w-6xl mx-auto h-full flex flex-col justify-center">
+                                <div className={`grid gap-4 mb-8 transition-all duration-500 ${getGridClass(stageUsers.length + Math.max(0, maxSlots - speakers.length))}`}>
+                                    {usersInRoom.filter(u => u.isHost || u.isSpeaker).map(user => (
+                                        <div key={user.id} className="relative aspect-video md:aspect-square speaker-card group shadow-2xl">
+                                            <div className={`w-full h-full rounded-2xl flex flex-col items-center justify-center border-2 transition-all overflow-hidden bg-slate-800 ${user.isHost ? 'border-blue-500' : 'border-emerald-500'}`}>
+                                                
+                                                <MediaPlayer stream={userStreams[user.id]} isMuted={user.isMuted} isLocal={user.id === myPeerId} type={userMediaTypes[user.id]} />
+                                                
+                                                {/* Fallback Avatar */}
+                                                {(!userStreams[user.id] || userStreams[user.id].getVideoTracks().length === 0) && (
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+                                                        <div className="relative mb-3">
+                                                            <div className="w-24 h-24 rounded-full bg-slate-700 flex items-center justify-center text-4xl shadow-lg relative z-0">
+                                                                {user.isHost ? '👑' : '🎙️'}
+                                                            </div>
+                                                            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-900 rounded-full px-3 py-1 border border-slate-700 shadow flex items-center gap-2 z-10">
+                                                                <SoundWave isMuted={user.isMuted} />
+                                                                {user.isMuted && <Icons.MicOff size={10} className="text-red-400"/>}
+                                                            </div>
+                                                        </div>
+                                                        <span className="font-bold truncate w-full text-center text-lg relative z-10">{user.name}</span>
+                                                    </div>
+                                                )}
+
+                                                {/* Controles Host */}
+                                                {isHost && !user.isHost && (
+                                                    <div className="absolute top-2 left-2 overlay-controls z-20">
+                                                        <button onClick={() => kickUser(user.id)} className="p-2 bg-red-600 rounded-full hover:bg-red-500 text-white shadow-lg" title="Expulsar"><Icons.UserX size={16} /></button>
+                                                    </div>
+                                                )}
+
+                                                {/* Etiqueta Nombre */}
+                                                {userStreams[user.id] && userStreams[user.id].getVideoTracks().length > 0 && (
+                                                    <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg flex justify-between items-center z-20">
+                                                        <span className="text-white text-xs font-bold truncate">{user.name}</span>
+                                                        <SoundWave isMuted={user.isMuted} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {Array.from({ length: Math.max(0, maxSlots - speakers.length) }).map((_, i) => (
+                                        <div key={`slot-${i}`} className="aspect-video md:aspect-square rounded-2xl border-2 border-dashed border-slate-800 flex flex-col items-center justify-center text-slate-600 opacity-30">
+                                            <Icons.Mic size={24}/>
+                                            <span className="text-xs font-bold mt-2">Libre</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="mt-auto border-t border-slate-800 pt-4">
+                                    <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-4">Audiencia ({usersInRoom.length - stageUsers.length})</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {usersInRoom.filter(u => !u.isHost && !u.isSpeaker).map(user => (
+                                            <div key={user.id} className="bg-slate-800 rounded-full pl-2 pr-3 py-1.5 flex items-center gap-2 border border-slate-700">
+                                                <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold">{user.name.charAt(0)}</div>
+                                                <span className="text-sm text-slate-200">{user.name}</span>
+                                                {user.handRaised && <span className="animate-bounce text-lg">✋</span>}
+                                                {isHost && <button onClick={() => approveSpeaker(user.id)} className="text-emerald-500 ml-2"><Icons.Mic size={14} /></button>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                        
+                        {/* FOOTER / BARRA DE HERRAMIENTAS NUEVA */}
+                        <footer className="p-4 bg-slate-800 border-t border-slate-700 flex justify-between items-center gap-4 relative z-50">
+                            
+                            <div className="flex items-center gap-2">
+                                {(isHost || amISpeaker) ? (
+                                    <>
+                                        {/* Grupo Audio */}
+                                        <div className="flex gap-1 bg-slate-700 p-1 rounded-lg">
+                                            <div className="tooltip-container">
+                                                <button onClick={toggleMic} className={`p-3 rounded-md transition ${micEnabled ? 'bg-blue-600 text-white' : 'bg-slate-600 text-red-400'}`}>
+                                                    {micEnabled ? <Icons.Mic size={20}/> : <Icons.MicOff size={20}/>}
+                                                </button>
+                                                <span className="tooltip-text">Micrófono {micEnabled?'ON':'OFF'}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Grupo Video */}
+                                        <div className="flex gap-1 bg-slate-700 p-1 rounded-lg">
+                                            <div className="tooltip-container">
+                                                <button onClick={toggleCam} className={`p-3 rounded-md transition ${cameraEnabled ? 'bg-blue-600 text-white' : 'bg-slate-600 text-red-400'}`}>
+                                                    {cameraEnabled ? <Icons.Video size={20}/> : <Icons.VideoOff size={20}/>}
+                                                </button>
+                                                <span className="tooltip-text">Cámara {cameraEnabled?'ON':'OFF'}</span>
+                                            </div>
+                                            
+                                            <div className="w-[1px] bg-slate-600 mx-1"></div>
+
+                                            <div className="tooltip-container">
+                                                <button onClick={() => changeMode('camera')} className={`p-3 rounded-md transition ${mediaMode === 'camera' ? 'bg-indigo-500 text-white' : 'hover:bg-slate-600 text-slate-300'}`}>
+                                                    <Icons.UserX size={20}/>
+                                                </button>
+                                                <span className="tooltip-text">Solo Cámara</span>
+                                            </div>
+                                            <div className="tooltip-container">
+                                                <button onClick={() => changeMode('screen')} className={`p-3 rounded-md transition ${mediaMode === 'screen' ? 'bg-indigo-500 text-white' : 'hover:bg-slate-600 text-slate-300'}`}>
+                                                    <Icons.Monitor size={20}/>
+                                                </button>
+                                                <span className="tooltip-text">Compartir Pantalla</span>
+                                            </div>
+                                            <div className="tooltip-container">
+                                                <button onClick={() => changeMode('dual')} className={`p-3 rounded-md transition ${mediaMode === 'dual' ? 'bg-indigo-500 text-white' : 'hover:bg-slate-600 text-slate-300'}`}>
+                                                    <Icons.Split size={20}/>
+                                                </button>
+                                                <span className="tooltip-text">Modo Dual (Cam+PC)</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <Button onClick={() => { if(!handRaised) { connectionsRef.current[0].send({type:'request_speak'}); setHandRaised(true); }}} variant={handRaised ? 'ghost' : 'primary'}>
+                                        <Icons.Mic size={20} /> {handRaised ? 'Solicitado' : 'Pedir Micrófono'}
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2">
+                                {['❤️', '🔥', '👏', '😂', '👎'].map(emoji => (
+                                    <button key={emoji} onClick={() => { triggerReaction(emoji); if(isHost) broadcast({emoji}, 'reaction'); else connectionsRef.current[0]?.send({type:'reaction', payload:{emoji}}); }} className="w-10 h-10 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-lg transition hover:scale-110">
+                                        {emoji}
+                                    </button>
+                                ))}
+                            </div>
+                        </footer>
+                    </div>
+
+                    <div className={`side-panel ${!showSidePanel ? 'closed' : ''}`}>
+                         <div className="h-full flex flex-col">
+                            <div className="flex border-b border-slate-700">
+                                <button onClick={() => setActiveTab('chat')} className={`flex-1 py-3 text-sm font-semibold ${activeTab === 'chat' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400'}`}>Chat</button>
+                                <button onClick={() => setActiveTab('logs')} className={`flex-1 py-3 text-sm font-semibold ${activeTab === 'logs' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400'}`}>Actividad</button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-900/50">
+                                {activeTab === 'chat' ? chatMessages.map((m, i) => <div key={i} className="bg-slate-800 p-2 rounded-lg border border-slate-700"><span className="font-bold text-xs text-blue-400">{m.sender}</span>: {m.text}</div>) : activityLog.map(l => <div key={l.id} className="text-xs text-slate-400">{l.text}</div>)}
+                            </div>
+                            <div className="p-3 border-t border-slate-700 bg-slate-800 flex gap-2">
+                                <input value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendChat()} placeholder="Escribe..." className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+                                <Button variant="primary" onClick={sendChat} className="!px-3"><Icons.Send size={16} /></Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
