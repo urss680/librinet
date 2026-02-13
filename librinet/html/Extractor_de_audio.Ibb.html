@@ -1,0 +1,115 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Extractor de audio</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    #dropZone {
+      width: 320px;
+      height: 180px;
+      border: 2px dashed #0af;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 1rem 0;
+      transition: background .3s;
+    }
+    #dropZone.dragover {
+      background: #222;
+    }
+    button {
+      padding: .6rem 1.2rem;
+      background: #0af;
+      border: none;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+    a {
+      margin-top: 1rem;
+      color: #0af;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Extraer audio de un video</h1>
+  <div id="dropZone">Arrastra aquí tu video</div>
+  <button id="extractBtn" disabled>Extraer audio</button>
+  <a id="downloadLink" style="display:none">Descargar MP3</a>
+
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const extractBtn = document.getElementById('extractBtn');
+    const downloadLink = document.getElementById('downloadLink');
+    let selectedFile = null;
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length && files[0].type.startsWith('video/')) {
+        selectedFile = files[0];
+        dropZone.textContent = selectedFile.name;
+        extractBtn.disabled = false;
+      }
+    });
+
+    extractBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      const ffmpegScript = document.createElement('script');
+      ffmpegScript.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.7/dist/umd/ffmpeg.js';
+      document.head.appendChild(ffmpegScript);
+
+      ffmpegScript.onload = async () => {
+        const { FFmpeg } = FFmpeg;
+        const ffmpeg = new FFmpeg();
+        await ffmpeg.load();
+
+        const inputName = 'input.mp4';
+        const outputName = 'audio.mp3';
+
+        await ffmpeg.writeFile(inputName, new Uint8Array(await selectedFile.arrayBuffer()));
+        await ffmpeg.exec(['-i', inputName, '-q:a', '0', '-map', 'a', outputName]);
+
+        const data = await ffmpeg.readFile(outputName);
+        const blob = new Blob([data.buffer], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+
+        downloadLink.href = url;
+        downloadLink.download = 'audio.mp3';
+        downloadLink.style.display = 'inline';
+        downloadLink.textContent = 'Descargar MP3';
+      };
+    });
+  </script>
+
+</body>
+</html>
+```
