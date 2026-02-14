@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Segundo Plano JS</title>
+</head>
+<body>
+    <h1>Tarea en Segundo Plano</h1>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+            .then(() => console.log('Service Worker Registrado'));
+        }
+    </script>
+</body>
+</html>
