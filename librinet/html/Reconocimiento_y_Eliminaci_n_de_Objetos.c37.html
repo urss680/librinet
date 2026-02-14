@@ -1,0 +1,143 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reconocimiento y Eliminación de Objetos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background: #f2f2f2;
+        }
+        #canvas {
+            border: 2px solid #333;
+            display: block;
+            margin: 20px auto;
+            background: #fff;
+            max-width: 100%;
+            cursor: crosshair;
+        }
+        #fileInput, #btnDetect, #btnMode {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        #results {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reconocimiento y Eliminación de Objetos</h1>
+    <input type="file" id="fileInput" accept="image/*">
+    <br>
+    <canvas id="canvas"></canvas>
+    <br>
+    <button id="btnDetect">Detectar Objetos</button>
+    <button id="btnMode">Modo: Detectar</button>
+    <div id="results"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const fileInput = document.getElementById('fileInput');
+        const btnDetect = document.getElementById('btnDetect');
+        const btnMode = document.getElementById('btnMode');
+        const results = document.getElementById('results');
+        let model;
+        let img; // Imagen original
+        let predictions = [];
+        let mode = 'detect'; // 'detect' o 'delete'
+
+        // Cargar el modelo COCO-SSD
+        cocoSsd.load().then(loaded => {
+            model = loaded;
+        });
+
+        fileInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            img = new Image();
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = URL.createObjectURL(file);
+        });
+
+        btnDetect.addEventListener('click', async () => {
+            if (!model) return alert('Modelo aún cargando...');
+            if (!img) return alert('Por favor, carga una imagen primero.');
+            predictions = await model.detect(canvas);
+            redrawImageWithPredictions();
+            results.innerHTML = '';
+            predictions.forEach(pred => {
+                results.innerHTML += `Detectado: ${pred.class} con ${(pred.score * 100).toFixed(1)}% de confianza<br>`;
+            });
+            if (predictions.length === 0) results.innerHTML = 'No se detectaron objetos.';
+        });
+
+        btnMode.addEventListener('click', () => {
+            if (mode === 'detect') {
+                mode = 'delete';
+                btnMode.textContent = 'Modo: Eliminar';
+                canvas.style.cursor = 'pointer';
+            } else {
+                mode = 'detect';
+                btnMode.textContent = 'Modo: Detectar';
+                canvas.style.cursor = 'crosshair';
+            }
+        });
+
+        canvas.addEventListener('click', e => {
+            if (mode !== 'delete') return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Encontrar el objeto clickeado
+            let deleted = false;
+            for (let i = 0; i < predictions.length; i++) {
+                const bbox = predictions[i].bbox;
+                if (x >= bbox[0] && x <= bbox[0] + bbox[2] &&
+                    y >= bbox[1] && y <= bbox[1] + bbox[3]) {
+                    // Eliminar el objeto
+                    predictions.splice(i, 1);
+                    deleted = true;
+                    break;
+                }
+            }
+            if (deleted) {
+                redrawImageWithPredictions();
+                results.innerHTML = '';
+                predictions.forEach(pred => {
+                    results.innerHTML += `Detectado: ${pred.class} con ${(pred.score * 100).toFixed(1)}% de confianza<br>`;
+                });
+                if (predictions.length === 0) results.innerHTML = 'No hay objetos detectados.';
+            }
+        });
+
+        function redrawImageWithPredictions() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            predictions.forEach(pred => {
+                ctx.strokeStyle = '#0f0';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(...pred.bbox);
+                ctx.fillStyle = '#0f0';
+                ctx.font = '16px Arial';
+                ctx.fillText(`${pred.class} (${(pred.score * 100).toFixed(1)}%)`, pred.bbox[0], pred.bbox[1] - 5);
+            });
+        }
+    </script>
+</body>
+</html>
+```
