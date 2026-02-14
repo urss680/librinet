@@ -1,0 +1,127 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Elimina lo que tocas</title>
+    <style>
+        body{margin:0;font-family:Arial;text-align:center;background:#111;color:#eee}
+        #canvas{display:block;margin:20px auto;border:2px solid #fff;max-width:100%;touch-action:none}
+        #fileInput,#btnMode{margin:10px;padding:10px 20px;font-size:16px}
+        #results{margin-top:10px;font-size:18px}
+    </style>
+</head>
+<body>
+    <h1>Carga, toca y borra</h1>
+    <input type="file" id="fileInput" accept="image/*">
+    <br>
+    <canvas id="canvas"></canvas>
+    <br>
+    <button id="btnMode">Modo: Detectar</button>
+    <div id="results"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+    <script>
+        const canvas=document.getElementById('canvas');
+        const ctx=canvas.getContext('2d');
+        const fileInput=document.getElementById('fileInput');
+        const btnMode=document.getElementById('btnMode');
+        const results=document.getElementById('results');
+        let model,img,predictions=[],mode='detect',mask=[];
+
+        cocoSsd.load().then(m=>model=m);
+
+        fileInput.addEventListener('change',e=>{
+            const file=e.target.files[0];
+            if(!file)return;
+            img=new Image();
+            img.onload=()=>{
+                canvas.width=img.width;
+                canvas.height=img.height;
+                ctx.drawImage(img,0,0);
+                detect();
+            };
+            img.src=URL.createObjectURL(file);
+        });
+
+        async function detect(){
+            if(!model||!img)return;
+            predictions=await model.detect(canvas);
+            draw();
+            results.innerHTML=predictions.length?predictions.map(p=>p.class).join(', '):'Nada detectado';
+        }
+
+        function draw(){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.drawImage(img,0,0);
+            mask.forEach(m=>{ctx.fillStyle='rgba(0,0,255,.4)';ctx.fillRect(m.x,m.y,m.w,m.h);});
+            predictions.forEach(p=>{
+                ctx.strokeStyle='#0f0';ctx.lineWidth=2;
+                ctx.strokeRect(...p.bbox);
+                ctx.fillStyle='#0f0';ctx.font='16px Arial';
+                ctx.fillText(p.class,p.bbox[0],p.bbox[1]-5);
+            });
+        }
+
+        btnMode.addEventListener('click',()=>{
+            mode=mode==='detect'?'delete':'detect';
+            btnMode.textContent='Modo: '+(mode==='detect'?'Detectar':'Eliminar');
+            canvas.style.cursor=mode==='delete'?'pointer':'default';
+        });
+
+        function pos(e){
+            const r=canvas.getBoundingClientRect();
+            const s=canvas.width/r.width;
+            return {x:(e.clientX-r.left)*s,y:(e.clientY-r.top)*s};
+        }
+
+        canvas.addEventListener('click',e=>{
+            if(mode!=='delete')return;
+            const {x,y}=pos(e);
+            for(let i=0;i<predictions.length;i++){
+                const b=predictions[i].bbox;
+                if(x>=b[0]&&x<=b[0]+b[2]&&y>=b[1]&&y<=b[1]+b[3]){
+                    const seg=smartCut(b);
+                    animateRemove(seg);
+                    predictions.splice(i,1);
+                    results.innerHTML=predictions.length?predictions.map(p=>p.class).join(', '):'Nada detectado';
+                    break;
+                }
+            }
+        });
+
+        function smartCut(b){
+            const step=5,pts=[];
+            for(let py=b[1];py<b[1]+b[3];py+=step){
+                for(let px=b[0];px<b[0]+b[2];px+=step){
+                    const d=ctx.getImageData(px,py,1,1).data;
+                    if(d[3]>50)pts.push({x:px,y:py});
+                }
+            }
+            if(pts.length===0)return{x:b[0],y:b[1],w:b[2],h:b[3]};
+            let minX=pts[0].x,maxX=minX,minY=pts[0].y,maxY=minY;
+            pts.forEach(p=>{minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);});
+            return{x:minX,y:minY,w:maxX-minX,h:maxY-minY};
+        }
+
+        function animateRemove(seg){
+            let f=0;
+            mask.push(seg);
+            function run(){
+                f++;
+                const alpha=.4*(1-f/30);
+                ctx.clearRect(seg.x,seg.y,seg.w,seg.h);
+                ctx.fillStyle='rgba(0,0,255,'+alpha+')';
+                ctx.fillRect(seg.x,seg.y,seg.w,seg.h);
+                if(f<30){requestAnimationFrame(run);}else{
+                    ctx.clearRect(seg.x,seg.y,seg.w,seg.h);
+                    mask=mask.filter(m=>m!==seg);
+                }
+            }
+            run();
+        }
+    </script>
+</body>
+</html>
+```
