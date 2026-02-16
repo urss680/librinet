@@ -1,0 +1,119 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat con LocalStorage</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;background:#f2f2f2;margin:0;padding:0;display:flex;height:100vh}
+    #loginScreen,#chatScreen{width:100%;max-width:400px;margin:auto;background:#fff;padding:30px;border-radius:8px;box-shadow:0 0 10px rgba(0,0,0,.1)}
+    h2{margin-top:0}
+    input[type=text],input[type=password],textarea{width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px}
+    button{padding:10px 18px;border:none;border-radius:4px;background:#28a745;color:#fff;cursor:pointer}
+    button:hover{background:#218838}
+    #messages{height:300px;overflow-y:auto;border:1px solid #ccc;padding:10px;border-radius:4px;background:#fafafa;margin-bottom:10px}
+    .msg{margin-bottom:8px}
+    .msg b{color:#007bff}
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div id="loginScreen">
+    <h2>Crear / Ingresar Usuario</h2>
+    <input id="userName" placeholder="Nombre de usuario" maxlength="20">
+    <input id="userPass" type="password" placeholder="Contraseña (mín 4 caracteres)" maxlength="20">
+    <button onclick="register()">Crear</button>
+    <button onclick="login()">Ingresar</button>
+  </div>
+
+  <!-- CHAT -->
+  <div id="chatScreen" style="display:none">
+    <h2>Chat privado con <span id="friendName"></span></h2>
+    <div id="messages"></div>
+    <textarea id="msgInput" placeholder="Escribe tu mensaje..." rows="3"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="sendMsg()">Enviar</button>
+      <button onclick="logout()">Salir</button>
+    </div>
+  </div>
+
+<script>
+  const loginScreen = document.getElementById('loginScreen');
+  const chatScreen = document.getElementById('chatScreen');
+  const userName  = document.getElementById('userName');
+  const userPass  = document.getElementById('userPass');
+  const friendName= document.getElementById('friendName');
+  const msgInput  = document.getElementById('msgInput');
+  const messages  = document.getElementById('messages');
+
+  let currentUser = '', targetUser = '';
+
+  // Cargar usuarios o inicializar
+  if(!localStorage.users) localStorage.users = JSON.stringify({});
+
+  function register(){
+    const name = userName.value.trim();
+    const pass = userPass.value.trim();
+    if(!name || pass.length<4) return alert('Datos inválidos');
+    const users = JSON.parse(localStorage.users);
+    if(users[name]) return alert('Usuario ya existe');
+    users[name] = {pass, chats:{}};
+    localStorage.users = JSON.stringify(users);
+    alert('Usuario creado');
+  }
+  function login(){
+    const name = userName.value.trim();
+    const pass = userPass.value.trim();
+    const users = JSON.parse(localStorage.users);
+    if(!users[name] || users[name].pass !== pass) return alert('Credenciales incorrectas');
+    currentUser = name;
+    // Pedir con quién quiere hablar
+    const friend = prompt('¿Con qué usuario quieres chatear?');
+    if(!friend || !users[friend]) return alert('Usuario destino no existe');
+    targetUser = friend;
+    friendName.textContent = targetUser;
+    loadChat();
+    loginScreen.style.display='none';
+    chatScreen.style.display='block';
+  }
+  function logout(){
+    currentUser = targetUser = '';
+    loginScreen.style.display='block';
+    chatScreen.style.display='none';
+  }
+
+  function loadChat(){
+    const users = JSON.parse(localStorage.users);
+    const key = [currentUser,targetUser].sort().join('-');
+    const chat = users[currentUser].chats[key] || [];
+    messages.innerHTML = '';
+    chat.forEach(m=>{
+      const div = document.createElement('div');
+      div.className='msg';
+      div.innerHTML = `<b>${m.from}:</b> ${m.text} <small>(${m.time})</small>`;
+      messages.appendChild(div);
+    });
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function sendMsg(){
+    const text = msgInput.value.trim();
+    if(!text) return;
+    const users = JSON.parse(localStorage.users);
+    const key = [currentUser,targetUser].sort().join('-');
+    const msg = {from:currentUser, text, time:new Date().toLocaleString()};
+    // Guardar en ambos usuarios
+    [currentUser,targetUser].forEach(u=>{
+      if(!users[u].chats[key]) users[u].chats[key]=[];
+      users[u].chats[key].push(msg);
+    });
+    localStorage.users = JSON.stringify(users);
+    msgInput.value='';
+    loadChat();
+  }
+</script>
+
+</body>
+</html>
+```
