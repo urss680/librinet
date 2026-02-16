@@ -1,0 +1,184 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>MATES - Juego P2P</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: #0f0;
+            text-align: center;
+            padding: 20px;
+        }
+        #start, #game {
+            max-width: 600px;
+            margin: auto;
+        }
+        input[type=text], button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+        }
+        #question {
+            font-size: 24px;
+            margin: 20px 0;
+        }
+        #answers button {
+            display: block;
+            width: 80%;
+            margin: 10px auto;
+            padding: 15px;
+            font-size: 18px;
+            background: #222;
+            color: #0f0;
+            border: 2px solid #0f0;
+            cursor: pointer;
+        }
+        #answers button:hover {
+            background: #0f0;
+            color: #000;
+        }
+        #scores {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        #notification {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #ff0;
+        }
+    </style>
+</head>
+<body>
+    <h1>MATES - Juego P2P</h1>
+    <div id="start">
+        <button onclick="generateId()">Generar ID</button>
+        <p>Comparte tu ID con tu oponente:</p>
+        <input type="text" id="myPeerId" readonly>
+        <br>
+        <input type="text" id="remotePeerId" placeholder="ID del oponente">
+        <br>
+        <button onclick="connectToPeer()">Conectar</button>
+        <p id="notification"></p>
+    </div>
+    <div id="game" style="display:none;">
+        <div id="question"></div>
+        <div id="answers"></div>
+        <div id="scores">
+            <div>Tú: <span id="myScore">0</span></div>
+            <div>Oponente: <span id="opponentScore">0</span></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script>
+        const peer = new Peer();
+        let conn = null;
+        let myScore = 0;
+        let opponentScore = 0;
+        let currentAnswer = 0;
+        let answeringEnabled = false;
+
+        peer.on('open', id => {
+            document.getElementById('myPeerId').value = id;
+        });
+
+        peer.on('connection', c => {
+            conn = c;
+            setupConnection();
+        });
+
+        function generateId() {
+            const newPeer = new Peer();
+            newPeer.on('open', id => {
+                document.getElementById('myPeerId').value = id;
+            });
+            peer.destroy();
+            peer = newPeer;
+        }
+
+        function connectToPeer() {
+            const remoteId = document.getElementById('remotePeerId').value.trim();
+            if (!remoteId) return;
+            conn = peer.connect(remoteId);
+            setupConnection();
+        }
+
+        function setupConnection() {
+            conn.on('open', () => {
+                document.getElementById('start').style.display = 'none';
+                document.getElementById('game').style.display = 'block';
+                generateQuestion();
+            });
+            conn.on('data', data => {
+                if (data.type === 'answer') {
+                    opponentScore = data.score;
+                    document.getElementById('opponentScore').textContent = opponentScore;
+                    checkEnd();
+                }
+                if (data.type === 'question') {
+                    loadQuestion(data.q, data.opts, data.ans);
+                }
+            });
+        }
+
+        function generateQuestion() {
+            const a = Math.floor(Math.random() * 10) + 1;
+            const b = Math.floor(Math.random() * 10) + 1;
+            const ops = ['+', '-', '*'];
+            const op = ops[Math.floor(Math.random() * ops.length)];
+            let question = `${a} ${op} ${b}`;
+            let answer = eval(question);
+            const options = [answer];
+            while (options.length < 4) {
+                const wrong = answer + Math.floor(Math.random() * 10) - 5;
+                if (!options.includes(wrong)) options.push(wrong);
+            }
+            options.sort(() => Math.random() - 0.5);
+            currentAnswer = answer;
+            answeringEnabled = true;
+            if (conn && conn.open) {
+                conn.send({type: 'question', q: question, opts: options, ans: answer});
+            }
+            loadQuestion(question, options, answer);
+        }
+
+        function loadQuestion(q, opts, ans) {
+            document.getElementById('question').textContent = q;
+            const container = document.getElementById('answers');
+            container.innerHTML = '';
+            opts.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.textContent = opt;
+                btn.onclick = () => selectAnswer(opt, ans);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectAnswer(selected, correct) {
+            if (!answeringEnabled) return;
+            answeringEnabled = false;
+            if (selected === correct) {
+                myScore++;
+                document.getElementById('myScore').textContent = myScore;
+            }
+            if (conn && conn.open) {
+                conn.send({type: 'answer', score: myScore});
+            }
+            setTimeout(() => generateQuestion(), 1500);
+        }
+
+        function checkEnd() {
+            if (myScore >= 5 || opponentScore >= 5) {
+                const msg = myScore >= 5 ? '¡Ganaste!' : 'Perdiste';
+                document.getElementById('notification').textContent = msg;
+                answeringEnabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
+```
