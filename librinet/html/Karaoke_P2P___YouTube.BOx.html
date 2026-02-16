@@ -1,0 +1,337 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Karaoke P2P + YouTube</title>
+  <style>
+    :root {
+      --bg: #0f0c29;
+      --card: #24243e;
+      --accent: #5865f2;
+      --accent2: #ff0055;
+      --text: #ffffff;
+      --text2: #b9bbbe;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background: linear-gradient(135deg, var(--bg), #1c1c3c);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    h1 {
+      margin-bottom: 1.5rem;
+      font-size: 2.5rem;
+      text-align: center;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .room-code {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+    .room-code input {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      width: 120px;
+      text-align: center;
+      background: #1e1e3f;
+      color: var(--text);
+    }
+    .room-code button {
+      padding: 0.75rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .room-code button:hover {
+      background: #4a55c7;
+    }
+    .screen {
+      display: none;
+      width: 100%;
+      max-width: 900px;
+    }
+    .screen.active {
+      display: block;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    .song-queue {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .song-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e1e3f;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+    .song-info {
+      flex: 1;
+    }
+    .song-info h3 {
+      margin-bottom: 0.25rem;
+    }
+    .song-info p {
+      color: var(--text2);
+      font-size: 0.9rem;
+    }
+    .vote-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .vote-buttons button {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+    .vote-buttons button:hover {
+      background: #4a55c7;
+    }
+    .vote-buttons button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    .leaderboard {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .leader-item {
+      display: flex;
+      justify-content: space-between;
+      background: #1e1e3f;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+    }
+    .leader-item span:first-child {
+      font-weight: 700;
+    }
+    .add-song {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .add-song input {
+      flex: 1;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: none;
+      background: #1e1e3f;
+      color: var(--text);
+    }
+    .add-song button {
+      background: var(--accent2);
+      border: none;
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .add-song button:hover {
+      background: #e6004c;
+    }
+    .current-singer {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .current-singer h2 {
+      margin-bottom: 0.5rem;
+      font-size: 1.75rem;
+    }
+    .timer {
+      font-size: 1.25rem;
+      color: var(--accent2);
+    }
+    #playerBox {
+      width: 100%;
+      height: 315px;
+      border: none;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Karaoke P2P + YouTube</h1>
+
+  <!-- Pantalla de unión a sala -->
+  <div id="joinScreen" class="screen active">
+    <div class="card">
+      <h2>Unirte a una sala P2P</h2>
+      <div class="room-code">
+        <input id="roomInput" maxlength="6" placeholder="CÓDIGO"/>
+        <button onclick="joinRoom()">Unirse</button>
+      </div>
+      <p style="color: var(--text2);">Pide el código de 6 letras al anfitrión.</p>
+    </div>
+  </div>
+
+  <!-- Pantalla de votación y cola -->
+  <div id="votingScreen" class="screen">
+    <div class="current-singer card">
+      <h2 id="singerName">Esperando cantante...</h2>
+      <p class="timer" id="timer">00:00</p>
+    </div>
+
+    <!-- Reproductor de YouTube -->
+    <iframe id="playerBox" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+
+    <div class="card">
+      <h3>Cola de canciones</h3>
+      <div id="songQueue" class="song-queue"></div>
+      <div class="add-song">
+        <input id="songInput" placeholder="Nombre de la canción o URL de YouTube"/>
+        <button onclick="addSong()">Agregar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Clasificación</h3>
+      <div id="leaderboard" class="leaderboard"></div>
+    </div>
+  </div>
+
+  <!-- PeerJS -->
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <script>
+    let peer, conn;
+    let roomCode, peerId;
+    let votedSongs = new Set();
+
+    function joinRoom() {
+      const input = document.getElementById("roomInput").value.trim().toUpperCase();
+      if (input.length !== 6) return alert("El código debe tener 6 letras.");
+      roomCode = input;
+      initPeer();
+    }
+
+    function initPeer() {
+      peer = new Peer();
+      peer.on("open", id => {
+        peerId = id;
+        conn = peer.connect(roomCode);
+        setupConn();
+      });
+      peer.on("connection", c => {
+        conn = c;
+        setupConn();
+      });
+      peer.on("error", err => alert("Error P2P: " + err));
+    }
+
+    function setupConn() {
+      conn.on("open", () => {
+        document.getElementById("joinScreen").classList.remove("active");
+        document.getElementById("votingScreen").classList.add("active");
+        conn.send({type: "hello", peerId});
+      });
+      conn.on("data", data => {
+        if (data.type === "queue") renderQueue(data.queue);
+        if (data.type === "leaderboard") renderLeaderboard(data.leaderboard);
+        if (data.type === "play") loadYouTube(data.videoId);
+        if (data.type === "singer") document.getElementById("singerName").textContent = "Cantante: " + data.name;
+      });
+    }
+
+    function send(msg) {
+      if (conn && conn.open) conn.send(msg);
+    }
+
+    function vote(songId, up) {
+      if (votedSongs.has(songId)) return;
+      votedSongs.add(songId);
+      send({type: "vote", songId, up});
+    }
+
+    function addSong() {
+      const input = document.getElementById("songInput").value.trim();
+      if (!input) return;
+      document.getElementById("songInput").value = "";
+      send({type: "addSong", title: input});
+    }
+
+    function loadYouTube(videoId) {
+      document.getElementById("playerBox").src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    }
+
+    function renderQueue(queue) {
+      const q = document.getElementById("songQueue");
+      q.innerHTML = "";
+      queue.forEach(song => {
+        const div = document.createElement("div");
+        div.className = "song-item";
+        div.innerHTML = `
+          <div class="song-info">
+            <h3>${song.title}</h3>
+            <p>Cantante: ${song.singer}</p>
+          </div>
+          <div class="vote-buttons">
+            <button onclick="vote('${song.id}', true)" ${votedSongs.has(song.id) ? "disabled" : ""}>👍 ${song.votes}</button>
+          </div>
+        `;
+        q.appendChild(div);
+      });
+    }
+
+    function renderLeaderboard(lb) {
+      const board = document.getElementById("leaderboard");
+      board.innerHTML = "";
+      lb.forEach(l => {
+        const div = document.createElement("div");
+        div.className = "leader-item";
+        div.innerHTML = `<span>${l.name}</span><span>${l.score} pts</span>`;
+        board.appendChild(div);
+      });
+    }
+
+    function startTimer() {
+      let s = 0;
+      const timer = document.getElementById("timer");
+      setInterval(() => {
+        const m = String(Math.floor(s / 60)).padStart(2, "0");
+        const sec = String(s % 60).padStart(2, "0");
+        timer.textContent = `${m}:${sec}`;
+        s++;
+      }, 1000);
+    }
+
+    startTimer();
+  </script>
+</body>
+</html>
+```
