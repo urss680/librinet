@@ -1,0 +1,110 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Hoja de Cálculo con Guardado Local</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; max-width: 800px; }
+    td, th { border: 1px solid #ccc; padding: 4px; min-width: 80px; height: 25px; }
+    th { background: #f2f2f2; }
+    input[type="text"] { width: 100%; border: none; padding: 2px; }
+    button { margin: 5px 0; padding: 6px 12px; }
+  </style>
+</head>
+<body>
+
+<h2>Hoja de Cálculo (Guarda en LocalStorage)</h2>
+
+<button onclick="agregarFila()">Agregar Fila</button>
+<button onclick="agregarColumna()">Agregar Columna</button>
+<button onclick="guardarDatos()">Guardar</button>
+<button onclick="cargarDatos()">Cargar</button>
+
+<table id="spreadsheet">
+  <thead id="cabecera">
+    <tr>
+      <th></th>
+      <th>A</th>
+      <th>B</th>
+      <th>C</th>
+    </tr>
+  </thead>
+  <tbody id="cuerpo">
+    <tr>
+      <th>1</th>
+      <td><input type="text" data-fila="0" data-col="0"></td>
+      <td><input type="text" data-fila="0" data-col="1"></td>
+      <td><input type="text" data-fila="0" data-col="2"></td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+const cuerpo = document.getElementById('cuerpo');
+const cabecera = document.getElementById('cabecera');
+const CLAVE = 'hojaCalculoDatos';
+
+function agregarFila() {
+  const cols = cabecera.rows[0].cells.length - 1;
+  const row = cuerpo.insertRow();
+  const th = document.createElement('th');
+  th.textContent = cuerpo.rows.length;
+  row.appendChild(th);
+  for (let i = 0; i < cols; i++) {
+    const cell = row.insertCell();
+    cell.innerHTML = `<input type="text" data-fila="${cuerpo.rows.length-1}" data-col="${i}">`;
+  }
+}
+
+function agregarColumna() {
+  const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const colIndex = cabecera.rows[0].cells.length - 1;
+  const th = document.createElement('th');
+  th.textContent = letras[colIndex % letras.length] + (Math.floor(colIndex / letras.length) > 0 ? Math.floor(colIndex / letras.length) : '');
+  cabecera.rows[0].appendChild(th);
+  Array.from(cuerpo.rows).forEach((row, idx) => {
+    const cell = row.insertCell();
+    cell.innerHTML = `<input type="text" data-fila="${idx}" data-col="${colIndex}">`;
+  });
+}
+
+function guardarDatos() {
+  const datos = [];
+  Array.from(cuerpo.rows).forEach((row, i) => {
+    datos[i] = [];
+    Array.from(row.cells).slice(1).forEach((cell, j) => {
+      datos[i][j] = cell.querySelector('input').value;
+    });
+  });
+  localStorage.setItem(CLAVE, JSON.stringify({headers: cabecera.rows[0].cells.length - 1, rows: cuerpo.rows.length, data: datos}));
+  alert('Datos guardados en el navegador.');
+}
+
+function cargarDatos() {
+  const raw = localStorage.getItem(CLAVE);
+  if (!raw) { alert('No hay datos guardados.'); return; }
+  const {headers, rows, data} = JSON.parse(raw);
+  // Limpiar y reconstruir
+  cuerpo.innerHTML = '';
+  cabecera.rows[0].innerHTML = '<th></th>';
+  // Cabeceras
+  for (let i = 0; i < headers; i++) agregarColumna();
+  // Filas
+  for (let i = 0; i < rows; i++) agregarFila();
+  // Cargar valores
+  data.forEach((row, i) => {
+    row.forEach((val, j) => {
+      cuerpo.rows[i].cells[j+1].querySelector('input').value = val || '';
+    });
+  });
+}
+
+// Auto-guardar al salir
+window.addEventListener('beforeunload', guardarDatos);
+</script>
+
+</body>
+</html>
+```
