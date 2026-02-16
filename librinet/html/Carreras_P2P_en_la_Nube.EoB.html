@@ -1,0 +1,282 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carreras P2P en la Nube</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom, #70c1ff, #a8e0ff);
+      font-family: Arial, Helvetica, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    h1 {
+      margin-top: 20px;
+      color: #fff;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+    }
+
+    #gameCanvas {
+      background: #fff;
+      border: 3px solid #333;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      margin-top: 20px;
+    }
+
+    #controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    #status {
+      margin-top: 15px;
+      color: #fff;
+      font-size: 18px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #joinSection {
+      margin-top: 10px;
+    }
+
+    input[type="text"] {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      width: 200px;
+    }
+
+    #roomDisplay {
+      margin-top: 10px;
+      color: #fff;
+      font-size: 20px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+  <h1>Carreras P2P en la Nube</h1>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+  <div id="controls">
+    <button id="btnCreate">Crear Sala</button>
+    <div id="joinSection">
+      <input type="text" id="roomId" placeholder="ID de Sala">
+      <button id="btnJoin">Unirse a Sala</button>
+    </div>
+    <button id="btnStart" class="hidden">Iniciar Carrera</button>
+  </div>
+
+  <div id="status">Esperando a crear o unirse a una sala...</div>
+  <div id="roomDisplay"></div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const status = document.getElementById('status');
+    const roomDisplay = document.getElementById('roomDisplay');
+    const btnCreate = document.getElementById('btnCreate');
+    const btnJoin = document.getElementById('btnJoin');
+    const btnStart = document.getElementById('btnStart');
+    const roomIdInput = document.getElementById('roomId');
+
+    let peer;
+    let conn;
+    let playerId = Math.random().toString(36).substring(2, 9);
+    let players = {};
+    let gameStarted = false;
+    let localPlayer = { x: 50, y: 0, vy: 0, color: '#007bff', id: playerId };
+    let ground = canvas.height - 50;
+    let gravity = 0.5;
+    let jumpPower = -10;
+    let moveSpeed = 5;
+    let keys = {};
+
+    function drawPlayer(p) {
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 30, 30);
+    }
+
+    function updatePlayer(p) {
+      if (p.y < ground - 30) {
+        p.vy += gravity;
+      } else {
+        p.vy = 0;
+        p.y = ground - 30;
+      }
+      p.y += p.vy;
+    }
+
+    function drawGround() {
+      ctx.fillStyle = '#228b22';
+      ctx.fillRect(0, ground, canvas.width, canvas.height - ground);
+    }
+
+    function drawFinishLine() {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(canvas.width - 50, 0, 10, canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.font = '20px Arial';
+      ctx.fillText('META', canvas.width - 90, 30);
+    }
+
+    function checkWinCondition() {
+      if (localPlayer.x >= canvas.width - 80) {
+        status.textContent = '¡Ganaste!';
+        gameStarted = false;
+      }
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGround();
+      drawFinishLine();
+
+      if (gameStarted) {
+        // Movimiento local
+        if (keys['ArrowLeft']) localPlayer.x -= moveSpeed;
+        if (keys['ArrowRight']) localPlayer.x += moveSpeed;
+        if (keys[' '] && localPlayer.y >= ground - 30) localPlayer.vy = jumpPower;
+
+        updatePlayer(localPlayer);
+        drawPlayer(localPlayer);
+
+        // Dibujar otros jugadores
+        for (let id in players) {
+          updatePlayer(players[id]);
+          drawPlayer(players[id]);
+        }
+
+        checkWinCondition();
+
+        // Enviar posición al otro peer
+        if (conn && conn.open) {
+          conn.send({
+            type: 'position',
+            id: playerId,
+            x: localPlayer.x,
+            y: localPlayer.y,
+            vy: localPlayer.vy,
+            color: localPlayer.color
+          });
+        }
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('keydown', e => keys[e.key] = true);
+    window.addEventListener('keyup', e => keys[e.key] = false);
+
+    btnCreate.addEventListener('click', () => {
+      peer = new Peer(playerId);
+      peer.on('open', id => {
+        status.textContent = 'Esperando a otro jugador...';
+        roomDisplay.textContent = `Tu ID de sala es: ${id}`;
+        btnCreate.disabled = true;
+        btnJoin.disabled = true;
+        roomIdInput.disabled = true;
+      });
+
+      peer.on('connection', c => {
+        conn = c;
+        conn.on('open', () => {
+          status.textContent = 'Jugador conectado. Presiona Iniciar.';
+          btnStart.classList.remove('hidden');
+        });
+
+        conn.on('data', data => {
+          if (data.type === 'position') {
+            players[data.id] = {
+              x: data.x,
+              y: data.y,
+              vy: data.vy,
+              color: data.color
+            };
+          }
+        });
+      });
+    });
+
+    btnJoin.addEventListener('click', () => {
+      const roomId = roomIdInput.value.trim();
+      if (!roomId) {
+        alert('Por favor introduce un ID de sala');
+        return;
+      }
+
+      peer = new Peer(playerId);
+      conn = peer.connect(roomId);
+
+      conn.on('open', () => {
+        status.textContent = 'Conectado. Esperando inicio...';
+        roomDisplay.textContent = `Conectado a sala: ${roomId}`;
+        btnCreate.disabled = true;
+        btnJoin.disabled = true;
+        roomIdInput.disabled = true;
+      });
+
+      conn.on('data', data => {
+        if (data.type === 'start') {
+          gameStarted = true;
+          status.textContent = '¡Carrera en curso!';
+        } else if (data.type === 'position') {
+          players[data.id] = {
+            x: data.x,
+            y: data.y,
+            vy: data.vy,
+            color: data.color
+          };
+        }
+      });
+    });
+
+    btnStart.addEventListener('click', () => {
+      if (conn && conn.open) {
+        conn.send({ type: 'start' });
+        gameStarted = true;
+        status.textContent = '¡Carrera en curso!';
+        btnStart.classList.add('hidden');
+      }
+    });
+
+    gameLoop();
+  </script>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</body>
+</html>
+```
