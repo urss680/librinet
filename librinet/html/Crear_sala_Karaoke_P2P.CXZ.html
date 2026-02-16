@@ -1,0 +1,172 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crear sala Karaoke P2P</title>
+  <style>
+    :root {
+      --bg: #0f0c29;
+      --card: #24243e;
+      --accent: #5865f2;
+      --accent2: #ff0055;
+      --text: #ffffff;
+      --text2: #b9bbbe;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background: linear-gradient(135deg, var(--bg), #1c1c3c);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    h1 {
+      margin-bottom: 1.5rem;
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .room-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .room-display input {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 1.5rem;
+      width: 150px;
+      text-align: center;
+      background: #1e1e3f;
+      color: var(--text);
+      letter-spacing: 2px;
+      font-weight: 700;
+    }
+    .room-display button {
+      padding: 0.75rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .room-display button:hover {
+      background: #4a55c7;
+    }
+    .card p {
+      color: var(--text2);
+      margin-top: 1rem;
+    }
+    .join-section {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+    .join-section h2 {
+      margin-bottom: 1rem;
+    }
+    .join-section input {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 1.2rem;
+      width: 100%;
+      text-align: center;
+      background: #1e1e3f;
+      color: var(--text);
+      letter-spacing: 2px;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .join-section button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent2);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .join-section button:hover {
+      background: #e6004c;
+    }
+  </style>
+</head>
+<body>
+  <h1>Crear sala Karaoke P2P</h1>
+
+  <div class="card">
+    <h2>Tu código de sala es:</h2>
+    <div class="room-display">
+      <input id="roomCode" readonly/>
+      <button onclick="copyCode()">Copiar</button>
+    </div>
+    <p>Comparte este código con tus amigos para que se unan.</p>
+  </div>
+
+  <div class="join-section">
+    <h2>¿Tienes un código de sala?</h2>
+    <input id="joinCode" placeholder="Introduce el código de sala" maxlength="6"/>
+    <button onclick="joinRoom()">Unirse</button>
+  </div>
+
+  <script>
+    function generateCode() {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let code = "";
+      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      return code;
+    }
+    const code = generateCode();
+    document.getElementById("roomCode").value = code;
+
+    function copyCode() {
+      const input = document.getElementById("roomCode");
+      input.select();
+      document.execCommand("copy");
+      alert("Código copiado al portapapeles");
+    }
+
+    function joinRoom() {
+      const code = document.getElementById("joinCode").value.trim().toUpperCase();
+      if (code.length === 6) {
+        alert("Conectando a la sala: " + code);
+      } else {
+        alert("Introduce un código válido de 6 caracteres");
+      }
+    }
+  </script>
+</body>
+</html>
+```
