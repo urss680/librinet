@@ -1,0 +1,243 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>MúsicaConect</title>
+    <style>
+        :root{--bg:#121212;--card:#1e1e1e;--accent:#1db954;--text:#fff;--sub:#b3b3b3;}
+        body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh}
+        nav{width:220px;background:#000;padding:1rem;display:flex;flex-direction:column;gap:1rem}
+        nav h2{font-size:1.2rem;margin:0}
+        nav ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.5rem}
+        nav li{cursor:pointer;padding:.4rem .6rem;border-radius:4px;transition:.2s}
+        nav li:hover{background:#282828}
+        main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+        header{padding:1rem 2rem;background:var(--card);display:flex;align-items:center;gap:1rem}
+        input[type=text]{background:#2a2a2a;border:none;border-radius:20px;padding:.5rem 1rem;color:var(--text);width:300px}
+        #content{padding:2rem;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:2rem}
+        .row{display:flex;gap:1rem;overflow-x:auto}
+        .card{background:var(--card);border-radius:8px;padding:1rem;width:160px;flex-shrink:0;cursor:pointer;transition:.2s}
+        .card:hover{background:#282828}
+        .card img{width:100%;border-radius:4px;margin-bottom:.5rem}
+        .card h4{margin:.3rem 0;font-size:.95rem}
+        .card p{margin:0;font-size:.75rem;color:var(--sub)}
+        #playerBar{position:sticky;bottom:0;width:100%;background:var(--card);display:flex;align-items:center;padding:.5rem 1rem;gap:1rem}
+        #playerBar button{background:none;border:none;color:var(--text);font-size:1.2rem;cursor:pointer}
+        #playerBar input[type=range]{flex:1}
+        #tiempo{font-size:.75rem;color:var(--sub)}
+        #dropZone{display:none}
+        input[type=file]{display:none}
+    </style>
+</head>
+<body>
+    <nav>
+        <h2>MúsicaConect</h2>
+        <ul>
+            <li onclick="mostrarSeccion('tuMusica')">Tu música</li>
+            <li onclick="mostrarSeccion('descubrir')">Descubrir</li>
+            <li onclick="mostrarSeccion('listas')">Listas automáticas</li>
+        </ul>
+    </nav>
+
+    <main>
+        <header>
+            <input type="text" id="buscar" placeholder="Buscar canción o artista…" onkeyup="buscar(this.value)">
+        </header>
+
+        <div id="content">
+            <section id="tuMusica">
+                <h3>Tu biblioteca</h3>
+                <input type="file" id="fileInput" multiple accept="audio/*" onchange="handleFiles(this.files)">
+                <button onclick="document.getElementById('fileInput').click()">Subir música</button>
+                <div id="listaBiblioteca" class="row"></div>
+            </section>
+
+            <section id="descubrir" style="display:none">
+                <h3>Recomendadas</h3>
+                <div id="listaRecomendadas" class="row"></div>
+                <h3>Similares</h3>
+                <div id="listaSimilares" class="row"></div>
+            </section>
+
+            <section id="listas" style="display:none">
+                <h3>Listas automáticas</h3>
+                <div id="listaAutomaticas" class="row"></div>
+            </section>
+        </div>
+
+        <div id="playerBar">
+            <button id="btnPrev">⏮</button>
+            <button id="btnPlay">▶</button>
+            <button id="btnNext">⏭</button>
+            <input type="range" id="seek" value="0" max="100">
+            <span id="tiempo">0:00 / 0:00</span>
+        </div>
+    </main>
+
+    <script>
+        let db, biblioteca=[], reproduciendo=null, audio=new Audio(), cola=[], indiceCola=0;
+
+        const request=indexedDB.open('MusicaDB',1);
+        request.onupgradeneeded=e=>{
+            const store=e.target.result.createObjectStore('audios',{keyPath:'name'});
+            store.createIndex('name','name',{unique:true});
+        };
+        request.onsuccess=e=>{
+            db=e.target.result;
+            cargarBiblioteca();
+        };
+
+        function cargarBiblioteca(){
+            const tx=db.transaction('audios','readonly');
+            const store=tx.objectStore('audios');
+            const req=store.getAll();
+            req.onsuccess=()=>{
+                biblioteca=req.result.map(x=>x.name);
+                renderBiblioteca();
+                generarRecomendadas();
+                generarListasAutomaticas();
+            };
+        }
+
+        function renderBiblioteca(){
+            const cont=document.getElementById('listaBiblioteca');
+            cont.innerHTML='';
+            biblioteca.forEach(nombre=>{
+                const card=document.createElement('div');
+                card.className='card';
+                card.innerHTML=`<img src="https://raw.githubusercontent.com/davidsonbpe/musicaconect/main/art-default.jpg" alt=""><h4>${nombre}</h4><p>Artista</p>`;
+                card.onclick=()=>reproducir(nombre);
+                cont.appendChild(card);
+            });
+        }
+
+        function generarRecomendadas(){
+            const cont=document.getElementById('listaRecomendadas');
+            cont.innerHTML='';
+            const recs=biblioteca.slice(0,5);
+            recs.forEach(n=>{
+                const card=document.createElement('div');
+                card.className='card';
+                card.innerHTML=`<img src="https://raw.githubusercontent.com/davidsonbpe/musicaconect/main/art-default.jpg" alt=""><h4>${n}</h4><p>Recomendada</p>`;
+                card.onclick=()=>reproducir(n);
+                cont.appendChild(card);
+            });
+        }
+
+        function generarListasAutomaticas(){
+            const cont=document.getElementById('listaAutomaticas');
+            cont.innerHTML='';
+            const listas=['Tus éxitos','Descubrimientos','Aleatorio'];
+            listas.forEach(nombre=>{
+                const card=document.createElement('div');
+                card.className='card';
+                card.innerHTML=`<img src="https://raw.githubusercontent.com/davidsonbpe/musicaconect/main/playlist-default.jpg" alt=""><h4>${nombre}</h4><p>Auto‐lista</p>`;
+                card.onclick=()=>reproducirLista(nombre);
+                cont.appendChild(card);
+            });
+        }
+
+        function reproducir(nombre){
+            const tx=db.transaction('audios','readonly');
+            const store=tx.objectStore('audios');
+            const req=store.get(nombre);
+            req.onsuccess=()=>{
+                const blob=new Blob([req.result.data],{type:req.result.type});
+                const url=URL.createObjectURL(blob);
+                audio.src=url;
+                audio.play();
+                reproduciendo=nombre;
+                cola=[nombre];
+                indiceCola=0;
+                actualizarUI();
+                generarSimilares(nombre);
+            };
+        }
+
+        function reproducirLista(tipo){
+            let seleccion=[];
+            if(tipo==='Tus éxitos') seleccion=biblioteca.slice(0,10);
+            else if(tipo==='Descubrimientos') seleccion=biblioteca.slice().reverse().slice(0,10);
+            else seleccion=biblioteca.sort(()=>Math.random()-.5).slice(0,10);
+            if(seleccion.length){
+                cola=seleccion;
+                indiceCola=0;
+                reproducir(cola[0]);
+            }
+        }
+
+        function generarSimilares(base){
+            const cont=document.getElementById('listaSimilares');
+            cont.innerHTML='';
+            const similares=biblioteca.filter(n=>n!==base).slice(0,5);
+            similares.forEach(n=>{
+                const card=document.createElement('div');
+                card.className='card';
+                card.innerHTML=`<img src="https://raw.githubusercontent.com/davidsonbpe/musicaconect/main/art-default.jpg" alt=""><h4>${n}</h4><p>Similar</p>`;
+                card.onclick=()=>reproducir(n);
+                cont.appendChild(card);
+            });
+        }
+
+        function buscar(q){
+            const filtradas=biblioteca.filter(n=>n.toLowerCase().includes(q.toLowerCase()));
+            const cont=document.getElementById('listaBiblioteca');
+            cont.innerHTML='';
+            filtradas.forEach(nombre=>{
+                const card=document.createElement('div');
+                card.className='card';
+                card.innerHTML=`<img src="https://raw.githubusercontent.com/davidsonbpe/musicaconect/main/art-default.jpg" alt=""><h4>${nombre}</h4><p>Artista</p>`;
+                card.onclick=()=>reproducir(nombre);
+                cont.appendChild(card);
+            });
+        }
+
+        function mostrarSeccion(id){
+            document.querySelectorAll('#content section').forEach(s=>s.style.display='none');
+            document.getElementById(id).style.display='flex';
+            document.getElementById(id).style.flexDirection='column';
+            document.getElementById(id).style.gap='2rem';
+        }
+
+        function actualizarUI(){
+            document.getElementById('btnPlay').textContent=audio.paused?'▶':'⏸';
+            document.getElementById('tiempo').textContent=formatear(audio.currentTime)+' / '+formatear(audio.duration);
+            document.getElementById('seek').value=audio.duration?audio.currentTime/audio.duration*100:0;
+        }
+
+        function formatear(t){return isNaN(t)?'0:00':Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');}
+
+        document.getElementById('btnPlay').onclick=()=>{audio.paused?audio.play():audio.pause();actualizarUI();};
+        document.getElementById('btnPrev').onclick=()=>{if(indiceCola>0){indiceCola--;reproducir(cola[indiceCola]);}};
+        document.getElementById('btnNext').onclick=()=>{if(indiceCola<cola.length-1){indiceCola++;reproducir(cola[indiceCola]);}};
+        document.getElementById('seek').oninput=e=>{audio.currentTime=e.target.value/100*audio.duration;};
+        audio.ontimeupdate=()=>actualizarUI();
+        audio.onended=()=>document.getElementById('btnNext').click();
+
+        function handleFiles(files){
+            const tx=db.transaction('audios','readwrite');
+            const store=tx.objectStore('audios');
+            let count=0;
+            [...files].forEach(file=>{
+                if(file.type.startsWith('audio/')){
+                    const reader=new FileReader();
+                    reader.onload=e=>{
+                        const data=e.target.result;
+                        const record={name:file.name.replace(/\.[^/.]+$/,''),data:data,type:file.type};
+                        store.put(record);
+                        if(++count===files.length){
+                            tx.oncomplete=()=>{
+                                cargarBiblioteca();
+                                mostrarSeccion('descubrir');
+                            };
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+```
