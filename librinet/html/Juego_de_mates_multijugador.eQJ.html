@@ -1,0 +1,221 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Juego de mates multijugador</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f7f7f7;
+      display: flex;
+      height: 100vh;
+    }
+    #panel {
+      width: 320px;
+      background: #fff;
+      border-right: 1px solid #ccc;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #juego {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    input[type=text], button {
+      padding: 10px;
+      font-size: 16px;
+    }
+    #pregunta {
+      font-size: 36px;
+      font-weight: bold;
+    }
+    #opciones {
+      display: flex;
+      gap: 12px;
+    }
+    .opcion {
+      padding: 14px 28px;
+      font-size: 22px;
+      background: #ffe135;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .opcion:hover {
+      background: #ffd700;
+    }
+    #resultado {
+      font-size: 20px;
+      height: 30px;
+    }
+    #limones {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .limon {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-image: url('https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Yellow/Lemon/3D/lemon_3d.png');
+      background-size: contain;
+      animation: caer 4s linear;
+    }
+    @keyframes caer {
+      from { transform: translateY(-100px); }
+      to { transform: translateY(calc(100vh + 100px)); }
+    }
+  </style>
+</head>
+<body>
+  <div id="limones"></div>
+  <div id="panel">
+    <h2>Juego de mates</h2>
+    <input id="nombre" placeholder="Tu nombre">
+    <button id="crear" onclick="crearSala()">Crear sala</button>
+    <button id="unirse" onclick="unirseSala()">Unirse a sala</button>
+    <input id="codigo" placeholder="Código de sala">
+    <div id="info"></div>
+  </div>
+  <div id="juego" style="display:none;">
+    <div id="jugadores"></div>
+    <div id="pregunta"></div>
+    <div id="opciones"></div>
+    <div id="resultado"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5n2fH5mydKzP7-Jo1Nv1KX8zS1XfUy3vM",
+      authDomain: "limones-mates.firebaseapp.com",
+      databaseURL: "https://limones-mates-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "limones-mates",
+      storageBucket: "limones-mates.appspot.com",
+      messagingSenderId: "123456789012",
+      appId: "1:123456789012:web:abcd123456"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let codigoSala = "";
+    let nombre = "";
+    let jugadorId = "";
+    let turno = 0;
+
+    function crearSala() {
+      nombre = document.getElementById('nombre').value.trim();
+      if (!nombre) return alert("Escribe tu nombre");
+      codigoSala = Math.random().toString(36).substring(2, 6).toUpperCase();
+      jugadorId = "1";
+      db.ref(`salas/${codigoSala}/jugadores/1`).set({ nombre, puntos: 0, listo: false });
+      document.getElementById('info').innerText = `Sala creada: ${codigoSala}`;
+      document.getElementById('panel').style.display = 'none';
+      document.getElementById('juego').style.display = 'flex';
+      escucharSala();
+    }
+
+    function unirseSala() {
+      nombre = document.getElementById('nombre').value.trim();
+      codigoSala = document.getElementById('codigo').value.trim().toUpperCase();
+      if (!nombre || !codigoSala) return alert("Nombre y código requeridos");
+      jugadorId = "2";
+      db.ref(`salas/${codigoSala}/jugadores/2`).set({ nombre, puntos: 0, listo: false });
+      db.ref(`salas/${codigoSala}/jugadores/1`).once('value', snap => {
+        if (!snap.exists()) return alert("Sala no existe");
+        document.getElementById('panel').style.display = 'none';
+        document.getElementById('juego').style.display = 'flex';
+        escucharSala();
+      });
+    }
+
+    function escucharSala() {
+      db.ref(`salas/${codigoSala}/jugadores`).on('value', snap => {
+        const datos = snap.val();
+        let html = "";
+        for (const id in datos) {
+          html += `<p>${datos[id].nombre}: ${datos[id].puntos} pts</p>`;
+        }
+        document.getElementById('jugadores').innerHTML = html;
+        if (datos[1] && datos[2] && !datos[1].listo && !datos[2].listo) {
+          db.ref(`salas/${codigoSala}/turno`).set(1);
+          db.ref(`salas/${codigoSala}/pregunta`).set(generarPregunta());
+        }
+      });
+      db.ref(`salas/${codigoSala}/turno`).on('value', snap => {
+        turno = snap.val();
+        if (turno) cargarPregunta();
+      });
+    }
+
+    function generarPregunta() {
+      const a = Math.floor(Math.random() * 10) + 1;
+      const b = Math.floor(Math.random() * 10) + 1;
+      const ops = ['+', '-', '*'];
+      const op = ops[Math.floor(Math.random() * ops.length)];
+      let r;
+      if (op === '+') r = a + b;
+      if (op === '-') r = a - b;
+      if (op === '*') r = a * b;
+      const texto = `${a} ${op} ${b}`;
+      const opciones = [r, r + Math.floor(Math.random() * 5 + 1), r - Math.floor(Math.random() * 5 + 1)].sort(() => Math.random() - 0.5);
+      return { texto, respuesta: r, opciones };
+    }
+
+    function cargarPregunta() {
+      db.ref(`salas/${codigoSala}/pregunta`).once('value', snap => {
+        const p = snap.val();
+        document.getElementById('pregunta').innerText = p.texto;
+        const ops = document.getElementById('opciones');
+        ops.innerHTML = "";
+        p.opciones.forEach(o => {
+          const btn = document.createElement('button');
+          btn.className = 'opcion';
+          btn.innerText = o;
+          btn.onclick = () => responder(o === p.respuesta);
+          ops.appendChild(btn);
+        });
+      });
+    }
+
+    function responder(correcto) {
+      if (correcto) {
+        db.ref(`salas/${codigoSala}/jugadores/${jugadorId}/puntos`).transaction(p => (p || 0) + 1);
+        document.getElementById('resultado').innerText = "¡Correcto!";
+        lluviaLimones();
+      } else {
+        document.getElementById('resultado').innerText = "Incorrecto";
+      }
+      const otro = jugadorId === "1" ? "2" : "1";
+      db.ref(`salas/${codigoSala}/turno`).set(otro);
+      db.ref(`salas/${codigoSala}/pregunta`).set(generarPregunta());
+    }
+
+    function lluviaLimones() {
+      const cont = document.getElementById('limones');
+      for (let i = 0; i < 20; i++) {
+        setTimeout(() => {
+          const l = document.createElement('div');
+          l.className = 'limon';
+          l.style.left = Math.random() * 100 + '%';
+          cont.appendChild(l);
+          setTimeout(() => l.remove(), 4000);
+        }, i * 100);
+      }
+    }
+  </script>
+</body>
+</html>
+```
