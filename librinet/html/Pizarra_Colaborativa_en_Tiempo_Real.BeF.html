@@ -1,0 +1,198 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Pizarra Colaborativa en Tiempo Real</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root {
+      --fondo: #111;
+      --color-trazo: #0ff;
+      --ancho-trazo: 4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--fondo);
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: .75rem 1rem;
+      background: #222;
+      user-select: none;
+      flex-wrap: wrap;
+    }
+    label {
+      font-size: .8rem;
+    }
+    input[type="color"] {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    input[type="range"] {
+      width: 100px;
+    }
+    button {
+      padding: .5rem .9rem;
+      border: none;
+      border-radius: 4px;
+      background: #444;
+      color: #fff;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    button:hover {
+      background: #555;
+    }
+    #canvas {
+      flex: 1;
+      width: 100%;
+      cursor: crosshair;
+      image-rendering: pixelated;
+    }
+    .room {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .room input {
+      padding: .35rem .5rem;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #333;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <label>Color<input type="color" id="color"/></label>
+    <label>Grosor<input type="range" id="grosor" min="1" max="40" value="4"/></label>
+    <button id="btnBorrar">Borrar todo</button>
+    <div class="room">
+      <label>Sala <input id="sala" placeholder="default"/></label>
+      <button id="btnConectar">Conectar</button>
+    </div>
+  </header>
+  <canvas id="canvas"></canvas>
+
+  <script type="module">
+    import { io } from "https://cdn.socket.io/4.7.5/socket.io.esm.min.js";
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const colorInput = document.getElementById("color");
+    const grosorInput = document.getElementById("grosor");
+    const btnBorrar = document.getElementById("btnBorrar");
+    const salaInput = document.getElementById("sala");
+    const btnConectar = document.getElementById("btnConectar");
+
+    let dibujando = false;
+    let sala = "default";
+
+    // Redimensionar canvas
+    function resize() {
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      ctx.putImageData(img, 0, 0);
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    // Socket
+    let socket;
+    function conectar() {
+      if (socket) socket.disconnect();
+      sala = salaInput.value.trim() || "default";
+      socket = io({ transports: ["websocket"] });
+      socket.on("connect", () => {
+        socket.emit("unirse", sala);
+      });
+      socket.on("dibujar", ({ x0, y0, x1, y1, color, grosor }) => {
+        trazar(x0, y0, x1, y1, color, grosor, false);
+      });
+      socket.on("limpiar", () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      });
+      socket.on("disconnect", () => console.warn("Desconectado"));
+    }
+    btnConectar.addEventListener("click", conectar);
+    conectar();
+
+    // Dibujar
+    function trazar(x0, y0, x1, y1, color, grosor, emit = true) {
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = grosor;
+      ctx.lineCap = "round";
+      ctx.stroke();
+      if (emit && socket) {
+        socket.emit("dibujar", { x0, y0, x1, y1, color, grosor, sala });
+      }
+    }
+
+    // Eventos ratón / táctil
+    function coord(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const y = (e.clientY || e.touches[0].clientY) - rect.top;
+      return { x, y };
+    }
+    canvas.addEventListener("mousedown", e => {
+      dibujando = true;
+      const { x, y } = coord(e);
+      canvas.lastX = x;
+      canvas.lastY = y;
+    });
+    canvas.addEventListener("mousemove", e => {
+      if (!dibujando) return;
+      const { x, y } = coord(e);
+      trazar(canvas.lastX, canvas.lastY, x, y, colorInput.value, grosorInput.value);
+      canvas.lastX = x;
+      canvas.lastY = y;
+    });
+    canvas.addEventListener("mouseup", () => dibujando = false);
+    canvas.addEventListener("mouseleave", () => dibujando = false);
+
+    // Táctil
+    canvas.addEventListener("touchstart", e => {
+      e.preventDefault();
+      dibujando = true;
+      const { x, y } = coord(e);
+      canvas.lastX = x;
+      canvas.lastY = y;
+    });
+    canvas.addEventListener("touchmove", e => {
+      e.preventDefault();
+      if (!dibujando) return;
+      const { x, y } = coord(e);
+      trazar(canvas.lastX, canvas.lastY, x, y, colorInput.value, grosorInput.value);
+      canvas.lastX = x;
+      canvas.lastY = y;
+    });
+    canvas.addEventListener("touchend", () => dibujando = false);
+
+    // Borrar
+    btnBorrar.addEventListener("click", () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (socket) socket.emit("limpiar", sala);
+    });
+  </script>
+</body>
+</html>
+```
