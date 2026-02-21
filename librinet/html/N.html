@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor Estático - Sincronizado 60s</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background-color: #0b0e14; color: #e2e8f0; padding: 50px; }
+        .container { background: #161b22; padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); display: inline-block; min-width: 450px; border: 1px solid #30363d; }
+        .header { font-size: 0.8em; color: #8b949e; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; }
+        .display-box { font-size: 5em; font-weight: 900; margin: 30px 0; color: #58a6ff; font-family: 'Courier New', monospace; }
+        .status-tag { font-size: 0.7em; padding: 5px 15px; border-radius: 5px; font-weight: bold; margin-top: 10px; }
+        .waiting { color: #8b949e; background: #21262d; border: 1px solid #30363d; }
+        .received { color: #3fb950; background: rgba(63, 185, 80, 0.1); border: 1px solid #3fb950; }
+        button { background: #238636; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; transition: 0.3s; }
+        button:hover { background: #2ea043; }
+        .footer-info { margin-top: 40px; text-align: left; background: #0d1117; padding: 20px; border-radius: 12px; font-size: 0.85em; border-left: 4px solid #58a6ff; }
+        .footer-info strong { color: #58a6ff; display: block; margin-bottom: 5px; }
+        #log { margin-top: 15px; color: #8b949e; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">Registro Minutal Madrid</div>
+    <button id="conectar">CONECTAR PUERTO SERIE</button>
+    
+    <div id="badge" class="status-tag waiting" style="display:none;">ESPERANDO LECTURA (60S)</div>
+
+    <div class="display-box">
+        <span id="t">--</span>° | <span id="h">--</span>%
+    </div>
+
+    <div id="log">Conecta el dispositivo para iniciar el ciclo de 1 minuto.</div>
+
+    <div class="footer-info">
+        <strong>CONFIRMACIÓN ÚLTIMA FILA:</strong>
+        <div id="last_entry">Consultando Google Sheets...</div>
+    </div>
+</div>
+
+<script>
+    const APP_URL = "https://script.google.com/macros/s/AKfycbwa11mHkM9jfXzKlcLwuckOzlB_qHRUQiOLGTTqJbH6LQCrDuYL9Nd4XqBgnZGew3P9/exec";
+    let port;
+
+    // Al cargar la página, muestra lo último que haya en el Excel
+    window.onload = getHistory;
+
+    async function getHistory() {
+        try {
+            const res = await fetch(APP_URL);
+            const data = await res.json();
+            if (!data.error) {
+                document.getElementById('last_entry').innerHTML = 
+                    `📅 ${data.fecha}<br>🌡️ ${data.temp} | 💧 ${data.hum}%`;
+                // Sincronizamos la pantalla con el último valor real del Excel
+                document.getElementById('t').innerText = data.temp.replace('°C','');
+                document.getElementById('h').innerText = data.hum;
+            }
+        } catch (e) { console.log("Error de red"); }
+    }
+
+    document.getElementById('conectar').onclick = async () => {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            document.getElementById('conectar').style.display = "none";
+            document.getElementById('badge').style.display = "inline-block";
+            document.getElementById('log').innerText = "Puerto abierto. Sincronizado con el delay del Arduino.";
+            read();
+        } catch (e) { alert("Error al abrir puerto"); }
+    };
+
+    async function read() {
+        const decoder = new TextDecoderStream();
+        port.readable.pipeTo(decoder.writable);
+        const reader = decoder.readable.getReader();
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) {
+                const tMatch = value.match(/TEMPERATURA:([\d.]+)/);
+                const hMatch = value.match(/HUMEDAD:([\d.]+)/);
+
+                if (tMatch && hMatch) {
+                    const temp = tMatch[1];
+                    const hum = hMatch[1];
+
+                    // Filtro de seguridad para el error de humedad detectado anteriormente
+                    if (parseFloat(hum) <= 10) {
+                        document.getElementById('log').innerText = "⚠️ Humedad errónea (5%) ignorada.";
+                        continue;
+                    }
+
+                    // ACTUALIZACIÓN DE INTERFAZ (Ocurre cada 1 min según el Arduino)
+                    document.getElementById('t').innerText = temp;
+                    document.getElementById('h').innerText = hum;
+                    
+                    document.getElementById('badge').innerText = "¡DATO RECIBIDO!";
+                    document.getElementById('badge').className = "status-tag received";
+                    document.getElementById('log').innerText = "Enviando a la pestaña ARDUINO...";
+
+                    enviar(temp, hum);
+                    
+                    // Volver al estado de espera tras 5 segundos
+                    setTimeout(() => {
+                        document.getElementById('badge').innerText = "ESPERANDO LECTURA (60S)";
+                        document.getElementById('badge').className = "status-tag waiting";
+                    }, 5000);
+                }
+            }
+        }
+    }
+
+    async function enviar(temp, hum) {
+        try {
+            await fetch(APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ temp: temp, hum: hum })
+            });
+            document.getElementById('log').innerText = "✅ Guardado exitoso en Madrid.";
+            getHistory(); // Actualiza el cuadro de texto inferior
+        } catch (e) {
+            document.getElementById('log').innerText = "❌ Error al conectar con Google.";
+        }
+    }
+</script>
+</body>
+</html>
