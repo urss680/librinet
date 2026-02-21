@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistema de Registro Serial</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 40px; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 400px; text-align: center; }
+        .status-dot { height: 10px; width: 10px; background-color: #bbb; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .online { background-color: #2ecc71; }
+        .display { font-size: 32px; font-weight: bold; margin: 25px 0; color: #1a73e8; padding: 20px; background: #f8faff; border: 2px dashed #1a73e8; border-radius: 12px; }
+        .history { text-align: left; background: #34495e; color: white; padding: 15px; border-radius: 10px; font-size: 14px; margin-top: 20px; }
+        button { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; }
+        .btn-connect { background: #546e7a; color: white; }
+        .btn-save { background: #27ae60; color: white; }
+        .btn-save:disabled { background: #bdc3c7; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div style="margin-bottom: 20px;">
+        <span id="dot" class="status-dot"></span>
+        <span id="statusText">Desconectado</span>
+    </div>
+    
+    <button id="conectar" class="btn-connect">CONECTAR ARDUINO</button>
+
+    <div class="display">
+        <span id="txtT">--</span>°C | <span id="txtH">--</span>%
+    </div>
+
+    <button id="guardar" class="btn-save" disabled>GUARDAR DATO ACTUAL</button>
+    
+    <div class="history">
+        <div style="border-bottom: 1px solid #5d6d7e; padding-bottom: 5px; margin-bottom: 10px; font-weight: bold;">
+            Último registro en Sheets:
+        </div>
+        <div id="lastData">Consultando servidor...</div>
+    </div>
+</div>
+
+<script>
+    const URL = "https://script.google.com/macros/s/AKfycbwa11mHkM9jfXzKlcLwuckOzlB_qHRUQiOLGTTqJbH6LQCrDuYL9Nd4XqBgnZGew3P9/exec";
+    let port, utemp, uhum;
+
+    // Cargar historial al iniciar
+    window.onload = fetchLast;
+
+    async function fetchLast() {
+        try {
+            const r = await fetch(URL);
+            const d = await r.json();
+            document.getElementById('lastData').innerHTML = d.error ? "Sin datos." : 
+                `📅 ${d.fecha}<br>🌡️ ${d.temp} / 💧 ${d.hum}%`;
+        } catch(e) { document.getElementById('lastData').innerText = "Error de red."; }
+    }
+
+    document.getElementById('conectar').onclick = async () => {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            document.getElementById('dot').classList.add('online');
+            document.getElementById('statusText').innerText = "Conectado";
+            document.getElementById('conectar').style.display = "none";
+            read();
+        } catch(e) { alert("Error al acceder al puerto"); }
+    };
+
+    async function read() {
+        const dec = new TextDecoderStream();
+        port.readable.pipeTo(dec.writable);
+        const reader = dec.readable.getReader();
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const t = value.match(/TEMPERATURA:([\d.]+)/);
+            const h = value.match(/HUMEDAD:([\d.]+)/);
+            if (t && h) {
+                utemp = t[1]; uhum = h[1];
+                document.getElementById('txtT').innerText = utemp;
+                document.getElementById('txtH').innerText = uhum;
+                document.getElementById('guardar').disabled = false;
+            }
+        }
+    }
+
+    document.getElementById('guardar').onclick = async () => {
+        const btn = document.getElementById('guardar');
+        btn.innerText = "ENVIANDO...";
+        btn.disabled = true;
+        
+        await fetch(URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ temp: utemp, hum: uhum })
+        });
+
+        btn.innerText = "¡GUARDADO!";
+        setTimeout(() => { 
+            btn.innerText = "GUARDAR DATO ACTUAL";
+            btn.disabled = false;
+            fetchLast(); // Refrescar el historial inmediatamente
+        }, 1500);
+    };
+</script>
+
+</body>
+</html>
