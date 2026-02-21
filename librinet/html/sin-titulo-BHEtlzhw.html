@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro Manual - Arduino</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; padding: 40px; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: inline-block; min-width: 350px; }
+        .status { margin: 15px 0; font-weight: bold; }
+        .live-data { font-size: 2.2em; margin: 20px; padding: 20px; border: 2px solid #4285f4; border-radius: 10px; color: #4285f4; background: #f8f9ff; }
+        button { padding: 15px 30px; font-size: 16px; border-radius: 8px; cursor: pointer; border: none; margin: 10px; transition: 0.3s; width: 100%; }
+        .btn-connect { background: #5f6368; color: white; }
+        .btn-save { background: #1fa463; color: white; font-weight: bold; text-transform: uppercase; }
+        .btn-save:hover { background: #15804d; }
+        .btn-save:disabled { background: #ccc; cursor: not-allowed; }
+        #msg { height: 20px; margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Control de Registro</h2>
+    
+    <button id="btnConectar" class="btn-connect">1. CONECTAR ARDUINO</button>
+    <div id="status" class="status" style="color: #d9534f;">Estado: Desconectado</div>
+    
+    <div class="live-data">
+        <span id="valTemp">--</span>°C | <span id="valHum">--</span>%
+    </div>
+
+    <button id="btnGuardar" class="btn-save" disabled>2. GUARDAR LECTURA ACTUAL</button>
+    <div id="msg"></div>
+</div>
+
+<script>
+    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwa11mHkM9jfXzKlcLwuckOzlB_qHRUQiOLGTTqJbH6LQCrDuYL9Nd4XqBgnZGew3P9/exec";
+    
+    let puerto;
+    let ultimaTemp = null;
+    let ultimaHum = null;
+
+    // Conectar al Arduino
+    document.getElementById('btnConectar').addEventListener('click', async () => {
+        try {
+            puerto = await navigator.serial.requestPort();
+            await puerto.open({ baudRate: 9600 });
+            document.getElementById('status').innerText = "Estado: Conectado ✅";
+            document.getElementById('status').style.color = "#1fa463";
+            document.getElementById('btnConectar').style.display = "none";
+            leerPuerto();
+        } catch (e) { 
+            console.log(e);
+            alert("No se pudo conectar al puerto serie."); 
+        }
+    });
+
+    // Leer flujo de datos
+    async function leerPuerto() {
+        const decodificador = new TextDecoderStream();
+        puerto.readable.pipeTo(decodificador.writable);
+        const lector = decodificador.readable.getReader();
+
+        while (true) {
+            const { value, done } = await lector.read();
+            if (done) break;
+            if (value) {
+                const t = value.match(/TEMPERATURA:([\d.]+)/);
+                const h = value.match(/HUMEDAD:([\d.]+)/);
+
+                if (t && h) {
+                    ultimaTemp = t[1];
+                    ultimaHum = h[1];
+                    document.getElementById('valTemp').innerText = ultimaTemp;
+                    document.getElementById('valHum').innerText = ultimaHum;
+                    document.getElementById('btnGuardar').disabled = false;
+                }
+            }
+        }
+    }
+
+    // Guardar dato en la última fila de Sheets
+    document.getElementById('btnGuardar').addEventListener('click', async () => {
+        if (!ultimaTemp || !ultimaHum) return;
+
+        const msgDiv = document.getElementById('msg');
+        msgDiv.style.color = "#4285f4";
+        msgDiv.innerText = "Enviando a la hoja...";
+
+        try {
+            await fetch(URL_SCRIPT, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ temp: ultimaTemp, hum: ultimaHum })
+            });
+            
+            msgDiv.style.color = "#1fa463";
+            msgDiv.innerText = "✅ Guardado en la siguiente fila";
+            
+            // Limpiar mensaje después de 3 segundos
+            setTimeout(() => { msgDiv.innerText = ""; }, 3000);
+        } catch (err) {
+            msgDiv.style.color = "#d9534f";
+            msgDiv.innerText = "❌ Error de conexión";
+        }
+    });
+</script>
+
+</body>
+</html>
