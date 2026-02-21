@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor Minutal Sincronizado</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background-color: #0f172a; color: #f8fafc; padding: 40px; }
+        .container { background: #1e293b; padding: 40px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); display: inline-block; min-width: 450px; border: 1px solid #334155; }
+        .status-pill { display: inline-block; padding: 8px 20px; border-radius: 20px; font-size: 0.8em; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .online { background: #064e3b; color: #10b981; border: 1px solid #059669; }
+        .offline { background: #450a0a; color: #f87171; border: 1px solid #991b1b; }
+        .display-box { font-size: 4em; font-weight: 800; margin: 25px 0; padding: 40px; background: #0f172a; border-radius: 20px; border: 2px solid #38bdf8; color: #38bdf8; text-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
+        .info-text { color: #94a3b8; font-size: 0.9em; margin-bottom: 5px; }
+        .history-card { background: #020617; padding: 20px; border-radius: 15px; text-align: left; margin-top: 30px; border-left: 4px solid #10b981; }
+        .history-card strong { color: #10b981; display: block; margin-bottom: 8px; font-size: 0.8em; text-transform: uppercase; }
+        button { width: 100%; padding: 18px; border: none; border-radius: 15px; cursor: pointer; font-size: 18px; font-weight: bold; background: #38bdf8; color: #0f172a; transition: 0.3s; }
+        button:hover { background: #7dd3fc; transform: scale(1.02); }
+        #log { margin-top: 20px; font-family: monospace; font-size: 0.85em; color: #64748b; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="status" class="status-pill offline">Sin Conexión</div>
+    <h2 style="margin: 0;">Registro Minutal</h2>
+    <p class="info-text">Sincronizado con Pestaña <strong>ARDUINO</strong> (Madrid)</p>
+    
+    <button id="btnConectar">CONECTAR ARDUINO</button>
+
+    <div class="display-box">
+        <span id="t">--</span>° | <span id="h">--</span>%
+    </div>
+
+    <div id="log">Esperando el primer intervalo de 60s...</div>
+
+    <div class="history-card">
+        <strong>Confirmado en Google Sheets:</strong>
+        <div id="last_entry">Sincronizando historial...</div>
+    </div>
+</div>
+
+<script>
+    const APP_URL = "https://script.google.com/macros/s/AKfycbwa11mHkM9jfXzKlcLwuckOzlB_qHRUQiOLGTTqJbH6LQCrDuYL9Nd4XqBgnZGew3P9/exec";
+    let port;
+
+    // Al cargar la página, traemos el último dato real del Excel
+    window.onload = updateHistory;
+
+    async function updateHistory() {
+        try {
+            const r = await fetch(APP_URL);
+            const d = await r.json();
+            if (!d.error) {
+                document.getElementById('last_entry').innerHTML = 
+                    `📅 ${d.fecha}<br>🌡️ ${d.temp} | 💧 ${d.hum}%`;
+                
+                // OPCIONAL: Mostrar el último dato del Excel en la pantalla grande al iniciar
+                document.getElementById('t').innerText = d.temp.replace('°C', '');
+                document.getElementById('h').innerText = d.hum;
+            }
+        } catch (e) { console.log("Error de conexión"); }
+    }
+
+    document.getElementById('btnConectar').onclick = async () => {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            
+            document.getElementById('btnConectar').style.display = "none";
+            document.getElementById('status').innerText = "🔴 Escuchando cada 60s";
+            document.getElementById('status').className = "status-pill online";
+            
+            escucharArduino();
+        } catch (e) { alert("Error al abrir puerto serie"); }
+    };
+
+    async function escucharArduino() {
+        const decoder = new TextDecoderStream();
+        port.readable.pipeTo(decoder.writable);
+        const lector = decoder.readable.getReader();
+
+        while (true) {
+            const { value, done } = await lector.read();
+            if (done) break;
+            if (value) {
+                const tMatch = value.match(/TEMPERATURA:([\d.]+)/);
+                const hMatch = value.match(/HUMEDAD:([\d.]+)/);
+
+                if (tMatch && hMatch) {
+                    const temp = tMatch[1];
+                    const hum = hMatch[1];
+                    
+                    // FILTRO: Ignorar el error del 5% si ocurre
+                    if (parseFloat(hum) <= 5) {
+                        document.getElementById('log').innerText = "⚠️ Lectura errónea detectada (5%), esperando siguiente minuto...";
+                        continue; 
+                    }
+
+                    // SOLO ACTUALIZA LA INTERFAZ CUANDO LLEGA EL DATO CADA MINUTO
+                    document.getElementById('t').innerText = temp;
+                    document.getElementById('h').innerText = hum;
+                    document.getElementById('log').innerText = "📥 ¡Dato recibido! Enviando a Google Sheets...";
+
+                    enviar(temp, hum);
+                }
+            }
+        }
+    }
+
+    async function enviar(temp, hum) {
+        try {
+            await fetch(APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ temp: temp, hum: hum })
+            });
+            document.getElementById('log').innerText = "✅ Guardado realizado. Próxima actualización en 1 min.";
+            updateHistory(); 
+        } catch (e) {
+            document.getElementById('log').innerText = "❌ Error al subir a la nube.";
+        }
+    }
+</script>
+</body>
+</html>
