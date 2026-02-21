@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Captura Manual - Arduino</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; padding: 40px; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: inline-block; }
+        .status { margin: 15px 0; font-weight: bold; }
+        .live-data { font-size: 2em; margin: 20px; padding: 20px; border: 2px solid #007bff; border-radius: 10px; color: #007bff; }
+        button { padding: 12px 25px; font-size: 16px; border-radius: 5px; cursor: pointer; border: none; margin: 5px; transition: 0.3s; }
+        .btn-connect { background: #6c757d; color: white; }
+        .btn-save { background: #28a745; color: white; font-weight: bold; }
+        .btn-save:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Registro Manual a Google Sheets</h2>
+    
+    <button id="btnConectar" class="btn-connect">1. CONECTAR ARDUINO</button>
+    <div id="status" class="status" style="color: #d9534f;">Estado: Desconectado</div>
+    
+    <div class="live-data">
+        <span id="valTemp">--</span>°C | <span id="valHum">--</span>%
+    </div>
+
+    <button id="btnGuardar" class="btn-save" disabled>2. GUARDAR DATO ACTUAL EN EXCEL</button>
+    <p id="msg" style="color: #666;"></p>
+</div>
+
+<script>
+    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwa11mHkM9jfXzKlcLwuckOzlB_qHRUQiOLGTTqJbH6LQCrDuYL9Nd4XqBgnZGew3P9/exec";
+    
+    let puerto;
+    let ultimaTemp = null;
+    let ultimaHum = null;
+
+    // Botón Conectar
+    document.getElementById('btnConectar').addEventListener('click', async () => {
+        try {
+            puerto = await navigator.serial.requestPort();
+            await puerto.open({ baudRate: 9600 });
+            document.getElementById('status').innerText = "Estado: Conectado ✅";
+            document.getElementById('status').style.color = "#28a745";
+            document.getElementById('btnConectar').style.display = "none";
+            leerPuerto();
+        } catch (e) { alert("Error al conectar"); }
+    });
+
+    // Leer datos del puerto serie
+    async function leerPuerto() {
+        const decodificador = new TextDecoderStream();
+        puerto.readable.pipeTo(decodificador.writable);
+        const lector = decodificador.readable.getReader();
+
+        while (true) {
+            const { value, done } = await lector.read();
+            if (done) break;
+            if (value) {
+                // Filtramos los datos del Arduino
+                const t = value.match(/TEMPERATURA:([\d.]+)/);
+                const h = value.match(/HUMEDAD:([\d.]+)/);
+
+                if (t && h) {
+                    ultimaTemp = t[1];
+                    ultimaHum = h[1];
+                    // Actualizamos la pantalla
+                    document.getElementById('valTemp').innerText = ultimaTemp;
+                    document.getElementById('valHum').innerText = ultimaHum;
+                    // Habilitamos el botón de guardar
+                    document.getElementById('btnGuardar').disabled = false;
+                }
+            }
+        }
+    }
+
+    // Botón Guardar
+    document.getElementById('btnGuardar').addEventListener('click', async () => {
+        if (ultimaTemp && ultimaHum) {
+            document.getElementById('msg').innerText = "Guardando...";
+            
+            try {
+                await fetch(URL_SCRIPT, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify({ temp: ultimaTemp, hum: ultimaHum })
+                });
+                
+                document.getElementById('msg').innerText = "✅ ¡Dato guardado en la fila A!";
+                setTimeout(() => { document.getElementById('msg').innerText = ""; }, 3000);
+            } catch (err) {
+                document.getElementById('msg').innerText = "❌ Error al guardar";
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
