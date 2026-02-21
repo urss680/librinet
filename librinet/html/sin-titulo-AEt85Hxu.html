@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino Serial to Google Sheets</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center p-6">
+
+    <div class="w-full max-w-2xl bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-700">
+        <!-- Header -->
+        <div class="bg-gray-700 p-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold text-white">Monitor Serial Arduino (Bloques)</h1>
+                <p class="text-sm text-gray-400">Compatible con DHT-11 y Web Serial API</p>
+            </div>
+            <div id="connectionStatus" class="flex items-center gap-2 px-3 py-1 rounded-full bg-red-900/30 border border-red-500 text-red-400 text-xs font-medium">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                Desconectado
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="p-8 space-y-8">
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button id="connectBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 px-6 rounded-xl transition-all transform active:scale-95 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Abrir Puerto Serie
+                </button>
+                <button id="disconnectBtn" class="hidden flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
+                    Cerrar Conexión
+                </button>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-900/50 p-6 rounded-2xl border border-gray-700 text-center">
+                    <p class="text-gray-400 text-sm mb-1 uppercase tracking-wider">Temperatura</p>
+                    <div id="tempVal" class="text-5xl font-black text-orange-500">--</div>
+                    <p class="text-xs text-gray-500 mt-2">Columna B</p>
+                </div>
+                <div class="bg-gray-900/50 p-6 rounded-2xl border border-gray-700 text-center">
+                    <p class="text-gray-400 text-sm mb-1 uppercase tracking-wider">Humedad</p>
+                    <div id="humVal" class="text-5xl font-black text-blue-400">--</div>
+                    <p class="text-xs text-gray-500 mt-2">Columna C</p>
+                </div>
+            </div>
+
+            <!-- Log / Terminal -->
+            <div class="space-y-2">
+                <p class="text-xs font-semibold text-gray-500 uppercase ml-1">Terminal de Datos</p>
+                <div id="terminal" class="bg-black p-4 rounded-xl h-48 overflow-y-auto font-mono text-sm text-green-400 border border-gray-700">
+                    > Esperando conexión serial...
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-900/80 p-4 border-t border-gray-700 text-center">
+            <p id="lastSync" class="text-xs text-gray-500 italic">Fecha: 11/01/2026 21:48:00 (Estilo solicitado)</p>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN: URL de tu implementación de Apps Script proporcionada
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzbM1Fc-sGmqE0j6dRWGbIntfrfirbCJwjyKqZE-AeiCx5WRSlfTLFxc2elMY5ZkU1Z/exec"; 
+
+        let port;
+        let reader;
+        let keepReading = true;
+        
+        let currentTemp = null;
+        let currentHum = null;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const terminal = document.getElementById('terminal');
+        const statusEl = document.getElementById('connectionStatus');
+
+        function log(msg, isError = false) {
+            const time = new Date().toLocaleTimeString();
+            const color = isError ? 'text-red-400' : 'text-green-400';
+            terminal.innerHTML += `<div class="${color}"><span class="opacity-50">[${time}]</span> ${msg}</div>`;
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function getFormattedDate() {
+            const now = new Date();
+            const d = n => n.toString().padStart(2, '0');
+            // Formato exacto solicitado: 11/01/2026 21:48:00
+            return `${d(now.getDate())}/${d(now.getMonth() + 1)}/${now.getFullYear()} ${d(now.getHours())}:${d(now.getMinutes())}:${d(now.getSeconds())}`;
+        }
+
+        async function sendToGoogleSheets(temp, hum) {
+            if (!SCRIPT_URL) {
+                log("Aviso: SCRIPT_URL no configurada.", true);
+                return;
+            }
+
+            const payload = {
+                fecha: getFormattedDate(),
+                temperatura: temp,
+                humedad: hum
+            };
+
+            try {
+                // Apps Script requiere mode: 'no-cors' para evitar errores de pre-vuelo CORS en navegadores
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                log(`✓ Enviado a Google: T:${temp} H:${hum}`);
+            } catch (e) {
+                log("Error de red: " + e.message, true);
+            }
+        }
+
+        async function connectSerial() {
+            if (!("serial" in navigator)) {
+                log("Error: Tu navegador no soporta Web Serial API (Usa Chrome/Edge).", true);
+                return;
+            }
+
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+                
+                statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500 status-pulse"></span> Conectado';
+                statusEl.className = "flex items-center gap-2 px-3 py-1 rounded-full bg-green-900/30 border border-green-500 text-green-400 text-xs font-medium";
+                
+                connectBtn.classList.add('hidden');
+                disconnectBtn.classList.remove('hidden');
+                
+                log("Conexión abierta con Arduino.");
+                readStream();
+            } catch (e) {
+                log("Error al conectar: " + e.message, true);
+            }
+        }
+
+        async function readStream() {
+            const textDecoder = new TextDecoderStream();
+            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            reader = textDecoder.readable.getReader();
+
+            let lineBuffer = "";
+
+            try {
+                while (keepReading) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    lineBuffer += value;
+                    
+                    if (lineBuffer.includes('\n')) {
+                        const lines = lineBuffer.split('\n');
+                        lineBuffer = lines.pop(); 
+
+                        for (const line of lines) {
+                            const cleanLine = line.trim();
+                            if (!cleanLine) continue;
+
+                            log(`Arduino: ${cleanLine}`);
+
+                            // Detección basada en tus bloques de DHT-11
+                            if (cleanLine.includes("TEMPERATURA:")) {
+                                currentTemp = cleanLine.replace("TEMPERATURA:", "").trim();
+                                document.getElementById('tempVal').innerText = currentTemp + "°";
+                            } 
+                            else if (cleanLine.includes("HUMEDAD:")) {
+                                currentHum = cleanLine.replace("HUMEDAD:", "").trim();
+                                document.getElementById('humVal').innerText = currentHum + "%";
+                            }
+
+                            // Sincronizar cuando tengamos ambos valores
+                            if (currentTemp !== null && currentHum !== null) {
+                                document.getElementById('lastSync').innerText = "Sincronizado: " + getFormattedDate();
+                                await sendToGoogleSheets(currentTemp, currentHum);
+                                
+                                // Reiniciar para el siguiente ciclo
+                                currentTemp = null;
+                                currentHum = null;
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                log("Puerto cerrado o error de lectura.", true);
+            } finally {
+                reader.releaseLock();
+            }
+        }
+
+        async function disconnectSerial() {
+            keepReading = false;
+            if (reader) await reader.cancel();
+            if (port) await port.close();
+            location.reload(); 
+        }
+
+        connectBtn.addEventListener('click', connectSerial);
+        disconnectBtn.addEventListener('click', disconnectSerial);
+    </script>
+</body>
+</html>
