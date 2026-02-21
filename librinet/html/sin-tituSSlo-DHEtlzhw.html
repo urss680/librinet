@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor Arduino - Hoja ARDUINO</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #f0f4f8; padding: 30px; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: inline-block; min-width: 400px; }
+        h2 { color: #1a73e8; margin-bottom: 5px; }
+        .subtitle { color: #5f6368; font-size: 0.9em; margin-bottom: 20px; }
+        .live-display { font-size: 2.8em; font-weight: bold; margin: 20px 0; padding: 25px; background: #e8f0fe; border: 3px solid #1a73e8; border-radius: 15px; color: #1a73e8; }
+        .history-card { background: #34495e; color: white; padding: 20px; border-radius: 12px; text-align: left; margin-top: 25px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+        .history-card strong { color: #2ecc71; display: block; margin-bottom: 8px; border-bottom: 1px solid #5d6d7e; padding-bottom: 5px; }
+        button { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 10px; cursor: pointer; font-size: 17px; font-weight: bold; transition: all 0.3s ease; }
+        .btn-connect { background: #5f6368; color: white; }
+        .btn-connect:hover { background: #4a4e52; }
+        .btn-save { background: #27ae60; color: white; box-shadow: 0 4px 0 #1e8449; }
+        .btn-save:hover { background: #2ecc71; transform: translateY(-2px); }
+        .btn-save:active { transform: translateY(2px); box-shadow: none; }
+        .btn-save:disabled { background: #bdc3c7; box-shadow: none; cursor: not-allowed; transform: none; }
+        #status-msg { height: 20px; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Registro Serial</h2>
+    <div class="subtitle">Hoja de destino: <strong>ARDUINO</strong></div>
+    
+    <button id="conectar" class="btn-connect">1. CONECTAR ARDUINO</button>
+
+    <div class="live-display">
+        <span id="t">--</span>°C | <span id="h">--</span>%
+    </div>
+
+    <button id="guardar" class="btn-save" disabled>2. GUARDAR EN GOOGLE SHEETS</button>
+    <div id="status-msg"></div>
+
+    <div class="history-card">
+        <strong>Último registro en la hoja:</strong>
+        <div id="last_entry">Consultando base de datos...</div>
+    </div>
+</div>
+
+<script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwa11mHkM9jfXzKlcLwuckOzlB_qHRUQiOLGTTqJbH6LQCrDuYL9Nd4XqBgnZGew3P9/exec";
+    let port, currentTemp, currentHum;
+
+    // Al cargar la página, solicita el último valor de la hoja "ARDUINO"
+    window.onload = fetchLastRecord;
+
+    async function fetchLastRecord() {
+        try {
+            const response = await fetch(WEB_APP_URL);
+            const data = await response.json();
+            if (data.error) {
+                document.getElementById('last_entry').innerText = "No hay datos previos en la hoja ARDUINO.";
+            } else {
+                document.getElementById('last_entry').innerHTML = 
+                    `🕒 Fecha: ${data.fecha}<br>🌡️ Temp: ${data.temp} | 💧 Hum: ${data.hum}%`;
+            }
+        } catch (err) {
+            document.getElementById('last_entry').innerText = "Error al conectar con Google Apps Script.";
+        }
+    }
+
+    document.getElementById('conectar').addEventListener('click', async () => {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            document.getElementById('conectar').innerText = "ARDUINO CONECTADO ✅";
+            document.getElementById('conectar').disabled = true;
+            document.getElementById('conectar').style.background = "#27ae60";
+            readFromSerial();
+        } catch (e) {
+            alert("No se pudo acceder al puerto serie. Asegúrate de usar Chrome o Edge.");
+        }
+    });
+
+    async function readFromSerial() {
+        const textDecoder = new TextDecoderStream();
+        port.readable.pipeTo(textDecoder.writable);
+        const reader = textDecoder.readable.getReader();
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) {
+                // Filtra el formato TEMPERATURA:valor HUMEDAD:valor
+                const tempMatch = value.match(/TEMPERATURA:([\d.]+)/);
+                const humMatch = value.match(/HUMEDAD:([\d.]+)/);
+
+                if (tempMatch && humMatch) {
+                    currentTemp = tempMatch[1];
+                    currentHum = humMatch[1];
+                    document.getElementById('t').innerText = currentTemp;
+                    document.getElementById('h').innerText = currentHum;
+                    document.getElementById('guardar').disabled = false;
+                }
+            }
+        }
+    }
+
+    document.getElementById('guardar').addEventListener('click', async () => {
+        const statusMsg = document.getElementById('status-msg');
+        statusMsg.style.color = "#1a73e8";
+        statusMsg.innerText = "Enviando datos...";
+        
+        try {
+            // Envío de datos mediante POST
+            await fetch(WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ temp: currentTemp, hum: currentHum })
+            });
+
+            statusMsg.style.color = "#27ae60";
+            statusMsg.innerText = "✅ ¡Dato guardado en la hoja ARDUINO!";
+            
+            // Actualizar el historial después de guardar
+            setTimeout(() => {
+                statusMsg.innerText = "";
+                fetchLastRecord(); 
+            }, 2000);
+
+        } catch (error) {
+            statusMsg.style.color = "#e74c3c";
+            statusMsg.innerText = "❌ Error al guardar.";
+        }
+    });
+</script>
+
+</body>
+</html>
