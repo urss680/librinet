@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro Continuo Madrid - ARDUINO</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background-color: #f0f4f8; padding: 20px; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: inline-block; min-width: 420px; margin-top: 20px; }
+        .live-display { font-size: 3.2em; font-weight: bold; margin: 20px 0; padding: 25px; background: #eef2ff; border: 3px solid #4f46e5; border-radius: 15px; color: #4338ca; }
+        .status-pill { display: inline-block; padding: 8px 20px; border-radius: 20px; font-size: 0.85em; font-weight: bold; margin-bottom: 15px; transition: 0.3s; }
+        .online { background: #dcfce7; color: #166534; border: 1px solid #166534; animation: blink 2s infinite; }
+        .offline { background: #fee2e2; color: #991b1b; border: 1px solid #991b1b; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        .history-card { background: #1e293b; color: white; padding: 18px; border-radius: 12px; text-align: left; margin-top: 20px; font-size: 0.9em; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .history-card strong { color: #38bdf8; display: block; margin-bottom: 8px; border-bottom: 1px solid #334155; padding-bottom: 5px; }
+        button { width: 100%; padding: 16px; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: bold; background: #4f46e5; color: white; transition: 0.3s; }
+        button:hover { background: #3730a3; transform: translateY(-2px); }
+        button:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+        #console { font-family: monospace; font-size: 0.8em; color: #64748b; margin-top: 15px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="status" class="status-pill offline">SISTEMA DESCONECTADO</div>
+    <h2>Registro Automático Madrid</h2>
+    <p style="font-size: 0.85em; color: #64748b; margin-top: -10px;">Hoja: <strong>ARDUINO</strong></p>
+    
+    <button id="btnConectar">1. INICIAR CONEXIÓN SERIE</button>
+
+    <div class="live-display">
+        <span id="t">--</span>°C | <span id="h">--</span>%
+    </div>
+
+    <div id="console">Esperando datos del Arduino por el puerto...</div>
+
+    <div class="history-card">
+        <strong>Último valor en Google Sheets:</strong>
+        <div id="last_entry">Consultando servidor de Google...</div>
+    </div>
+</div>
+
+<script>
+    // URL DE TU SCRIPT PROPORCIONADA
+    const APP_URL = "https://script.google.com/macros/s/AKfycbwa11mHkM9jfXzKlcLwuckOzlB_qHRUQiOLGTTqJbH6LQCrDuYL9Nd4XqBgnZGew3P9/exec";
+    let port;
+
+    // Al iniciar, cargar el historial de la hoja ARDUINO
+    window.onload = updateHistory;
+
+    async function updateHistory() {
+        try {
+            const r = await fetch(APP_URL);
+            const d = await r.json();
+            if (!d.error) {
+                document.getElementById('last_entry').innerHTML = 
+                    `📅 ${d.fecha}<br>🌡️ ${d.temp} | 💧 ${d.hum}%`;
+            } else {
+                document.getElementById('last_entry').innerText = "La hoja ARDUINO está vacía.";
+            }
+        } catch (e) { 
+            console.log("Error al leer historial"); 
+            document.getElementById('last_entry').innerText = "Error al conectar con Google Sheets.";
+        }
+    }
+
+    document.getElementById('btnConectar').onclick = async () => {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            
+            document.getElementById('btnConectar').disabled = true;
+            document.getElementById('btnConectar').innerText = "CONECTADO Y GRABANDO";
+            document.getElementById('status').innerText = "🔴 GRABANDO CONTINUO (ZONA MADRID)";
+            document.getElementById('status').className = "status-pill online";
+            
+            leerFlujoSerie();
+        } catch (e) { 
+            alert("Error: Asegúrate de seleccionar el puerto correcto y usar Chrome/Edge."); 
+        }
+    };
+
+    async function leerFlujoSerie() {
+        const textDecoder = new TextDecoderStream();
+        port.readable.pipeTo(textDecoder.writable);
+        const reader = textDecoder.readable.getReader();
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) {
+                // Buscamos el formato TEMPERATURA:valor HUMEDAD:valor
+                const tMatch = value.match(/TEMPERATURA:([\d.]+)/);
+                const hMatch = value.match(/HUMEDAD:([\d.]+)/);
+
+                if (tMatch && hMatch) {
+                    const temp = tMatch[1];
+                    const hum = hMatch[1];
+                    
+                    // Actualizar pantalla
+                    document.getElementById('t').innerText = temp;
+                    document.getElementById('h').innerText = hum;
+                    document.getElementById('console').innerText = "📤 Enviando a Google Sheets automáticamente...";
+
+                    // GUARDADO CONTINUO (Se ejecuta cada vez que llega un dato)
+                    enviarAGoogle(temp, hum);
+                }
+            }
+        }
+    }
+
+    async function enviarAGoogle(temp, hum) {
+        try {
+            await fetch(APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ temp: temp, hum: hum })
+            });
+            document.getElementById('console').innerText = "✅ Registro guardado con éxito.";
+            updateHistory(); // Actualizar el cuadro inferior con el último guardado
+        } catch (e) {
+            document.getElementById('console').innerText = "❌ Error de conexión al enviar.";
+        }
+    }
+</script>
+</body>
+</html>
