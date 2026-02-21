@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Arduino a Google Sheets</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #f4f4f9; padding: 40px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: inline-block; min-width: 300px; }
+        h2 { color: #333; }
+        #status { font-weight: bold; margin: 15px 0; color: #e74c3c; }
+        .data-box { font-size: 1.2em; margin: 10px; padding: 10px; background: #e8f0fe; border-radius: 5px; }
+        button { background-color: #4285f4; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        button:hover { background-color: #357ae8; }
+        button:disabled { background-color: #ccc; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Registro de Temperatura y Humedad</h2>
+    <button id="btnConectar">CONECTAR ARDUINO</button>
+    <div id="status">Estado: Desconectado</div>
+    
+    <div class="data-box">
+        <div><strong>Última Lectura:</strong></div>
+        <div id="displayData">Esperando datos del puerto serie...</div>
+    </div>
+    <small style="color: #666;">Timeout: 1000ms | Columnas: A(Fecha), B(Temp), C(Hum)</small>
+</div>
+
+<script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwa11mHkM9jfXzKlcLwuckOzlB_qHRUQiOLGTTqJbH6LQCrDuYL9Nd4XqBgnZGew3P9/exec";
+    
+    let port;
+    let reader;
+
+    document.getElementById('btnConectar').addEventListener('click', async () => {
+        try {
+            // Solicitar acceso al puerto serie
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            
+            document.getElementById('status').innerText = "Estado: Conectado ✅";
+            document.getElementById('status').style.color = "#27ae60";
+            document.getElementById('btnConectar').disabled = true;
+
+            leerPuertoSerie();
+        } catch (error) {
+            console.error("Error al conectar:", error);
+            alert("Error al intentar acceder al puerto serie.");
+        }
+    });
+
+    async function leerPuertoSerie() {
+        const textDecoder = new TextDecoderStream();
+        const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+        reader = textDecoder.readable.getReader();
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) {
+                reader.releaseLock();
+                break;
+            }
+            if (value) {
+                console.log("Dato recibido:", value);
+                procesarDatos(value);
+            }
+        }
+    }
+
+    function procesarDatos(linea) {
+        // Buscamos valores numéricos después de "TEMPERATURA:" y "HUMEDAD:"
+        const regexTemp = /TEMPERATURA:\s*([\d.]+)/i;
+        const regexHum = /HUMEDAD:\s*([\d.]+)/i;
+
+        const matchTemp = linea.match(regexTemp);
+        const matchHum = linea.match(regexHum);
+
+        if (matchTemp && matchHum) {
+            const temp = matchTemp[1];
+            const hum = matchHum[1];
+            
+            // Mostrar en pantalla
+            document.getElementById('displayData').innerText = `Temp: ${temp}°C | Hum: ${hum}%`;
+            
+            // Enviar a Google Sheets
+            enviarAGoogle(temp, hum);
+        }
+    }
+
+    async function enviarAGoogle(temp, hum) {
+        try {
+            // Enviamos los datos mediante POST
+            // Apps Script recibirá esto en la función doPost(e)
+            await fetch(WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ temp: temp, hum: hum })
+            });
+            console.log("Datos enviados a la hoja de cálculo");
+        } catch (err) {
+            console.error("Error al enviar a Google:", err);
+        }
+    }
+</script>
+
+</body>
+</html>
