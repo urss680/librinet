@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor Minutal Estricto - Madrid</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background-color: #0d1117; color: #c9d1d9; padding: 40px; margin: 0; }
+        .container { background: #161b22; padding: 40px; border-radius: 24px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); display: inline-block; min-width: 450px; border: 1px solid #30363d; }
+        .display-box { font-size: 5.5em; font-weight: 900; margin: 25px 0; padding: 30px; background: #010409; border-radius: 20px; border: 2px solid #58a6ff; color: #58a6ff; font-family: 'Courier New', monospace; }
+        .status-msg { height: 25px; margin-bottom: 20px; font-weight: bold; font-size: 1em; color: #8b949e; }
+        .pulse { animation: blinker 2s linear infinite; color: #f2cc60; }
+        @keyframes blinker { 50% { opacity: 0; } }
+        button { background: #238636; color: white; border: none; padding: 18px 35px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.1em; width: 100%; }
+        .history { margin-top: 35px; text-align: left; background: #0d1117; padding: 20px; border-radius: 15px; border: 1px solid #30363d; font-size: 0.85em; }
+        progress { width: 100%; height: 8px; accent-color: #58a6ff; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="color: #58a6ff; margin-top: 0;">Registro Minutal</h2>
+    <button id="btnConectar">CONECTAR ARDUINO</button>
+    
+    <div id="statusMsg" class="status-msg">ESPERANDO CONEXIÓN...</div>
+
+    <div class="display-box">
+        <span id="t">--</span>° | <span id="h">--</span>%
+    </div>
+
+    <div style="font-size: 0.8em; color: #8b949e;">
+        Próxima actualización en: <span id="cuentaAtras">60</span>s
+        <progress id="barra" value="0" max="60"></progress>
+    </div>
+
+    <div class="history">
+        <strong style="color: #58a6ff; display: block; margin-bottom: 10px;">ÚLTIMO DATO EN GOOGLE (MADRID):</strong>
+        <div id="last_entry">Sincronizando...</div>
+    </div>
+</div>
+
+<script>
+    const APP_URL = "https://script.google.com/macros/s/AKfycbwa11mHkM9jfXzKlcLwuckOzlB_qHRUQiOLGTTqJbH6LQCrDuYL9Nd4XqBgnZGew3P9/exec";
+    let port;
+    let ultimaActualizacion = 0;
+    const INTERVALO = 60000; // 60 segundos exactos
+
+    window.onload = obtenerUltimo;
+
+    async function obtenerUltimo() {
+        try {
+            const res = await fetch(APP_URL);
+            const data = await res.json();
+            if (!data.error) {
+                document.getElementById('last_entry').innerHTML = `🕒 ${data.fecha}<br>🌡️ ${data.temp} | 💧 ${data.hum}%`;
+                document.getElementById('t').innerText = data.temp.replace('°C', '');
+                document.getElementById('h').innerText = data.hum;
+            }
+        } catch (e) { console.log("Error"); }
+    }
+
+    document.getElementById('btnConectar').onclick = async () => {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            document.getElementById('btnConectar').style.display = "none";
+            document.getElementById('statusMsg').innerText = "CICLO DE 1 MINUTO ACTIVO";
+            iniciarLectura();
+        } catch (e) { alert("Error al conectar"); }
+    };
+
+    async function iniciarLectura() {
+        const decoder = new TextDecoderStream();
+        port.readable.pipeTo(decoder.writable);
+        const reader = decoder.readable.getReader();
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            const ahora = Date.now();
+            const tiempoPasado = ahora - ultimaActualizacion;
+
+            // Actualizar cuenta atrás visual cada vez que llegue algo por el puerto
+            const faltan = Math.max(0, Math.ceil((INTERVALO - tiempoPasado) / 1000));
+            document.getElementById('cuentaAtras').innerText = faltan;
+            document.getElementById('barra').value = 60 - faltan;
+
+            if (value) {
+                const tMatch = value.match(/TEMPERATURA:([\d.]+)/);
+                const hMatch = value.match(/HUMEDAD:([\d.]+)/);
+
+                if (tMatch && hMatch) {
+                    // BLOQUEO: Solo entra aquí si ha pasado 1 minuto
+                    if (tiempoPasado >= INTERVALO) {
+                        const temp = tMatch[1];
+                        const hum = hMatch[1];
+
+                        // Filtro para el error del 5%
+                        if (parseFloat(hum) > 10) {
+                            actualizarTodo(temp, hum);
+                            ultimaActualizacion = ahora;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    async function actualizarTodo(temp, hum) {
+        // 1. Cambiar Pantalla
+        document.getElementById('t').innerText = temp;
+        document.getElementById('h').innerText = hum;
+        document.getElementById('statusMsg').innerText = "📤 GUARDANDO...";
+        document.getElementById('statusMsg').classList.add("pulse");
+
+        // 2. Enviar a Google
+        try {
+            await fetch(APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ temp: temp, hum: hum }) });
+            obtenerUltimo(); // Refrescar historial
+            setTimeout(() => {
+                document.getElementById('statusMsg').innerText = "ESPERANDO MINUTO...";
+                document.getElementById('statusMsg').classList.remove("pulse");
+            }, 3000);
+        } catch (e) { document.getElementById('statusMsg').innerText = "❌ ERROR RED"; }
+    }
+</script>
+</body>
+</html>
