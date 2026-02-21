@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor Arduino - Madrid (Formato Coma)</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background-color: #0d1117; color: #c9d1d9; padding: 40px; margin: 0; }
+        .container { background: #161b22; padding: 40px; border-radius: 24px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); display: inline-block; min-width: 450px; border: 1px solid #30363d; }
+        .display-box { font-size: 5.5em; font-weight: 900; margin: 25px 0; padding: 30px; background: #010409; border-radius: 20px; border: 2px solid #58a6ff; color: #58a6ff; font-family: 'Courier New', monospace; box-shadow: inset 0 0 20px rgba(88,166,255,0.1); }
+        .status-msg { height: 25px; margin-bottom: 20px; font-weight: bold; font-size: 1em; color: #8b949e; }
+        .pulse { animation: blinker 2s linear infinite; color: #f2cc60; }
+        @keyframes blinker { 50% { opacity: 0.5; } }
+        button { background: #238636; color: white; border: none; padding: 18px 35px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.1em; width: 100%; transition: 0.2s; }
+        button:hover { background: #2ea043; transform: translateY(-2px); }
+        .history { margin-top: 35px; text-align: left; background: #0d1117; padding: 20px; border-radius: 15px; border: 1px solid #30363d; font-size: 0.85em; }
+        progress { width: 100%; height: 8px; accent-color: #58a6ff; margin-top: 10px; }
+        .unit { font-size: 0.4em; color: #8b949e; margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="color: #58a6ff; margin-top: 0;">Registro Minutal Sincronizado</h2>
+    <button id="btnConectar">CONECTAR ARDUINO</button>
+    
+    <div id="statusMsg" class="status-msg">ESPERANDO CONEXIÓN...</div>
+
+    <div class="display-box">
+        <span id="t">--</span><span class="unit">°C</span> | <span id="h">--</span><span class="unit">%</span>
+    </div>
+
+    <div style="font-size: 0.8em; color: #8b949e;">
+        Próximo registro en: <span id="cuentaAtras">60</span>s
+        <progress id="barra" value="0" max="60"></progress>
+    </div>
+
+    <div class="history">
+        <strong style="color: #58a6ff; display: block; margin-bottom: 10px;">ÚLTIMO REGISTRO EN GOOGLE (MADRID):</strong>
+        <div id="last_entry">Sincronizando con la hoja ARDUINO...</div>
+    </div>
+</div>
+
+<script>
+    const APP_URL = "https://script.google.com/macros/s/AKfycbwa11mHkM9jfXzKlcLwuckOzlB_qHRUQiOLGTTqJbH6LQCrDuYL9Nd4XqBgnZGew3P9/exec";
+    let port;
+    let ultimaActualizacion = 0;
+    const INTERVALO = 60000; // 60 segundos
+
+    window.onload = obtenerUltimo;
+
+    // Función para convertir punto a coma en la interfaz
+    function aComa(valor) {
+        if (!valor) return "--";
+        return valor.toString().replace('.', ',');
+    }
+
+    async function obtenerUltimo() {
+        try {
+            const res = await fetch(APP_URL);
+            const data = await res.json();
+            if (!data.error) {
+                // Formateamos visualmente para el historial
+                const tVis = data.temp.toString().replace('.', ',');
+                const hVis = data.hum.toString().replace('.', ',');
+                
+                document.getElementById('last_entry').innerHTML = `🕒 ${data.fecha}<br>🌡️ ${tVis} | 💧 ${hVis}%`;
+                
+                // Ponemos el último valor en el display principal
+                document.getElementById('t').innerText = tVis.replace('°C', '');
+                document.getElementById('h').innerText = hVis;
+            }
+        } catch (e) { console.log("Error de red"); }
+    }
+
+    document.getElementById('btnConectar').onclick = async () => {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            document.getElementById('btnConectar').style.display = "none";
+            document.getElementById('statusMsg').innerText = "MONITORIZANDO: 1 DATO POR MINUTO";
+            iniciarEscucha();
+        } catch (e) { alert("Error al conectar"); }
+    };
+
+    async function iniciarEscucha() {
+        const decoder = new TextDecoderStream();
+        port.readable.pipeTo(decoder.writable);
+        const reader = decoder.readable.getReader();
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            const ahora = Date.now();
+            const tiempoPasado = ahora - ultimaActualizacion;
+
+            // Actualizamos el contador visual cada vez que entra una señal
+            const faltan = Math.max(0, Math.ceil((INTERVALO - tiempoPasado) / 1000));
+            document.getElementById('cuentaAtras').innerText = faltan;
+            document.getElementById('barra').value = 60 - faltan;
+
+            if (value) {
+                const tMatch = value.match(/TEMPERATURA:([\d.]+)/);
+                const hMatch = value.match(/HUMEDAD:([\d.]+)/);
+
+                if (tMatch && hMatch) {
+                    // Solo actualiza si ha pasado el minuto completo
+                    if (tiempoPasado >= INTERVALO) {
+                        const temp = tMatch[1];
+                        const hum = hMatch[1];
+
+                        // Ignorar el error recurrente del 5% de humedad
+                        if (parseFloat(hum) > 10) {
+                            actualizarYEnviar(temp, hum);
+                            ultimaActualizacion = ahora;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    async function actualizarYEnviar(temp, hum) {
+        // 1. Cambiamos la interfaz con COMA
+        document.getElementById('t').innerText = aComa(temp);
+        document.getElementById('h').innerText = aComa(hum);
+        
+        document.getElementById('statusMsg').innerText = "📤 GUARDANDO EN GOOGLE SHEETS...";
+        document.getElementById('statusMsg').classList.add("pulse");
+
+        try {
+            // Enviamos el dato a Google Sheets
+            // El script de Google que te pasé antes se encargará de poner la coma en la celda
+            await fetch(APP_URL, { 
+                method: 'POST', 
+                mode: 'no-cors', 
+                body: JSON.stringify({ temp: temp, hum: hum }) 
+            });
+            
+            obtenerUltimo(); 
+            setTimeout(() => {
+                document.getElementById('statusMsg').innerText = "ESPERANDO SIGUIENTE MINUTO...";
+                document.getElementById('statusMsg').classList.remove("pulse");
+            }, 5000);
+        } catch (e) { 
+            document.getElementById('statusMsg').innerText = "❌ ERROR AL GUARDAR"; 
+        }
+    }
+</script>
+</body>
+</html>
