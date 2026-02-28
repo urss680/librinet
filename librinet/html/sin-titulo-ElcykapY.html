@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PITA Canvas - Pizarra Infinita</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            background-color: #f0f0f0;
+            background-image: radial-gradient(#ccc 1px, transparent 1px);
+            background-size: 20px 20px;
+            cursor: crosshair;
+            position: relative;
+            touch-action: none;
+        }
+        canvas { position: absolute; top: 0; left: 0; }
+        .toolbar {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: flex;
+            gap: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            z-index: 100;
+            align-items: center;
+        }
+        .tool-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            font-size: 1.2rem;
+        }
+        .tool-btn:hover { background: #e2e8f0; }
+        .tool-btn.active { background: #3b82f6; color: white; }
+        
+        #text-editor {
+            position: absolute;
+            display: none;
+            background: white;
+            border: 1px solid #3b82f6;
+            outline: none;
+            font-family: Arial, sans-serif;
+            resize: both;
+            overflow: hidden;
+            z-index: 1000;
+            min-width: 50px;
+            min-height: 30px;
+            padding: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .status-bar {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            font-size: 12px;
+            color: #666;
+            background: rgba(255,255,255,0.7);
+            padding: 2px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toolbar" id="main-toolbar">
+        <div class="tool-btn active" data-tool="brush" title="Pincel">🖌️</div>
+        <div class="tool-btn" data-tool="rect" title="Rectángulo">⬜</div>
+        <div class="tool-btn" data-tool="circle" title="Círculo">⭕</div>
+        <div class="tool-btn" data-tool="text" title="Texto (Click para escribir)">T</div>
+        <div class="tool-btn" data-tool="fill" title="Rellenar (Cubo)">🪣</div>
+        <div class="tool-btn" data-tool="pan" title="Mover Lienzo (Botón derecho o 🖐️)">🖐️</div>
+        <div class="h-6 w-px bg-gray-300"></div>
+        <input type="color" id="colorPicker" value="#000000" class="w-8 h-8 cursor-pointer rounded">
+        <input type="range" id="sizePicker" min="1" max="50" value="5" class="w-24">
+        <div class="h-6 w-px bg-gray-300"></div>
+        <button onclick="document.getElementById('imageInput').click()" class="tool-btn" title="Subir Imagen">🖼️</button>
+        <button onclick="savePita()" class="tool-btn" title="Exportar .PITA">💾</button>
+        <button onclick="document.getElementById('pitaInput').click()" class="tool-btn" title="Cargar .PITA">📂</button>
+        <button onclick="clearCanvas()" class="tool-btn text-red-500" title="Limpiar Todo">🗑️</button>
+    </div>
+
+    <input type="file" id="imageInput" accept="image/*" hidden>
+    <input type="file" id="pitaInput" accept=".pita" hidden>
+    
+    <textarea id="text-editor"></textarea>
+
+    <div id="canvas-container">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <div class="status-bar" id="coords">X: 0, Y: 0 | Zoom: 100%</div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const container = document.getElementById('canvas-container');
+        const textEditor = document.getElementById('text-editor');
+        const coordsDisplay = document.getElementById('coords');
+
+        let state = {
+            isDrawing: false,
+            isPanning: false,
+            tool: 'brush',
+            color: '#000000',
+            size: 5,
+            offsetX: 0,
+            offsetY: 0,
+            zoom: 1,
+            elements: [],
+            currentPath: []
+        };
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            render();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // UI Handlers
+        document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.tool = btn.dataset.tool;
+                textEditor.style.display = 'none'; // Cerrar editor si cambia herramienta
+            });
+        });
+
+        document.getElementById('colorPicker').addEventListener('change', (e) => state.color = e.target.value);
+        document.getElementById('sizePicker').addEventListener('input', (e) => state.size = parseInt(e.target.value));
+
+        function getCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left - state.offsetX) / state.zoom;
+            const y = (e.clientY - rect.top - state.offsetY) / state.zoom;
+            return { x, y, rawX: e.clientX, rawY: e.clientY };
+        }
+
+        // --- MANEJO DE EVENTOS ---
+        
+        container.addEventListener('mousedown', (e) => {
+            if (textEditor.style.display === 'block' && e.target !== textEditor) {
+                finalizeText();
+            }
+
+            const { x, y, rawX, rawY } = getCoords(e);
+            
+            if (e.button === 2 || state.tool === 'pan') {
+                state.isPanning = true;
+                return;
+            }
+
+            if (state.tool === 'text') {
+                showTextEditor(rawX, rawY, x, y);
+                return;
+            }
+
+            if (state.tool === 'fill') {
+                executeFloodFill(rawX, rawY, state.color);
+                return;
+            }
+
+            state.isDrawing = true;
+            state.startX = x;
+            state.startY = y;
+
+            if (state.tool === 'brush') {
+                state.currentPath = [{ x, y }];
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            const { x, y } = getCoords(e);
+            coordsDisplay.innerText = `X: ${Math.round(x)}, Y: ${Math.round(y)} | Zoom: ${Math.round(state.zoom * 100)}%`;
+
+            if (state.isPanning) {
+                state.offsetX += e.movementX;
+                state.offsetY += e.movementY;
+                container.style.backgroundPosition = `${state.offsetX}px ${state.offsetY}px`;
+                render();
+                return;
+            }
+
+            if (!state.isDrawing) return;
+
+            if (state.tool === 'brush') {
+                state.currentPath.push({ x, y });
+                render();
+            } else {
+                render();
+                ctx.save();
+                ctx.translate(state.offsetX, state.offsetY);
+                ctx.scale(state.zoom, state.zoom);
+                ctx.strokeStyle = state.color;
+                ctx.lineWidth = state.size;
+                if (state.tool === 'rect') {
+                    ctx.strokeRect(state.startX, state.startY, x - state.startX, y - state.startY);
+                } else if (state.tool === 'circle') {
+                    const radius = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
+                    ctx.beginPath();
+                    ctx.arc(state.startX, state.startY, radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            state.isPanning = false;
+            if (!state.isDrawing) return;
+            state.isDrawing = false;
+
+            const { x, y } = getCoords(e);
+
+            if (state.tool === 'brush' && state.currentPath.length > 0) {
+                state.elements.push({ type: 'path', points: state.currentPath, color: state.color, size: state.size });
+                state.currentPath = [];
+            } else if (state.tool === 'rect') {
+                state.elements.push({ type: 'rect', x: state.startX, y: state.startY, w: x - state.startX, h: y - state.startY, color: state.color, size: state.size });
+            } else if (state.tool === 'circle') {
+                const radius = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
+                state.elements.push({ type: 'circle', x: state.startX, y: state.startY, r: radius, color: state.color, size: state.size });
+            }
+            render();
+        });
+
+        window.addEventListener('contextmenu', e => e.preventDefault());
+
+        window.addEventListener('wheel', (e) => {
+            const zoomSpeed = 0.05;
+            const delta = e.deltaY < 0 ? 1 + zoomSpeed : 1 - zoomSpeed;
+            
+            // Zoom centrado en el ratón
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            
+            const newZoom = Math.min(Math.max(0.1, state.zoom * delta), 10);
+            
+            state.offsetX = mouseX - (mouseX - state.offsetX) * (newZoom / state.zoom);
+            state.offsetY = mouseY - (mouseY - state.offsetY) * (newZoom / state.zoom);
+            
+            state.zoom = newZoom;
+            container.style.backgroundPosition = `${state.offsetX}px ${state.offsetY}px`;
+            render();
+        }, { passive: false });
+
+        // --- RENDERIZADO ---
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(state.offsetX, state.offsetY);
+            ctx.scale(state.zoom, state.zoom);
+
+            state.elements.forEach(el => {
+                ctx.strokeStyle = el.color;
+                ctx.fillStyle = el.color;
+                ctx.lineWidth = el.size;
+
+                if (el.type === 'path') {
+                    if (el.points.length < 2) return;
+                    ctx.beginPath();
+                    ctx.moveTo(el.points[0].x, el.points[0].y);
+                    el.points.forEach(p => ctx.lineTo(p.x, p.y));
+                    ctx.stroke();
+                } else if (el.type === 'rect') {
+                    ctx.strokeRect(el.x, el.y, el.w, el.h);
+                } else if (el.type === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(el.x, el.y, el.r, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (el.type === 'image') {
+                    if (el.img && el.img.complete) {
+                        ctx.drawImage(el.img, el.x, el.y, el.w, el.h);
+                    }
+                } else if (el.type === 'text') {
+                    ctx.font = `${el.size * 4}px Arial`;
+                    const lines = el.text.split('\n');
+                    lines.forEach((line, i) => {
+                        ctx.fillText(line, el.x, el.y + (i * el.size * 4.5));
+                    });
+                }
+            });
+
+            if (state.currentPath.length > 0) {
+                ctx.strokeStyle = state.color;
+                ctx.lineWidth = state.size;
+                ctx.beginPath();
+                ctx.moveTo(state.currentPath[0].x, state.currentPath[0].y);
+                state.currentPath.forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // --- TEXTO MULTILÍNEA ---
+
+        let currentTextPos = { x: 0, y: 0 };
+
+        function showTextEditor(rawX, rawY, x, y) {
+            currentTextPos = { x, y };
+            textEditor.style.display = 'block';
+            textEditor.style.left = rawX + 'px';
+            textEditor.style.top = rawY + 'px';
+            textEditor.style.color = state.color;
+            textEditor.style.fontSize = (state.size * 4 * state.zoom) + 'px';
+            textEditor.value = '';
+            textEditor.focus();
+        }
+
+        function finalizeText() {
+            const text = textEditor.value.trim();
+            if (text) {
+                state.elements.push({
+                    type: 'text',
+                    x: currentTextPos.x,
+                    y: currentTextPos.y,
+                    text: text,
+                    color: state.color,
+                    size: state.size
+                });
+            }
+            textEditor.style.display = 'none';
+            render();
+        }
+
+        textEditor.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                finalizeText();
+            }
+        });
+
+        // --- CUBO DE PINTURA (CORREGIDO) ---
+
+        function executeFloodFill(screenX, screenY, fillColor) {
+            // Renderizamos todo a un canvas temporal para procesar los pixels
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tCtx = tempCanvas.getContext('2d');
+            
+            // Dibujar estado actual en temp
+            tCtx.fillStyle = "#f0f0f0"; // Fondo base
+            tCtx.fillRect(0,0, canvas.width, canvas.height);
+            
+            // Re-dibujar elementos en el contexto temporal para ver donde choca el color
+            tCtx.save();
+            tCtx.translate(state.offsetX, state.offsetY);
+            tCtx.scale(state.zoom, state.zoom);
+            state.elements.forEach(el => {
+                tCtx.strokeStyle = el.color;
+                tCtx.fillStyle = el.color;
+                tCtx.lineWidth = el.size;
+                if (el.type === 'path') {
+                    tCtx.beginPath();
+                    tCtx.moveTo(el.points[0].x, el.points[0].y);
+                    el.points.forEach(p => tCtx.lineTo(p.x, p.y));
+                    tCtx.stroke();
+                } else if (el.type === 'rect') tCtx.strokeRect(el.x, el.y, el.w, el.h);
+                else if (el.type === 'circle') { tCtx.beginPath(); tCtx.arc(el.x, el.y, el.r, 0, Math.PI * 2); tCtx.stroke(); }
+                else if (el.type === 'image' && el.img.complete) tCtx.drawImage(el.img, el.x, el.y, el.w, el.h);
+                else if (el.type === 'text') {
+                    tCtx.font = `${el.size * 4}px Arial`;
+                    el.text.split('\n').forEach((l, i) => tCtx.fillText(l, el.x, el.y + (i * el.size * 4.5)));
+                }
+            });
+            tCtx.restore();
+
+            const imageData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            const data = imageData.data;
+            const startX = Math.round(screenX);
+            const startY = Math.round(screenY);
+            const targetColor = getPixel(startX, startY, data, tempCanvas.width);
+            const fillRGB = hexToRgb(fillColor);
+
+            if (colorsMatch(targetColor, fillRGB)) return;
+
+            const queue = [[startX, startY]];
+            const visited = new Uint8Array(tempCanvas.width * tempCanvas.height);
+
+            while (queue.length > 0) {
+                const [x, y] = queue.shift();
+                const idx = y * tempCanvas.width + x;
+                
+                if (x < 0 || x >= tempCanvas.width || y < 0 || y >= tempCanvas.height || visited[idx]) continue;
+                
+                const currentColor = getPixel(x, y, data, tempCanvas.width);
+                if (colorsMatch(currentColor, targetColor)) {
+                    setPixel(x, y, fillRGB, data, tempCanvas.width);
+                    visited[idx] = 1;
+                    queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+                }
+            }
+
+            tCtx.putImageData(imageData, 0, 0);
+            
+            // Guardar el resultado como una imagen en la posición actual del viewport
+            const resultImg = new Image();
+            resultImg.onload = () => {
+                state.elements.push({
+                    type: 'image',
+                    img: resultImg,
+                    x: -state.offsetX / state.zoom,
+                    y: -state.offsetY / state.zoom,
+                    w: canvas.width / state.zoom,
+                    h: canvas.height / state.zoom,
+                    src: tempCanvas.toDataURL()
+                });
+                render();
+            };
+            resultImg.src = tempCanvas.toDataURL();
+        }
+
+        function getPixel(x, y, data, width) {
+            const i = (y * width + x) * 4;
+            return [data[i], data[i+1], data[i+2]];
+        }
+
+        function setPixel(x, y, color, data, width) {
+            const i = (y * width + x) * 4;
+            data[i] = color[0]; data[i+1] = color[1]; data[i+2] = color[2]; data[i+3] = 255;
+        }
+
+        function colorsMatch(c1, c2) {
+            return Math.abs(c1[0] - c2[0]) < 5 && Math.abs(c1[1] - c2[1]) < 5 && Math.abs(c1[2] - c2[2]) < 5;
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : [0,0,0];
+        }
+
+        // --- IMÁGENES Y PEGADO ---
+
+        window.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            for (let item of items) {
+                if (item.type.indexOf('image') !== -1) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => addImage(ev.target.result);
+                    reader.readAsDataURL(item.getAsFile());
+                }
+            }
+        });
+
+        document.getElementById('imageInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => addImage(ev.target.result);
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function addImage(src) {
+            const img = new Image();
+            img.onload = () => {
+                const { x, y } = { x: (window.innerWidth/2 - state.offsetX)/state.zoom, y: (window.innerHeight/2 - state.offsetY)/state.zoom };
+                state.elements.push({ type: 'image', img, x, y, w: img.width, h: img.height, src });
+                render();
+            };
+            img.src = src;
+        }
+
+        // --- PERSISTENCIA .PITA ---
+
+        function savePita() {
+            const exportData = {
+                elements: state.elements.map(el => ({ ...el, img: null })),
+                config: { offsetX: state.offsetX, offsetY: state.offsetY, zoom: state.zoom }
+            };
+            const json = JSON.stringify(exportData);
+            const encoded = btoa(unescape(encodeURIComponent(json)));
+            const blob = new Blob([encoded], { type: 'application/octet-stream' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `canvas_${Date.now()}.pita`;
+            a.click();
+        }
+
+        document.getElementById('pitaInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const decoded = decodeURIComponent(escape(atob(event.target.result)));
+                    const imported = JSON.parse(decoded);
+                    state.elements = [];
+                    state.offsetX = imported.config.offsetX;
+                    state.offsetY = imported.config.offsetY;
+                    state.zoom = imported.config.zoom;
+                    const promises = imported.elements.map(el => {
+                        if (el.type === 'image') {
+                            return new Promise(res => {
+                                const img = new Image();
+                                img.onload = () => { el.img = img; state.elements.push(el); res(); };
+                                img.src = el.src;
+                            });
+                        }
+                        state.elements.push(el);
+                        return Promise.resolve();
+                    });
+                    Promise.all(promises).then(() => render());
+                } catch { alert("Error al cargar .PITA"); }
+            };
+            reader.readAsText(file);
+        });
+
+        function clearCanvas() {
+            if (confirm('¿Borrar todo?')) {
+                state.elements = [];
+                state.offsetX = 0; state.offsetY = 0; state.zoom = 1;
+                render();
+            }
+        }
+    </script>
+</body>
+</html>
