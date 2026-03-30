@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mux Uploader - Mi Tok</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mux/mux-uploader"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding: 50px; background: #f0f2f5; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 450px; text-align: center; }
+        h2 { color: #1a1a1b; margin-bottom: 20px; }
+        
+        /* Ocultamos el subidor hasta que tengamos el endpoint */
+        mux-uploader {
+            display: none; 
+            --progress-bar-fill-color: #fa4103; /* Color naranja de Mux */
+            --button-background-color: #000;
+        }
+
+        .loading-spinner { color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>AULIA / MIC TOK</h2>
+    
+    <div id="loader" class="loading-spinner">Conectando con Mux...</div>
+    
+    <mux-uploader id="mi-subidor"></mux-uploader>
+
+    <p id="status-msg" style="margin-top: 15px; font-size: 13px;"></p>
+</div>
+
+<script>
+    // TUS CREDENCIALES (Cuidado: Visibles en el navegador)
+    const TOKEN_ID = 'e3ef36ac-5d7d-4bb5-8be5-2f9b327dee4e';
+    const TOKEN_SECRET = 'w9GYaE/JPunikZdZ0PkEpx4S4BAWagzQCJBAHiKHgvlhyMmf4MHOjSZmJtU0tYnTT9L/BOOOECA';
+
+    async function inicializarMux() {
+        const uploader = document.getElementById('mi-subidor');
+        const loader = document.getElementById('loader');
+        const status = document.getElementById('status-msg');
+
+        try {
+            // 1. Llamada a la API de Mux para crear una subida directa
+            const response = await fetch('https://api.mux.com/video/v1/uploads', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Basic ' + btoa(`${TOKEN_ID}:${TOKEN_SECRET}`)
+                },
+                body: JSON.stringify({
+                    new_asset_settings: { playback_policy: ['public'] },
+                    cors_origin: '*' 
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.data && result.data.url) {
+                // 2. ASIGNAMOS EL ENDPOINT ANTES DE MOSTRAR EL COMPONENTE
+                uploader.setAttribute('endpoint', result.data.url);
+                
+                // 3. Mostramos el componente y ocultamos el mensaje de carga
+                uploader.style.display = 'block';
+                loader.style.display = 'none';
+                status.innerText = "¡Listo! Arrastra tu video aquí.";
+                status.style.color = "green";
+            } else {
+                throw new Error("Mux no devolvió una URL válida.");
+            }
+
+        } catch (error) {
+            loader.innerText = "Error de conexión";
+            status.innerText = "Revisa si tienes activado CORS en el panel de Mux.";
+            status.style.color = "red";
+            console.error("Error completo:", error);
+        }
+    }
+
+    // Arrancamos el proceso
+    inicializarMux();
+</script>
+
+</body>
+</html>
