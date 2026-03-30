@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AULIA - MIC TOK Uploader</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mux/mux-uploader"></script>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0f172a; 
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #38bdf8; }
+        p { color: #94a3b8; margin-bottom: 2rem; font-size: 0.9rem; }
+        
+        /* Estilos del componente de Mux */
+        mux-uploader {
+            display: none; /* Se activa por JS tras obtener la URL */
+            --progress-bar-fill-color: #38bdf8;
+            --button-background-color: #38bdf8;
+            --button-border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        #loader { padding: 20px; color: #38bdf8; font-weight: bold; }
+        #error-log { color: #f87171; font-size: 0.8rem; margin-top: 1rem; display: none; text-align: left; background: #450a0a; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>AULIA / MIC TOK</h1>
+    <p>Sube tus videos directamente a Mux</p>
+
+    <div id="loader">Conectando con el servidor de Mux...</div>
+    
+    <mux-uploader id="uploader"></mux-uploader>
+
+    <div id="error-log"></div>
+</div>
+
+<script>
+    // --- TUS CREDENCIALES ---
+    const MUX_TOKEN_ID = 'e3ef36ac-5d7d-4bb5-8be5-2f9b327dee4e';
+    const MUX_TOKEN_SECRET = 'w9GYaE/JPunikZdZ0PkEpx4S4BAWagzQCJBAHiKHgvlhyMmf4MHOjSZmJtU0tYnTT9L/BOOOECA';
+
+    async function initUploader() {
+        const uploader = document.getElementById('uploader');
+        const loader = document.getElementById('loader');
+        const errorLog = document.getElementById('error-log');
+
+        try {
+            // 1. Solicitar URL de subida (Direct Upload)
+            const response = await fetch('https://api.mux.com/video/v1/uploads', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Autenticación Basic Auth
+                    'Authorization': 'Basic ' + btoa(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`)
+                },
+                body: JSON.stringify({
+                    new_asset_settings: { playback_policy: ['public'] },
+                    cors_origin: '*' // Permite la subida desde cualquier origen
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'Error en la API de Mux');
+            }
+
+            const { data } = await response.json();
+
+            // 2. Configurar el componente con la URL recibida
+            uploader.setAttribute('endpoint', data.url);
+            
+            // 3. Mostrar el subidor y ocultar el cargador
+            loader.style.display = 'none';
+            uploader.style.display = 'block';
+
+        } catch (err) {
+            loader.style.display = 'none';
+            errorLog.style.display = 'block';
+            errorLog.innerText = "ERROR: " + err.message + ". Verifica tus credenciales y que estés usando un servidor local (http).";
+            console.error("Error detallado:", err);
+        }
+    }
+
+    // Iniciar al cargar
+    window.addEventListener('DOMContentLoaded', initUploader);
+</script>
+
+</body>
+</html>
