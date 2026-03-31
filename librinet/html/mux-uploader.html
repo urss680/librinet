@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mux Video Uploader</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080b10;
+      --surface: #0e1420;
+      --border: #1e2d47;
+      --accent: #00d4ff;
+      --accent2: #ff3c6e;
+      --text: #c8d8f0;
+      --muted: #4a607c;
+      --success: #00e5a0;
+      --warning: #ffc85a;
+      --mono: 'Space Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .glow { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; }
+    .glow-1 { width:500px;height:500px;background:rgba(0,212,255,0.07);top:-200px;left:-200px; }
+    .glow-2 { width:500px;height:500px;background:rgba(255,60,110,0.05);bottom:-200px;right:-200px; }
+
+    .container { position: relative; z-index: 1; width: 100%; max-width: 680px; }
+
+    header { margin-bottom: 2rem; }
+    .logo { display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem; }
+    .logo-icon { width:32px;height:32px;background:var(--accent);clip-path:polygon(0 0,100% 50%,0 100%); }
+    .logo-text { font-size:1rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#fff; }
+    h1 { font-size:2.2rem;font-weight:800;line-height:1.1;color:#fff; }
+    h1 span { color:var(--accent); }
+    .subtitle { font-family:var(--mono);font-size:.75rem;color:var(--muted);margin-top:.4rem; }
+
+    .alert {
+      background: rgba(255,200,90,0.07);
+      border: 1px solid rgba(255,200,90,0.25);
+      border-radius: 4px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--warning);
+      line-height: 1.7;
+    }
+    .alert strong { display:block;margin-bottom:.4rem;font-size:.8rem; }
+
+    .curl-label {
+      font-family: var(--mono);
+      font-size: .65rem;
+      color: var(--muted);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: .4rem;
+    }
+    .curl-block {
+      background: #03070d;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem 1.25rem;
+      margin: .5rem 0 .75rem;
+      position: relative;
+    }
+    pre {
+      font-family: var(--mono);
+      font-size: .73rem;
+      color: #7ee8ff;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+    .copy-btn {
+      position: absolute;
+      top: .75rem; right: .75rem;
+      background: var(--border);
+      border: none;
+      border-radius: 3px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: .65rem;
+      padding: .3rem .6rem;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .copy-btn:hover { background: var(--accent); color: var(--bg); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.75rem;
+      margin-bottom: 1rem;
+    }
+    .card-title {
+      font-family: var(--mono);
+      font-size: .68rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .card-title::after { content:'';flex:1;height:1px;background:var(--border); }
+
+    .field { margin-bottom: .9rem; }
+    label { display:block;font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-bottom:.35rem;letter-spacing:.07em; }
+
+    input[type="url"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: .8rem;
+      padding: .6rem .8rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus { border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,.1); }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 4px;
+      padding: 2.2rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.drag-over { border-color:var(--accent);background:rgba(0,212,255,.04); }
+    .dropzone input[type="file"] { position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%; }
+    .drop-icon { font-size:2.2rem;margin-bottom:.6rem;display:block; }
+    .drop-label { font-size:.95rem;font-weight:700;color:#fff;margin-bottom:.25rem; }
+    .drop-sub { font-family:var(--mono);font-size:.7rem;color:var(--muted); }
+
+    .file-info {
+      margin-top:.9rem;
+      background:rgba(0,212,255,.06);
+      border:1px solid rgba(0,212,255,.2);
+      border-radius:3px;
+      padding:.6rem .9rem;
+      font-family:var(--mono);
+      font-size:.76rem;
+      color:var(--accent);
+      display:none;
+    }
+
+    .progress-wrap { display:none;margin-top:1.1rem; }
+    .progress-header { display:flex;justify-content:space-between;font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-bottom:.45rem; }
+    .progress-bar { height:4px;background:var(--border);border-radius:2px;overflow:hidden; }
+    .progress-fill { height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#7b2dff);border-radius:2px;transition:width .3s ease; }
+
+    .btn {
+      display:flex;align-items:center;justify-content:center;gap:.6rem;
+      width:100%;padding:.8rem 1.5rem;
+      background:var(--accent);color:var(--bg);
+      border:none;border-radius:3px;
+      font-family:var(--mono);font-size:.82rem;font-weight:700;
+      letter-spacing:.08em;text-transform:uppercase;
+      cursor:pointer;transition:transform .15s,box-shadow .15s,opacity .15s;
+      margin-top:1.25rem;
+    }
+    .btn:hover:not(:disabled) { transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,212,255,.3); }
+    .btn:disabled { opacity:.35;cursor:not-allowed; }
+
+    .status { margin-top:.9rem;padding:.7rem .9rem;border-radius:3px;font-family:var(--mono);font-size:.76rem;display:none;line-height:1.6; }
+    .status.error { background:rgba(255,60,110,.08);border:1px solid rgba(255,60,110,.3);color:var(--accent2);display:block; }
+    .status.success { background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.3);color:var(--success);display:block; }
+    .status a { color:inherit; }
+
+    .hint { font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-top:.5rem;line-height:1.6; }
+    .hint a { color:var(--accent);text-decoration:none; }
+
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .spinner { width:13px;height:13px;border:2px solid transparent;border-top-color:var(--bg);border-radius:50%;animation:spin .7s linear infinite; }
+  </style>
+</head>
+<body>
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon"></div>
+        <span class="logo-text">Mux Upload</span>
+      </div>
+      <h1>Sube tu <span>video</span> a Mux</h1>
+      <p class="subtitle">// direct upload · browser-native · sin backend</p>
+    </header>
+
+    <!-- Paso 1 -->
+    <div class="card">
+      <div class="card-title">01 · Genera la URL de subida desde tu terminal</div>
+
+      <div class="alert">
+        <strong>⚠ Por qué no funciona llamar a la API directamente</strong>
+        El endpoint de creación de Mux bloquea llamadas desde el navegador (CORS).
+        Ejecuta el siguiente comando con tus credenciales para obtener la URL de subida:
+      </div>
+
+      <div class="curl-label">Terminal — reemplaza TOKEN_ID y TOKEN_SECRET</div>
+      <div class="curl-block">
+        <button class="copy-btn" onclick="copyCurl(this)">Copiar</button>
+        <pre id="curlCmd">curl -X POST https://api.mux.com/video/v1/uploads \
+  -u "TOKEN_ID:TOKEN_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"cors_origin":"*","new_asset_settings":{"playback_policy":["public"]}}'</pre>
+      </div>
+
+      <p class="hint">
+        La respuesta devuelve un JSON. Copia el valor de <code style="color:var(--accent)">data.url</code> y pégalo abajo.<br/>
+        Credenciales en <a href="https://dashboard.mux.com/settings/access-tokens" target="_blank">dashboard.mux.com → Access Tokens</a> · permiso necesario: <strong>Mux Video → write</strong>.
+      </p>
+    </div>
+
+    <!-- Paso 2 -->
+    <div class="card">
+      <div class="card-title">02 · Pega la URL y sube el video</div>
+
+      <div class="field">
+        <label>URL de subida directa (data.url del JSON)</label>
+        <input type="url" id="uploadUrl" placeholder="https://storage.googleapis.com/video-storage-us-east1-uploads/..." />
+      </div>
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="video/*" />
+        <span class="drop-icon">🎬</span>
+        <div class="drop-label">Arrastra el video aquí</div>
+        <div class="drop-sub">o haz clic · MP4, MOV, MKV, WebM…</div>
+      </div>
+      <div class="file-info" id="fileInfo"></div>
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-header">
+          <span id="progressLabel">Subiendo…</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+
+      <button class="btn" id="uploadBtn" disabled>
+        <span id="btnIcon">▶</span>
+        <span id="btnText">Subir a Mux</span>
+      </button>
+
+      <div class="status" id="statusBox"></div>
+    </div>
+  </div>
+
+  <script>
+    const uploadUrlInput = document.getElementById('uploadUrl');
+    const fileInput      = document.getElementById('fileInput');
+    const dropzone       = document.getElementById('dropzone');
+    const fileInfo       = document.getElementById('fileInfo');
+    const uploadBtn      = document.getElementById('uploadBtn');
+    const progressWrap   = document.getElementById('progressWrap');
+    const progressFill   = document.getElementById('progressFill');
+    const progressPct    = document.getElementById('progressPct');
+    const progressLabel  = document.getElementById('progressLabel');
+    const statusBox      = document.getElementById('statusBox');
+    const btnIcon        = document.getElementById('btnIcon');
+    const btnText        = document.getElementById('btnText');
+
+    let selectedFile = null;
+
+    function copyCurl(btn) {
+      navigator.clipboard.writeText(document.getElementById('curlCmd').textContent.trim());
+      btn.textContent = '✓ Copiado';
+      setTimeout(() => btn.textContent = 'Copiar', 2000);
+    }
+
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith('video/')) setFile(f);
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+    function setFile(f) {
+      selectedFile = f;
+      const mb = (f.size / 1024 / 1024).toFixed(1);
+      fileInfo.style.display = 'block';
+      fileInfo.textContent = `📁  ${f.name}  ·  ${mb} MB  ·  ${f.type}`;
+      checkReady();
+    }
+
+    uploadUrlInput.addEventListener('input', checkReady);
+
+    function checkReady() {
+      uploadBtn.disabled = !(selectedFile && uploadUrlInput.value.trim().startsWith('http'));
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      const url = uploadUrlInput.value.trim();
+      statusBox.className = 'status';
+      statusBox.innerHTML = '';
+      uploadBtn.disabled = true;
+      btnIcon.innerHTML = '<div class="spinner"></div>';
+      btnText.textContent = 'Subiendo…';
+      progressWrap.style.display = 'block';
+      progressFill.style.background = 'linear-gradient(90deg, var(--accent), #7b2dff)';
+
+      try {
+        await uploadWithProgress(url, selectedFile, pct => {
+          progressFill.style.width = pct + '%';
+          progressPct.textContent  = pct + '%';
+        });
+      } catch (e) {
+        statusBox.className = 'status error';
+        statusBox.innerHTML = `<strong>Error durante la subida:</strong><br/>${e.message}`;
+        resetBtn();
+        return;
+      }
+
+      progressLabel.textContent = '✓ Completado';
+      progressFill.style.background = 'var(--success)';
+      btnIcon.textContent = '✓';
+      btnText.textContent = 'Completado';
+
+      statusBox.className = 'status success';
+      statusBox.innerHTML = `<strong>Video subido con éxito ✓</strong><br/>
+        El asset estará listo en unos momentos en tu
+        <a href="https://dashboard.mux.com/video/assets" target="_blank">panel de Mux →</a>`;
+    });
+
+    function uploadWithProgress(url, file, onProgress) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', url, true);
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        xhr.upload.addEventListener('progress', e => {
+          if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+        });
+        xhr.addEventListener('load', () => {
+          xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`HTTP ${xhr.status}`));
+        });
+        xhr.addEventListener('error', () => reject(new Error('Error de red durante la subida')));
+        xhr.addEventListener('abort', () => reject(new Error('Subida cancelada')));
+        xhr.send(file);
+      });
+    }
+
+    function resetBtn() {
+      uploadBtn.disabled = false;
+      btnIcon.textContent = '▶';
+      btnText.textContent = 'Reintentar';
+    }
+  </script>
+</body>
+</html>
