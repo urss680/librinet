@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clippy Música: Grabador 30s</title>
+  <style>
+    :root {
+      --bg: #0c0c0c;
+      --card: #1a1a1a;
+      --primary: #1db954;
+      --text: #ffffff;
+      --subtle: #a0a0a0;
+      --highlight: #1ed760;
+      --danger: #ff4444;
+    }
+    body {
+      margin: 0;
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 { font-weight: 800; letter-spacing: -1px; margin-bottom: 2rem; color: var(--primary); }
+
+    .search-container { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; max-width: 600px; }
+    #searchForm { display: flex; flex: 1; gap: 10px; }
+    input[type="text"] {
+      flex: 1; padding: 14px 20px; border-radius: 30px; border: 1px solid #333;
+      background: #222; color: white; outline: none; font-size: 1rem;
+    }
+    button {
+      padding: 10px 20px; border-radius: 30px; border: none; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: black; }
+    .btn-primary:hover:not(:disabled) { background: var(--highlight); transform: scale(1.05); }
+    .btn-random { background: #333; color: white; font-size: 1.2rem; padding: 10px 15px; }
+
+    #results {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px; width: 100%; max-width: 1200px;
+    }
+    .track {
+      background: var(--card); padding: 15px; border-radius: 12px;
+      display: flex; flex-direction: column; transition: transform 0.2s;
+    }
+    .track img { width: 100%; aspect-ratio: 1; border-radius: 8px; margin-bottom: 10px; object-fit: cover; }
+    .track h3 { font-size: 0.95rem; margin: 5px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .track p { font-size: 0.8rem; color: var(--subtle); margin-bottom: 15px; }
+
+    .btn-full { background: var(--primary); color: black; margin-top: auto; border: none; font-weight: bold; padding: 10px; border-radius: 8px;}
+
+    .modal {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+      z-index: 1000; align-items: flex-end; justify-content: center;
+    }
+    .modal.show { display: flex; }
+    
+    .modal-content {
+      background: #121212; width: 100%; max-width: 600px; 
+      border-radius: 30px 30px 0 0; padding-bottom: 40px; 
+      position: relative; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: translateY(100%);
+      max-height: 95vh; overflow-y: auto; 
+      display: flex; flex-direction: column;
+    }
+    .modal.show .modal-content { transform: translateY(0); }
+
+    .swipe-handle { width: 40px; height: 5px; background: #333; border-radius: 10px; margin: 15px auto; flex-shrink: 0; }
+    .close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: #888; z-index: 10; }
+
+    .editor-layout { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+
+    #clipPreviewContainer {
+      width: 240px; aspect-ratio: 9/16; background: #1a1a1a; border-radius: 16px;
+      overflow: hidden; position: relative; border: 1px solid #222;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8); flex-shrink: 0;
+    }
+    #previewCanvas { width: 100%; height: 100%; display: block; background: #111; }
+    
+    .filters-wrapper { width: 100%; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
+    .filters-wrapper::-webkit-scrollbar { display: none; }
+    .filters-container { display: flex; gap: 12px; width: max-content; padding: 0 20px; }
+    .filter-item { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; min-width: 65px; }
+    .filter-icon {
+        width: 56px; height: 56px; border-radius: 14px; background: #222;
+        border: 2px solid #333; display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem; transition: all 0.2s ease;
+    }
+    .filter-item.active .filter-icon { border-color: var(--primary); background: #282828; transform: scale(1.08); }
+    .filter-label { font-size: 0.65rem; color: var(--subtle); font-weight: 600; text-transform: uppercase; }
+
+    .recording-section { width: 100%; max-width: 300px; padding: 0 20px; margin-bottom: 20px; }
+    #exportBtn {
+        background: #fff; color: #000; padding: 18px; font-size: 1rem;
+        font-weight: 800; border: none; border-radius: 40px; width:100%;
+        cursor: pointer; margin-bottom: 10px; transition: background 0.3s;
+    }
+    #exportBtn.recording { background: var(--danger); color: white; animation: pulse-red 1.5s infinite; }
+    
+    @keyframes pulse-red { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+
+    .progress-container { width: 100%; height: 6px; background: #222; border-radius: 3px; margin-top: 10px; overflow: hidden; display: none; }
+    #progressBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear; }
+    .recording-info { text-align: center; margin-top: 10px; font-weight: bold; display: none; font-size: 0.9rem; color: var(--subtle); }
+
+    .loader { border: 3px solid #333; border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <h1>🎬 Clippy Música</h1>
+
+  <div class="search-container">
+    <form id="searchForm">
+      <input id="query" type="text" placeholder="Busca canción o artista..." required/>
+      <button type="submit" class="btn-primary">Buscar</button>
+    </form>
+    <button class="btn-random" onclick="playRandomTrack()" title="Suerte">🎲</button>
+  </div>
+
+  <section id="results"></section>
+
+  <video id="webcamVideo" autoplay playsinline muted style="display:none;"></video>
+
+  <div id="clipModal" class="modal" onclick="handleOutsideClick(event)">
+    <div class="modal-content" id="modalContent">
+      <div class="swipe-handle"></div>
+      <span class="close-btn" onclick="closeModal()">✕</span>
+      
+      <div class="editor-layout">
+        <div id="clipPreviewContainer">
+          <canvas id="previewCanvas"></canvas>
+        </div>
+
+        <div class="filters-wrapper">
+            <div class="filters-container" id="filtersList"></div>
+        </div>
+
+        <div class="recording-section">
+            <button id="exportBtn">🔴 GRABAR CLIP (30s)</button>
+            <div id="progressBox" class="progress-container">
+              <div id="progressBar"></div>
+            </div>
+            <div id="timerDisplay" class="recording-info">
+              TIEMPO: <span id="timeLeft">0.0s</span> / 30s
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let currentBuffer = null;
+    let previewSource = null;
+    let webcamStream = null;
+    let isRecording = false;
+    let countdownValue = 0;
+    let animationId = null;
+    let activeFilter = 'none';
+    let isMirrored = true;
+    let currentFacingMode = "user";
+    let globalTracks = [];
+    
+    const CLIP_DURATION = 30.0; 
+
+    // Estado Scanner
+    let lastScannerPos = 0;
+    let scannerCanvas = document.createElement('canvas');
+    let scannerCtx = scannerCanvas.getContext('2d');
+    let scannerStartTime = null;
+
+    // Estado Corazones
+    let hearts = [];
+
+    // Grabación
+    let currentRecorder = null;
+    let currentAudioSource = null;
+    let recordingInterval = null;
+
+    const videoElement = document.getElementById('webcamVideo');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const resultsGrid = document.getElementById('results');
+    const filtersList = document.getElementById('filtersList');
+    const modal = document.getElementById('clipModal');
+    const progressBar = document.getElementById('progressBar');
+    const progressBox = document.getElementById('progressBox');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timeLeftSpan = document.getElementById('timeLeft');
+    const exportBtn = document.getElementById('exportBtn');
+
+    const tempCanvas = document.createElement('canvas');
+    const tCtx = tempCanvas.getContext('2d');
+
+    const FILTERS_DATA = [
+        { id: 'audio', label: 'Oír', icon: '🎵', action: () => togglePreview() },
+        { id: 'none', label: 'Normal', icon: '🔳' },
+        { id: 'scanner', label: 'Escáner', icon: '⏳', action: () => { resetScanner(); activeFilter = 'scanner'; initFilters(); } },
+        { id: 'scanner_side', label: 'Escáner Lat.', icon: '↔️', action: () => { resetScanner(); activeFilter = 'scanner_side'; initFilters(); } },
+        { id: 'hearts', label: 'Corazones', icon: '💖', action: () => { hearts = []; activeFilter = 'hearts'; initFilters(); } },
+        { id: 'neon', label: 'Neón', icon: '🌈' },
+        { id: 'edges', label: 'Bordes', icon: '🕸️' },
+        { id: 'mirror', label: 'Espejo', icon: '🪞', action: () => { isMirrored = !isMirrored; } },
+        { id: 'camera', label: 'Cámara', icon: '🔄', action: () => switchCamera() }
+    ];
+
+    function resetScanner() {
+        lastScannerPos = 0;
+        scannerStartTime = null;
+        const w = 720, h = 1280;
+        scannerCanvas.width = w; scannerCanvas.height = h;
+        scannerCtx.fillStyle = '#000';
+        scannerCtx.fillRect(0, 0, w, h);
+    }
+
+    function initFilters() {
+        filtersList.innerHTML = '';
+        FILTERS_DATA.forEach(f => {
+            const div = document.createElement('div');
+            const isAudio = f.id === 'audio';
+            div.className = `filter-item ${activeFilter === f.id ? 'active' : ''}`;
+            div.innerHTML = `<div class="filter-icon">${isAudio && previewSource ? '⏹' : f.icon}</div><div class="filter-label">${f.label}</div>`;
+            div.onclick = () => {
+                if (f.action) { f.action(); if(isAudio) initFilters(); } 
+                else { activeFilter = f.id; initFilters(); }
+            };
+            filtersList.appendChild(div);
+        });
+    }
+
+    async function switchCamera() {
+        currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+        await initCamera();
+    }
+
+    async function initCamera() {
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(t => t.stop());
+        }
+        try {
+            webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } }, 
+                audio: false 
+            });
+            videoElement.srcObject = webcamStream;
+            await videoElement.play();
+        } catch(e) { 
+            console.error("Error al acceder a la cámara:", e); 
+        }
+    }
+
+    function togglePreview() {
+        if (!currentBuffer) return;
+        if (previewSource) { stopPreview(); } 
+        else {
+            previewSource = audioCtx.createBufferSource();
+            previewSource.buffer = currentBuffer;
+            previewSource.loop = true; 
+            previewSource.connect(audioCtx.destination);
+            previewSource.start(0);
+            initFilters();
+        }
+    }
+
+    function stopPreview() { 
+        if (previewSource) { try { previewSource.stop(); } catch(e) {} previewSource = null; } 
+    }
+
+    function startCanvasLoop() {
+        if (animationId) cancelAnimationFrame(animationId);
+        const ctx = previewCanvas.getContext('2d');
+        const w = 720, h = 1280; 
+        previewCanvas.width = w; previewCanvas.height = h;
+        tempCanvas.width = w; tempCanvas.height = h;
+
+        const render = (timestamp) => {
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, w, h);
+
+            if (webcamStream && videoElement.readyState >= 2) {
+                const vW = videoElement.videoWidth;
+                const vH = videoElement.videoHeight;
+                const aspect = vW / vH;
+                const cAspect = w / h;
+                
+                let dW, dH;
+                if (aspect > cAspect) { dH = h; dW = h * aspect; } else { dW = w; dH = w / aspect; }
+                const oX = (w - dW) / 2;
+                const oY = (h - dH) / 2;
+
+                tCtx.save();
+                tCtx.clearRect(0, 0, w, h);
+                if (isMirrored) { 
+                    tCtx.translate(w, 0); 
+                    tCtx.scale(-1, 1); 
+                    tCtx.drawImage(videoElement, (w - (oX + dW)), oY, dW, dH); 
+                } else { 
+                    tCtx.drawImage(videoElement, oX, oY, dW, dH); 
+                }
+                tCtx.restore();
+
+                if (activeFilter.includes('scanner')) {
+                    if (!scannerStartTime && isRecording) scannerStartTime = timestamp;
+                    const isVertical = activeFilter === 'scanner';
+                    const limit = isVertical ? h : w;
+                    let currentPos = scannerStartTime ? ((timestamp - scannerStartTime) / (CLIP_DURATION * 1000)) * limit : 0;
+                    if (currentPos > limit) currentPos = limit;
+
+                    if (scannerStartTime && currentPos < limit) {
+                        const step = Math.max(1, currentPos - lastScannerPos + 2);
+                        if (isVertical) scannerCtx.drawImage(tempCanvas, 0, lastScannerPos, w, step, 0, lastScannerPos, w, step);
+                        else scannerCtx.drawImage(tempCanvas, lastScannerPos, 0, step, h, lastScannerPos, 0, step, h);
+                    }
+                    ctx.drawImage(scannerCanvas, 0, 0);
+                    if (currentPos < limit) {
+                        if (isVertical) ctx.drawImage(tempCanvas, 0, currentPos, w, h-currentPos, 0, currentPos, w, h-currentPos);
+                        else ctx.drawImage(tempCanvas, currentPos, 0, w-currentPos, h, currentPos, 0, w-currentPos, h);
+                        ctx.fillStyle = "#1db954";
+                        if (isVertical) ctx.fillRect(0, currentPos, w, 4); else ctx.fillRect(currentPos, 0, 4, h);
+                    }
+                    lastScannerPos = currentPos;
+                } else if (activeFilter === 'neon') {
+                    ctx.drawImage(tempCanvas, 0, 0);
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'screen';
+                    ctx.filter = `hue-rotate(${(timestamp/10)%360}deg) saturate(8) blur(1px)`;
+                    ctx.globalAlpha = 0.7; ctx.drawImage(tempCanvas, 4, 4);
+                    ctx.globalCompositeOperation = 'difference'; ctx.drawImage(tempCanvas, 0, 0);
+                    ctx.restore();
+                } else if (activeFilter === 'edges') {
+                    ctx.drawImage(tempCanvas, 0, 0);
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'difference';
+                    ctx.filter = 'grayscale(1) contrast(15) invert(1)';
+                    ctx.drawImage(tempCanvas, 2, 2);
+                    ctx.restore();
+                } else if (activeFilter === 'hearts') {
+                    ctx.drawImage(tempCanvas, 0, 0);
+                    if (Math.random() < 0.1) {
+                        hearts.push({ x: Math.random() * w, y: h + 50, s: 20 + Math.random() * 40, v: 2 + Math.random() * 5, a: Math.random() * Math.PI * 2 });
+                    }
+                    hearts.forEach((heart) => {
+                        heart.y -= heart.v;
+                        heart.x += Math.sin(timestamp / 500 + heart.a) * 2;
+                        ctx.save();
+                        ctx.font = `${heart.s}px serif`;
+                        ctx.fillText("❤️", heart.x, heart.y);
+                        ctx.restore();
+                    });
+                    hearts = hearts.filter(heart => heart.y > -100);
+                } else {
+                    ctx.drawImage(tempCanvas, 0, 0);
+                }
+            } else {
+                ctx.fillStyle = "#666"; ctx.font = "20px Arial"; ctx.textAlign = "center";
+                ctx.fillText("Iniciando cámara...", w/2, h/2);
+            }
+
+            if (countdownValue > 0) {
+                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0,0,w,h);
+                ctx.fillStyle = "white"; ctx.font = "bold 200px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle";
+                ctx.fillText(countdownValue, w/2, h/2);
+            }
+            animationId = requestAnimationFrame(render);
+        };
+        animationId = requestAnimationFrame(render);
+    }
+
+    async function openClipEditor(url) {
+        modal.classList.add('show'); activeFilter = 'none'; resetScanner(); initFilters(); await initCamera();
+        const r = await fetch(url); const ab = await r.arrayBuffer();
+        currentBuffer = await audioCtx.decodeAudioData(ab);
+        startCanvasLoop();
+    }
+
+    exportBtn.onclick = () => {
+        if (isRecording) { stopRecordingManually(); return; }
+        if (!currentBuffer) return;
+        stopPreview();
+        countdownValue = 3;
+        const cd = setInterval(() => {
+            countdownValue--;
+            if (countdownValue <= 0) { clearInterval(cd); startRecording(); }
+        }, 1000);
+    };
+
+    function startRecording() {
+        const canvasStream = previewCanvas.captureStream(60);
+        const dest = audioCtx.createMediaStreamDestination();
+        currentAudioSource = audioCtx.createBufferSource();
+        currentAudioSource.buffer = currentBuffer;
+        currentAudioSource.loop = true; 
+        currentAudioSource.connect(dest);
+        currentAudioSource.connect(audioCtx.destination);
+        const combined = new MediaStream([...canvasStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+        currentRecorder = new MediaRecorder(combined, { mimeType: 'video/webm;codecs=vp8,opus', bitsPerSecond: 8000000 });
+        const chunks = [];
+        currentRecorder.ondataavailable = e => chunks.push(e.data);
+        currentRecorder.onstop = () => finishRecording(chunks);
+        currentRecorder.start();
+        currentAudioSource.start(0);
+        isRecording = true;
+        exportBtn.textContent = "⏹ DETENER GRABACIÓN";
+        exportBtn.classList.add('recording');
+        progressBox.style.display = "block";
+        timerDisplay.style.display = "block";
+        const start = Date.now();
+        recordingInterval = setInterval(() => {
+            const elapsed = (Date.now() - start) / 1000;
+            const progress = (elapsed / CLIP_DURATION) * 100;
+            progressBar.style.width = Math.min(100, progress) + "%";
+            timeLeftSpan.textContent = elapsed.toFixed(1) + "s";
+            if (elapsed >= CLIP_DURATION) stopRecordingManually();
+        }, 50);
+    }
+
+    function stopRecordingManually() {
+        if (currentRecorder && currentRecorder.state !== "inactive") currentRecorder.stop();
+        if (currentAudioSource) { try { currentAudioSource.stop(); } catch(e) {} }
+        if (recordingInterval) clearInterval(recordingInterval);
+    }
+
+    function finishRecording(chunks) {
+        isRecording = false;
+        exportBtn.textContent = "🔴 GRABAR CLIP (30s)";
+        exportBtn.classList.remove('recording');
+        progressBox.style.display = "none";
+        timerDisplay.style.display = "none";
+        progressBar.style.width = "0%";
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `Clippy_Clip_30s_${Date.now()}.webm`;
+        a.click();
+    }
+
+    function closeModal() {
+        stopRecordingManually();
+        modal.classList.remove('show'); stopPreview();
+        if (webcamStream) { webcamStream.getTracks().forEach(t => t.stop()); webcamStream = null; }
+        if (animationId) cancelAnimationFrame(animationId);
+    }
+
+    function handleOutsideClick(e) { if (e.target === modal) closeModal(); }
+
+    async function fetchTracks(q="hits") {
+        resultsGrid.innerHTML = '<div class="loader" style="margin:40px auto; grid-column:1/-1;"></div>';
+        try {
+            const r = await fetch(`https://itunes.apple.com/search?country=ES&entity=song&term=${q}&limit=24`);
+            const d = await r.json(); globalTracks = d.results;
+            resultsGrid.innerHTML = '';
+            globalTracks.forEach(t => {
+                const div = document.createElement('div'); div.className='track';
+                div.innerHTML = `<img src="${t.artworkUrl100.replace('100x100','600x600')}"><h3>${t.trackName}</h3><p>${t.artistName}</p><button class="btn-full" onclick="openClipEditor('${t.previewUrl}')">EDITAR</button>`;
+                resultsGrid.appendChild(div);
+            });
+        } catch(e) { resultsGrid.innerHTML = "Error al cargar música."; }
+    }
+
+    function playRandomTrack() {
+        if(globalTracks.length > 0) {
+            const t = globalTracks[Math.floor(Math.random()*globalTracks.length)];
+            openClipEditor(t.previewUrl);
+        }
+    }
+
+    document.getElementById('searchForm').onsubmit = (e) => { e.preventDefault(); fetchTracks(document.getElementById('query').value); };
+    window.onload = () => fetchTracks();
+  </script>
+</body>
+</html>
