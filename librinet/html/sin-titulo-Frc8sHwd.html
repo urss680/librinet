@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOZ - P2P Calling</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        .ringing {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .gradient-text {
+            background: linear-gradient(90deg, #60a5fa, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white font-sans min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="w-full max-w-md bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-800">
+        
+        <!-- Cabecera VOZ -->
+        <div class="p-6 text-center border-b border-slate-800/50">
+            <h1 class="text-3xl font-black tracking-tighter gradient-text">VOZ</h1>
+            <div id="status-badge" class="mt-2 inline-flex items-center px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold bg-slate-800 text-slate-400">
+                <span id="status-text">Iniciando sistema...</span>
+            </div>
+        </div>
+
+        <!-- Registro de Línea -->
+        <div id="setup-screen" class="p-8">
+            <div class="mb-8 text-center h-4">
+                <!-- Espacio para mantener estructura sin el texto eliminado -->
+            </div>
+            
+            <label class="block text-xs font-bold mb-2 text-slate-500 uppercase tracking-wider">Tu Número Identificador</label>
+            <input type="text" id="my-number" placeholder="000 000" maxlength="7"
+                class="w-full bg-slate-800 border border-slate-700 rounded-2xl p-5 text-center text-3xl font-light tracking-[0.2em] focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-700">
+            
+            <p class="mt-6 text-xs text-slate-500 text-center leading-relaxed">
+                El número debe ser de 6 dígitos. Otros usuarios podrán llamarte directamente usando este número.
+            </p>
+            
+            <button onclick="registerNumber()" class="w-full mt-8 gradient-btn text-white font-black py-5 rounded-2xl transition-all shadow-xl active:scale-95 hover:opacity-90">
+                ACTIVAR VOZ
+            </button>
+        </div>
+
+        <!-- Pantalla de Marcado -->
+        <div id="dialer-screen" class="hidden p-8">
+            <div class="text-center mb-10 bg-slate-800/30 py-4 rounded-2xl border border-slate-800">
+                <span class="text-slate-500 text-[10px] uppercase font-bold tracking-widest">Línea Activa</span>
+                <div id="display-my-number" class="text-2xl font-light text-blue-400 tracking-widest">000 000</div>
+            </div>
+
+            <label class="block text-xs font-bold mb-2 text-slate-500 uppercase tracking-wider text-center">Marcar Destino</label>
+            <input type="text" id="target-number" placeholder="000 000" maxlength="7"
+                class="w-full bg-transparent border-b-2 border-slate-800 p-4 text-center text-4xl font-light tracking-[0.3em] focus:border-blue-500 outline-none transition-all placeholder:text-slate-800 mb-10">
+            
+            <button onclick="startCall()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-6 rounded-full flex items-center justify-center gap-4 transition-all shadow-blue-900/20 shadow-2xl active:scale-95">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                Iniciar Llamada
+            </button>
+        </div>
+
+        <!-- Pantalla de Llamada Activa -->
+        <div id="call-screen" class="hidden p-8 text-center bg-slate-950 min-h-[450px] flex flex-col justify-between">
+            <div class="mt-10">
+                <div class="w-32 h-32 bg-slate-900 rounded-full mx-auto flex items-center justify-center mb-8 ringing border border-blue-500/30">
+                    <div class="w-24 h-24 bg-blue-600/10 rounded-full flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                        </svg>
+                    </div>
+                </div>
+                <h2 id="call-remote-number" class="text-4xl font-light tracking-widest mb-4">--- ---</h2>
+                <p id="call-duration" class="text-blue-400 font-mono text-xl">00:00</p>
+                <p id="call-status-detail" class="text-slate-600 mt-4 uppercase text-[10px] tracking-[0.2em] font-bold">Conectando...</p>
+            </div>
+
+            <div class="pb-10">
+                <button onclick="endCall()" class="bg-red-500 hover:bg-red-400 p-8 rounded-full shadow-red-900/20 shadow-2xl transition-all active:scale-90 group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white group-hover:rotate-135 transition-transform" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.516l2.257-1.13a1 1 0 00.502-1.21L8.228 3.684A1 1 0 007.279 3H5z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal Entrante -->
+        <div id="incoming-modal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-6 z-50">
+            <div class="bg-slate-900 p-10 rounded-[3rem] w-full max-w-xs text-center border border-slate-800 shadow-2xl">
+                <div class="mb-8 ringing">
+                    <div class="w-24 h-24 bg-green-500/10 rounded-full mx-auto flex items-center justify-center border border-green-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-green-500" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                    </div>
+                </div>
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Llamada entrante</h3>
+                <p id="incoming-number" class="text-3xl font-light mb-10 tracking-[0.2em]">000 000</p>
+                <div class="flex flex-col gap-3">
+                    <button onclick="acceptCall()" class="w-full bg-green-600 hover:bg-green-500 py-5 rounded-2xl font-bold transition-all shadow-lg text-lg">Aceptar</button>
+                    <button onclick="declineCall()" class="w-full bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-slate-400 transition-all">Ignorar</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Audio -->
+    <audio id="remote-audio" autoplay></audio>
+
+    <script>
+        let peer = null;
+        let localStream = null;
+        let currentCall = null;
+        let myPhoneNumber = "";
+        let timerInterval = null;
+
+        const ui = {
+            statusText: document.getElementById('status-text'),
+            statusBadge: document.getElementById('status-badge'),
+            setupScreen: document.getElementById('setup-screen'),
+            dialerScreen: document.getElementById('dialer-screen'),
+            callScreen: document.getElementById('call-screen'),
+            incomingModal: document.getElementById('incoming-modal'),
+            myNumberInput: document.getElementById('my-number'),
+            targetNumberInput: document.getElementById('target-number'),
+            displayMyNumber: document.getElementById('display-my-number'),
+            remoteNumberDisplay: document.getElementById('call-remote-number'),
+            incomingNumberDisplay: document.getElementById('incoming-number'),
+            durationDisplay: document.getElementById('call-duration'),
+            remoteAudio: document.getElementById('remote-audio'),
+            statusDetail: document.getElementById('call-status-detail')
+        };
+
+        // Función para aplicar formato "000 000" y restringir a números
+        function formatNumberInput(input) {
+            input.addEventListener('input', (e) => {
+                let value = e.target.value.replace(/\D/g, ''); // Solo números
+                if (value.length > 6) value = value.slice(0, 6); // Max 6 dígitos
+                
+                if (value.length > 3) {
+                    value = value.slice(0, 3) + ' ' + value.slice(3);
+                }
+                e.target.value = value;
+            });
+        }
+
+        formatNumberInput(ui.myNumberInput);
+        formatNumberInput(ui.targetNumberInput);
+
+        function initPeer(customId) {
+            // El ID de red debe ser limpio (sin espacios)
+            const cleanId = customId.replace(/\s/g, '');
+            updateStatus("Sincronizando...", "bg-blue-500/10 text-blue-400");
+            
+            peer = new Peer('voz-p2p-' + cleanId, {
+                debug: 1
+            });
+
+            peer.on('open', (id) => {
+                updateStatus("En línea", "bg-green-500/10 text-green-400");
+                showDialer();
+            });
+
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') {
+                    alert("ID de VOZ ocupado por otro terminal.");
+                } else {
+                    alert("Error VOZ: " + err.type);
+                }
+                location.reload();
+            });
+
+            peer.on('call', (incoming) => {
+                handleIncomingCall(incoming);
+            });
+        }
+
+        async function registerNumber() {
+            const rawNum = ui.myNumberInput.value.replace(/\s/g, '');
+            if (rawNum.length !== 6) {
+                alert("El número debe tener exactamente 6 dígitos");
+                return;
+            }
+            myPhoneNumber = ui.myNumberInput.value;
+            ui.displayMyNumber.innerText = myPhoneNumber;
+            
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                initPeer(rawNum);
+            } catch (err) {
+                alert("VOZ necesita acceso al micrófono.");
+            }
+        }
+
+        function showDialer() {
+            ui.setupScreen.classList.add('hidden');
+            ui.dialerScreen.classList.remove('hidden');
+        }
+
+        function startCall() {
+            const displayTarget = ui.targetNumberInput.value;
+            const cleanTarget = displayTarget.replace(/\s/g, '');
+            
+            if (cleanTarget.length !== 6) {
+                alert("Introduce un número de 6 dígitos");
+                return;
+            }
+
+            ui.dialerScreen.classList.add('hidden');
+            ui.callScreen.classList.remove('hidden');
+            ui.remoteNumberDisplay.innerText = displayTarget;
+            ui.statusDetail.innerText = "Llamando...";
+
+            const call = peer.call('voz-p2p-' + cleanTarget, localStream);
+            setupCallEvents(call);
+        }
+
+        function handleIncomingCall(incoming) {
+            currentCall = incoming;
+            const callerId = incoming.peer.replace('voz-p2p-', '');
+            // Formatear el número entrante para mostrar el espacio
+            const formattedCaller = callerId.slice(0, 3) + ' ' + callerId.slice(3);
+            ui.incomingNumberDisplay.innerText = formattedCaller;
+            ui.incomingModal.classList.remove('hidden');
+        }
+
+        function acceptCall() {
+            ui.incomingModal.classList.add('hidden');
+            ui.dialerScreen.classList.add('hidden');
+            ui.callScreen.classList.remove('hidden');
+            
+            const callerId = currentCall.peer.replace('voz-p2p-', '');
+            const formattedCaller = callerId.slice(0, 3) + ' ' + callerId.slice(3);
+            ui.remoteNumberDisplay.innerText = formattedCaller;
+            
+            currentCall.answer(localStream);
+            setupCallEvents(currentCall);
+        }
+
+        function declineCall() {
+            if (currentCall) currentCall.close();
+            ui.incomingModal.classList.add('hidden');
+        }
+
+        function setupCallEvents(call) {
+            currentCall = call;
+
+            call.on('stream', (remoteStream) => {
+                ui.remoteAudio.srcObject = remoteStream;
+                ui.statusDetail.innerText = "Conexión Directa VOZ Activa";
+                startTimer();
+            });
+
+            call.on('close', () => endCallUI());
+            call.on('error', () => endCallUI());
+        }
+
+        function endCall() {
+            if (currentCall) currentCall.close();
+            endCallUI();
+        }
+
+        function endCallUI() {
+            stopTimer();
+            ui.callScreen.classList.add('hidden');
+            ui.dialerScreen.classList.remove('hidden');
+            ui.remoteAudio.srcObject = null;
+            currentCall = null;
+        }
+
+        function updateStatus(text, classes) {
+            ui.statusText.innerText = text;
+            ui.statusBadge.className = "mt-2 inline-flex items-center px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold " + classes;
+        }
+
+        function startTimer() {
+            let seconds = 0;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                seconds++;
+                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                ui.durationDisplay.innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            ui.durationDisplay.innerText = "00:00";
+        }
+    </script>
+</body>
+</html>
