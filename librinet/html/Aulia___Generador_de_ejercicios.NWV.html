@@ -1,0 +1,137 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Aulia - Generador de ejercicios</title>
+    <style>
+        *{box-sizing:border-box;font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif}
+        body{margin:0;height:100vh;display:flex;justify-content:center;align-items:center;background:#f3f4f6}
+        #chat{width:100%;max-width:420px;height:90vh;background:#fff;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.15);display:flex;flex-direction:column;overflow:hidden}
+        #header{background:#0ea5e9;color:#fff;padding:14px 18px;font-weight:700;font-size:1.1rem}
+        #messages{flex:1;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+        .msg{background:#e5e7eb;padding:10px 14px;border-radius:10px;max-width:75%;word-break:break-word}
+        .user{align-self:flex-end;background:#0ea5e9;color:#fff}
+        .time{font-size:.65rem;color:#6b7280;margin-top:4px}
+        .user+.time{color:#9ca3af;text-align:right}
+        #inputArea{border-top:1px solid #e5e7eb;display:flex;align-items:center;padding:10px}
+        #inputArea input{flex:1;border:none;outline:none;padding:10px;font-size:1rem}
+        #inputArea button{background:#0ea5e9;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600}
+        #inputArea button:disabled{background:#9ca3af;cursor:not-allowed}
+        #pdfList{margin-top:10px}
+        #pdfList li{margin:4px 0}
+        #confirmButtons{margin-top:12px;display:flex;gap:10px}
+        #confirmButtons button{background:#10b981;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-weight:600}
+        #confirmButtons button:nth-child(2){background:#ef4444}
+    </style>
+</head>
+<body>
+    <div id="chat">
+        <div id="header">Aulia</div>
+        <div id="messages"></div>
+        <div id="inputArea">
+            <input id="inp" placeholder="Escribe un mensaje..." disabled>
+            <button id="sendBtn" disabled>Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        const msgs = document.getElementById('messages');
+        const inp = document.getElementById('inp');
+        const btn = document.getElementById('sendBtn');
+        let state = 0; // 0: inicial, 1: esperando confirmación, 2: finalizado
+
+        function addMsg(txt, who='bot', t=null){
+            const d = document.createElement('div');
+            d.className='msg '+(who==='user'?'user':'');
+            d.textContent=txt;
+            msgs.appendChild(d);
+            if(t){
+                const time = document.createElement('div');
+                time.className='time';
+                time.textContent=t;
+                msgs.appendChild(time);
+            }
+            msgs.scrollTop=msgs.scrollHeight;
+        }
+        function disableInput(){
+            inp.disabled=true;
+            btn.disabled=true;
+        }
+        function enableInput(){
+            inp.disabled=false;
+            btn.disabled=false;
+            inp.focus();
+        }
+        function finish(){
+            disableInput();
+            addMsg('Ok.','bot');
+            state=2;
+        }
+        function handleSend(){
+            const v = inp.value.trim();
+            if(!v) return;
+            addMsg(v,'user');
+            inp.value='';
+            if(state===0){
+                disableInput();
+                addMsg('Voy...','bot');
+                setTimeout(()=>{
+                    addMsg('Leyendo información...','bot');
+                },1000);
+                setTimeout(()=>{
+                    const t = new Date();
+                    t.setHours(17,30,0);
+                    addMsg('Ejercicios de Tecnología (Malla) creados con éxito.','bot',formatTime(t));
+                    addMsg('Archivos generados:','bot');
+                    const ul = document.createElement('ul');
+                    ul.id='pdfList';
+                    ['Ejercicios_Tecnologia_Malla_1.pdf','Ejercicios_Tecnologia_Malla_2.pdf','Ejercicios_Tecnologia_Malla_3.pdf']
+                        .forEach(name=>{
+                            const li=document.createElement('li');
+                            li.textContent=name+' (con soluciones)';
+                            ul.appendChild(li);
+                        });
+                    const wrap=document.createElement('div');
+                    wrap.appendChild(ul);
+                    const div=document.createElement('div');
+                    div.id='confirmButtons';
+                    const yes=document.createElement('button');
+                    yes.textContent='Sí';
+                    yes.onclick=()=>{
+                        div.style.display='none';
+                        addMsg('Sí','user');
+                        addMsg('Subiendo...','bot');
+                        setTimeout(()=>{
+                            addMsg('Subido.','bot');
+                            finish();
+                        },2000);
+                    };
+                    const no=document.createElement('button');
+                    no.textContent='No';
+                    no.onclick=()=>{finish();};
+                    div.appendChild(yes); div.appendChild(no);
+                    wrap.appendChild(div);
+                    msgs.appendChild(wrap);
+                    inp.placeholder='';
+                    state=1;
+                },5000); // 5 segundos
+                return;
+            }
+            if(state===1){
+                // cualquier cosa lleva a ok
+                finish();
+            }
+        }
+        function formatTime(d){
+            return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+        }
+        btn.onclick=handleSend;
+        inp.addEventListener('keydown',e=>{if(e.key==='Enter')handleSend();});
+        // inicio
+        addMsg('Hola, soy Aulia. Voy a generar ejercicios de malla con datos de Edunube.','bot');
+        setTimeout(()=>{enableInput();},500);
+    </script>
+</body>
+</html>
+```
