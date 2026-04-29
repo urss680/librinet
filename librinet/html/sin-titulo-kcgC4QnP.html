@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VLIP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mux Player para la visualización -->
+    <script src="https://unpkg.com/@mux/mux-player"></script>
+    <style>
+        body {
+            background-color: black;
+            margin: 0;
+            overflow: hidden;
+        }
+        /* Contenedor principal del feed */
+        .video-container {
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            height: 100vh;
+            width: 100vw;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+        }
+        .video-container::-webkit-scrollbar {
+            display: none;
+        }
+        /* Cada "diapositiva" de video */
+        .video-card {
+            scroll-snap-align: start;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        mux-player {
+            width: 100%;
+            height: 100%;
+            --controls: none; /* Interfaz limpia */
+            object-fit: cover; /* Asegura que llene la pantalla */
+        }
+        /* Botones laterales de navegación */
+        .nav-btn {
+            position: fixed;
+            right: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .nav-btn:active {
+            transform: scale(0.9);
+        }
+        #btn-up { bottom: 100px; }
+        #btn-down { bottom: 30px; }
+    </style>
+</head>
+<body>
+
+    <!-- Botones de Navegación -->
+    <button id="btn-up" onclick="navigateFeed('up')" class="nav-btn" title="Anterior">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
+    <button id="btn-down" onclick="navigateFeed('down')" class="nav-btn" title="Siguiente">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+    </button>
+
+    <!-- Contenedor del Feed -->
+    <div id="video-feed" class="video-container">
+        <div class="flex items-center justify-center h-full text-white font-medium animate-pulse">
+            Cargando videos verticales...
+        </div>
+    </div>
+
+    <script>
+        const MUX_TOKEN_ID = '4aa292f3-6e0f-49da-ac2e-1f54aa24e00a';
+        const MUX_TOKEN_SECRET = 'ZpyyyHvjOqLN2ZLnGGMlG8OEaQickNT6PvTG7RviLToMSTzV1JYRQJxHd0N6Me3xX7wXA+4iLzd';
+        const PROXY = 'https://cors-anywhere.herokuapp.com/';
+        const MUX_API_BASE = 'https://api.mux.com/video/v1';
+
+        window.onload = loadFeed;
+
+        async function loadFeed() {
+            const container = document.getElementById('video-feed');
+            try {
+                const auth = btoa(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`);
+                const response = await fetch(PROXY + MUX_API_BASE + '/assets', {
+                    headers: {
+                        'Authorization': `Basic ${auth}`,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) throw new Error("Error al conectar con Mux.");
+                
+                const json = await response.json();
+                
+                // FILTRO CRÍTICO: Solo assets listos Y con relación de aspecto 9:16
+                const verticalAssets = json.data.filter(asset => {
+                    const isReady = asset.status === 'ready';
+                    const isVertical = asset.aspect_ratio === '9:16';
+                    return isReady && isVertical;
+                });
+
+                if (!verticalAssets || verticalAssets.length === 0) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-white p-6 text-center">
+                            <p class="italic opacity-70">No se encontraron videos en formato 9:16.</p>
+                            <p class="text-xs mt-2 text-gray-500">Solo se muestran videos verticales nativos.</p>
+                        </div>`;
+                    return;
+                }
+
+                // Generar las tarjetas de video
+                container.innerHTML = verticalAssets.map((asset) => `
+                    <div class="video-card">
+                        <mux-player
+                            playback-id="${asset.playback_ids[0].id}"
+                            loop
+                            muted
+                            playsinline
+                            autoplay
+                            stream-type="on-demand"
+                        ></mux-player>
+                    </div>
+                `).join('');
+
+                // Configurar el observador para reproducción automática
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const player = entry.target.querySelector('mux-player');
+                        if (entry.isIntersecting) {
+                            player.play().catch(() => {});
+                        } else {
+                            player.pause();
+                        }
+                    });
+                }, { threshold: 0.7 });
+
+                document.querySelectorAll('.video-card').forEach(card => observer.observe(card));
+
+            } catch (err) {
+                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-red-500 p-4 text-center">
+                    <p class="font-bold">Error de conexión</p>
+                    <p class="text-sm mt-2">Verifica el proxy de CORS Anywhere.</p>
+                </div>`;
+            }
+        }
+
+        function navigateFeed(direction) {
+            const container = document.getElementById('video-feed');
+            const height = window.innerHeight;
+            if (direction === 'down') {
+                container.scrollBy({ top: height, behavior: 'smooth' });
+            } else {
+                container.scrollBy({ top: -height, behavior: 'smooth' });
+            }
+        }
+    </script>
+</body>
+</html>
