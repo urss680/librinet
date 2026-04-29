@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grabador VLIP - 30s Obligatorios</title>
+    <title>Grito Challenge - Color Progresivo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -15,366 +15,385 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
         }
 
         .camera-container {
             position: relative;
             height: 100vh;
-            width: calc(100vh * 9 / 16);
-            max-width: 100vw;
-            background: #1a1a1a;
+            width: 100vw;
+            max-width: 56.25vh; 
+            background: #000;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
 
-        #preview {
+        #video-hidden { 
             position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #game-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
             height: 100%;
-            width: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); 
+            z-index: 30;
+            background: #000;
         }
 
-        .mirror-off #preview {
-            transform: scaleX(1);
-        }
-
-        .controls {
+        #start-screen {
             position: absolute;
-            bottom: 40px;
-            width: 100%;
+            inset: 0;
+            z-index: 90;
+            background: rgba(0,0,0,0.9);
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
-            z-index: 50;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .mic-icon {
+            width: 80px;
+            height: 80px;
+            background: #ec4899;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 20px rgba(236, 72, 153, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+        }
+
+        #final-overlay-ui {
+            position: absolute;
+            bottom: 120px;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: auto;
         }
 
         .record-btn {
-            width: 75px;
-            height: 75px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             border: 4px solid white;
             display: flex;
             align-items: center;
             justify-content: center;
             background: transparent;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            z-index: 60;
+            position: absolute;
+            bottom: 40px;
         }
 
         .record-btn-inner {
-            width: 55px;
-            height: 55px;
+            width: 60px;
+            height: 60px;
             background-color: #ef4444;
             border-radius: 50%;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s;
         }
 
-        .recording .record-btn-inner {
-            border-radius: 8px;
-            transform: scale(0.5);
+        .recording .record-btn-inner { 
+            border-radius: 10px; 
+            transform: scale(0.5); 
         }
 
-        .timer {
-            font-size: 1.1rem;
-            font-weight: 700;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);
-            padding: 6px 16px;
-            border-radius: 20px;
-            letter-spacing: 0.05em;
-        }
-
-        .warning-msg {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(239, 68, 68, 0.9);
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            display: none;
-            z-index: 70;
-            width: 80%;
-        }
-
-        .switch-btn {
-            position: absolute;
-            right: 20px;
-            bottom: 0px;
-            background: rgba(255,255,255,0.2);
-            backdrop-filter: blur(10px);
-            padding: 12px;
-            border-radius: 50%;
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            cursor: pointer;
-        }
-
-        .progress-bar-container {
+        .progress-bar {
             position: absolute;
             top: 20px;
             left: 20px;
             right: 20px;
-            height: 4px;
+            height: 6px;
             background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-            z-index: 60;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background: #ef4444;
-            width: 0%;
-            border-radius: 2px;
-            transition: width 0.1s linear;
-        }
-
-        .uploading-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.9);
+            border-radius: 3px;
+            z-index: 70;
             display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
         }
 
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-left-color: #ef4444;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
+        .progress-fill { 
+            height: 100%; 
+            background: #ec4899; 
+            width: 0%; 
         }
 
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .volume-meter {
+            position: absolute;
+            left: 20px;
+            bottom: 40px;
+            top: 40px;
+            width: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            z-index: 80;
+            display: none;
+        }
+
+        .volume-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, #ec4899, #6366f1);
+            border-radius: 5px;
+            transition: height 0.05s ease;
+        }
     </style>
 </head>
 <body>
 
     <div class="camera-container" id="cam-box">
-        <div class="progress-bar-container">
-            <div class="progress-bar-fill" id="recording-progress"></div>
-        </div>
-
-        <div id="warning" class="warning-msg">
-            <p class="font-bold">¡Video descartado!</p>
-            <p class="text-xs mt-1">Debes grabar los 30 segundos completos.</p>
-        </div>
+        <div class="progress-bar" id="p-bar"><div class="progress-fill" id="p-fill"></div></div>
         
-        <video id="preview" autoplay muted playsinline></video>
+        <div class="volume-meter" id="v-meter">
+            <div class="volume-fill" id="v-fill" style="height: 0%"></div>
+        </div>
 
-        <div class="controls">
-            <div class="timer" id="timer-display">00:00 / 00:30</div>
-            
-            <div class="flex items-center justify-center w-full relative">
-                <button id="record-trigger" class="record-btn">
-                    <div class="record-btn-inner"></div>
-                </button>
+        <video id="video-hidden" autoplay muted playsinline></video>
+        <canvas id="game-canvas"></canvas>
 
-                <button id="switch-camera" class="switch-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-                </button>
+        <div id="start-screen">
+            <div class="mic-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="white" viewBox="0 0 256 256"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0ZM200,128a8,8,0,0,1-16,0,56,56,0,0,0-112,0,8,8,0,0,1-16,0,72.08,72.08,0,0,1,64-71.6V32a8,8,0,0,1,16,0V56.4A72.08,72.08,0,0,1,200,128Z"></path></svg>
+            </div>
+            <h1 class="text-3xl font-black text-pink-500 uppercase italic">Grito Challenge</h1>
+            <p class="text-gray-300 mt-4 max-w-[250px]">Tu color cambiará progresivamente con tu grito.</p>
+            <p class="text-pink-400 font-bold mt-2">TIEMPO: 30 SEGUNDOS</p>
+            <button onclick="startApp()" class="mt-8 bg-white text-black font-bold px-8 py-3 rounded-full hover:bg-pink-500 hover:text-white transition-colors">EMPEZAR</button>
+        </div>
+
+        <div id="final-overlay-ui">
+            <div class="flex gap-8">
+                <button onclick="location.reload()" class="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center text-2xl shadow-lg border-4 border-white/20">✕</button>
+                <button onclick="confirmUpload()" class="w-16 h-16 rounded-full bg-green-600 flex items-center justify-center text-2xl shadow-lg border-4 border-white/20">✓</button>
+            </div>
+            <div id="upload-status" class="mt-4 hidden flex items-center gap-2">
+                <div class="animate-spin rounded-full h-4 w-4 border-2 border-pink-500 border-t-transparent"></div>
+                <span class="text-xs font-bold">SUBIENDO RETO...</span>
             </div>
         </div>
-    </div>
 
-    <div id="upload-overlay" class="uploading-overlay">
-        <div class="spinner mb-4"></div>
-        <p class="text-lg font-bold">Subiendo video vertical...</p>
-        <p class="text-sm text-gray-400" id="upload-status">Procesando audio y video</p>
+        <button id="record-trigger" class="record-btn" style="display: none;">
+            <div class="record-btn-inner"></div>
+        </button>
     </div>
 
     <script>
         const MUX_TOKEN_ID = '4aa292f3-6e0f-49da-ac2e-1f54aa24e00a';
         const MUX_TOKEN_SECRET = 'ZpyyyHvjOqLN2ZLnGGMlG8OEaQickNT6PvTG7RviLToMSTzV1JYRQJxHd0N6Me3xX7wXA+4iLzd';
         const PROXY = 'https://cors-anywhere.herokuapp.com/';
-        const MUX_API_BASE = 'https://api.mux.com/video/v1';
 
-        let mediaRecorder;
-        let recordedChunks = [];
-        let stream;
-        let isRecording = false;
-        let startTime;
-        let timerInterval;
-        let currentFacingMode = 'user'; 
-        const MAX_DURATION = 30000;
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const video = document.getElementById('video-hidden');
+        
+        let mediaRecorder, recordedChunks = [], camStream;
+        let audioContext, analyser, dataArray;
+        let isRecording = false, isGameOver = false;
+        let startTime, currentVolume = 0;
+        let paintLevel = 0; 
+        const DURATION = 30000; 
 
-        const videoPreview = document.getElementById('preview');
-        const camBox = document.getElementById('cam-box');
-        const recordBtn = document.getElementById('record-trigger');
-        const timerDisplay = document.getElementById('timer-display');
-        const progressBar = document.getElementById('recording-progress');
-        const uploadOverlay = document.getElementById('upload-overlay');
-        const warningBox = document.getElementById('warning');
-        const switchBtn = document.getElementById('switch-camera');
-
-        async function startCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
+        async function startApp() {
             try {
-                const constraints = {
-                    video: { 
-                        facingMode: currentFacingMode,
-                        aspectRatio: 9/16,
-                        width: { ideal: 1080 },
-                        height: { ideal: 1920 }
-                    },
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    }
-                };
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 1280 } },
+                    audio: true
+                });
                 
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-                videoPreview.srcObject = stream;
+                camStream = stream;
+                video.srcObject = stream;
+                
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-                if (currentFacingMode === 'user') {
-                    camBox.classList.remove('mirror-off');
-                } else {
-                    camBox.classList.add('mirror-off');
-                }
-            } catch (err) {
-                console.error("Permisos denegados:", err);
-                alert("Se requieren permisos de cámara y micrófono.");
+                video.onloadedmetadata = () => {
+                    canvas.width = 720; 
+                    canvas.height = 1280;
+                    document.getElementById('start-screen').style.display = 'none';
+                    document.getElementById('record-trigger').style.display = 'flex';
+                    document.getElementById('v-meter').style.display = 'block';
+                    renderLoop();
+                };
+            } catch (e) { 
+                alert("Se requieren permisos de cámara y micrófono."); 
             }
         }
 
-        switchBtn.onclick = () => {
-            if (isRecording) return; // Evitar cambio durante grabación
-            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            startCamera();
-        };
-
-        recordBtn.onclick = () => {
-            if (!isRecording) {
-                startRecording();
-            } else {
-                // Si el usuario intenta parar antes, descartamos
-                cancelRecording();
-            }
-        };
-
-        function startRecording() {
-            recordedChunks = [];
-            const options = { mimeType: 'video/webm;codecs=vp8,opus' };
-            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options.mimeType = 'video/webm';
-            }
-
-            mediaRecorder = new MediaRecorder(stream, options);
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) recordedChunks.push(e.data);
-            };
-            
-            // Solo subimos si la grabación termina por el temporizador
-            mediaRecorder.onstop = () => {
-                const elapsed = Date.now() - startTime;
-                if (elapsed >= MAX_DURATION - 100) { // Margen de 100ms
-                    uploadToMux();
-                } else {
-                    console.log("Grabación cancelada por tiempo insuficiente.");
-                }
-            };
-
-            mediaRecorder.start();
-            isRecording = true;
-            recordBtn.classList.add('recording');
-            startTime = Date.now();
-            timerInterval = setInterval(updateTimer, 100);
-        }
-
-        function cancelRecording() {
-            if (!isRecording) return;
-            
-            // Detener lógicamente
-            isRecording = false;
-            clearInterval(timerInterval);
-            mediaRecorder.stop();
-            
-            // Limpiar UI y mostrar aviso
-            recordBtn.classList.remove('recording');
-            timerDisplay.innerText = "00:00 / 00:30";
-            progressBar.style.width = '0%';
-            recordedChunks = []; // Borrar lo grabado
-            
-            showWarning();
-        }
-
-        function showWarning() {
-            warningBox.style.display = 'block';
-            setTimeout(() => {
-                warningBox.style.display = 'none';
-            }, 3000);
-        }
-
-        function updateTimer() {
-            const elapsed = Date.now() - startTime;
-            
-            if (elapsed >= MAX_DURATION) {
-                isRecording = false;
-                clearInterval(timerInterval);
-                mediaRecorder.stop();
-                recordBtn.classList.remove('recording');
-                timerDisplay.innerText = "00:00 / 00:30";
-                progressBar.style.width = '0%';
+        function renderLoop() {
+            if (!video.videoWidth) {
+                requestAnimationFrame(renderLoop);
                 return;
             }
 
-            const seconds = Math.floor(elapsed / 1000);
-            const ms = Math.floor((elapsed % 1000) / 10);
-            timerDisplay.innerText = `${seconds.toString().padStart(2, '0')}:${ms.toString().padStart(2, '0')} / 00:30`;
-            progressBar.style.width = `${(elapsed / MAX_DURATION) * 100}%`;
-        }
-
-        async function uploadToMux() {
-            uploadOverlay.style.display = 'flex';
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
-            
-            try {
-                const auth = btoa(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`);
-                const uploadRes = await fetch(PROXY + MUX_API_BASE + '/uploads', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Basic ${auth}`,
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({ 
-                        new_asset_settings: { playback_policy: ['public'] },
-                        cors_origin: "*" 
-                    })
-                });
-
-                const uploadData = await uploadRes.json();
-                const uploadUrl = uploadData.data.url;
-
-                await fetch(uploadUrl, { method: 'PUT', body: blob });
-
-                document.getElementById('upload-status').innerText = "¡Subida exitosa!";
-                setTimeout(() => {
-                    uploadOverlay.style.display = 'none';
-                    document.getElementById('upload-status').innerText = "Procesando audio y video";
-                }, 2000);
-
-            } catch (err) {
-                alert("Error: " + err.message);
-                uploadOverlay.style.display = 'none';
+            if (analyser) {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for(let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                currentVolume = sum / dataArray.length; 
+                
+                let volPercent = Math.min(100, (currentVolume / 100) * 100);
+                document.getElementById('v-fill').style.height = volPercent + "%";
+                
+                if (isRecording && !isGameOver) {
+                    // Detección de volumen para subir nivel
+                    if (volPercent > 15) {
+                        const boost = (volPercent - 15) / 100 * 0.4;
+                        paintLevel = Math.min(100, paintLevel + boost);
+                    }
+                }
             }
+
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. Dibujar Video Base
+            const scale = Math.max(canvas.width / video.videoWidth, canvas.height / video.videoHeight);
+            const w = video.videoWidth * scale;
+            const h = video.videoHeight * scale;
+            const x = (canvas.width - w) / 2;
+            const y = (canvas.height - h) / 2;
+
+            ctx.save();
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, x, y, w, h);
+
+            // 2. EFECTO DE COLOR PROGRESIVO (Desde 0% hasta 100%)
+            if (paintLevel > 0) {
+                const intensity = paintLevel / 100; // Proporción directa 0 a 1
+                
+                // Capa de mezcla de color (Multiplicar para tonos oscuros/saturados)
+                ctx.globalCompositeOperation = "multiply";
+                ctx.fillStyle = `rgba(236, 72, 153, ${intensity * 0.7})`; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Capa de brillo (Trama para los tonos violetas vibrantes)
+                ctx.globalCompositeOperation = "screen";
+                ctx.fillStyle = `rgba(99, 102, 241, ${intensity * 0.4})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.globalCompositeOperation = "source-over";
+            }
+            ctx.restore();
+
+            // 3. Interfaz de Usuario
+            if (isRecording) {
+                const barY = canvas.height - 120;
+                // Fondo barra
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.beginPath(); ctx.roundRect(80, barY, 560, 50, 25); ctx.fill();
+                
+                // Relleno barra con gradiente
+                const grad = ctx.createLinearGradient(80, 0, 640, 0);
+                grad.addColorStop(0, '#ec4899');
+                grad.addColorStop(1, '#6366f1');
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.roundRect(80, barY, (paintLevel / 100) * 560, 50, 25); ctx.fill();
+                
+                // Texto de Potencia
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 32px Arial';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = "black";
+                ctx.shadowBlur = 10;
+                ctx.fillText(`POTENCIA: ${Math.floor(paintLevel)}%`, canvas.width/2, barY - 20);
+                ctx.shadowBlur = 0;
+
+                if (isGameOver) {
+                    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#ec4899';
+                    ctx.font = 'black 140px Arial Black';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(Math.floor(paintLevel) + "%", canvas.width/2, canvas.height/2);
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 40px Arial';
+                    ctx.fillText(paintLevel >= 100 ? "¡PODER ABSOLUTO!" : "RESULTADO FINAL", canvas.width/2, canvas.height/2 + 70);
+                }
+            }
+            
+            ctx.restore();
+            requestAnimationFrame(renderLoop);
         }
 
-        startCamera();
+        document.getElementById('record-trigger').onclick = async () => {
+            if (isRecording) return;
+            
+            isRecording = true;
+            isGameOver = false;
+            paintLevel = 0;
+            recordedChunks = [];
+            document.getElementById('cam-box').classList.add('recording');
+            document.getElementById('p-bar').style.display = 'block';
+
+            const canvasStream = canvas.captureStream(30);
+            canvasStream.addTrack(camStream.getAudioTracks()[0]);
+
+            mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+            mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+            mediaRecorder.start();
+
+            startTime = Date.now();
+            const timer = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                if (elapsed >= DURATION) {
+                    clearInterval(timer);
+                    stopRecording();
+                    return;
+                }
+                document.getElementById('p-fill').style.width = (elapsed / DURATION * 100) + "%";
+            }, 100);
+        };
+
+        function stopRecording() {
+            isGameOver = true;
+            document.getElementById('final-overlay-ui').style.display = 'flex';
+            document.getElementById('record-trigger').style.display = 'none';
+        }
+
+        async function confirmUpload() {
+            document.getElementById('upload-status').classList.remove('hidden');
+            mediaRecorder.stop();
+            
+            setTimeout(async () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                try {
+                    const auth = btoa(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`);
+                    const res = await fetch(PROXY + 'https://api.mux.com/video/v1/uploads', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ new_asset_settings: { playback_policy: ['public'] }, cors_origin: "*" })
+                    });
+                    const data = await res.json();
+                    await fetch(data.data.url, { method: 'PUT', body: blob });
+                    alert("¡Reto subido con éxito!"); location.reload();
+                } catch (e) { alert("Error en la subida."); }
+            }, 600);
+        }
     </script>
 </body>
 </html>
