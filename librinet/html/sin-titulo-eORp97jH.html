@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VLIP - Full Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mux Player para la visualización -->
+    <script src="https://unpkg.com/@mux/mux-player"></script>
+    <style>
+        body {
+            background-color: black;
+            margin: 0;
+            overflow: hidden;
+        }
+        /* Contenedor principal del feed */
+        .video-container {
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            height: 100vh;
+            width: 100vw;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+        }
+        .video-container::-webkit-scrollbar {
+            display: none;
+        }
+        /* Cada "diapositiva" de video */
+        .video-card {
+            scroll-snap-align: start;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+        mux-player {
+            width: 100%;
+            height: 100%;
+            --controls: none; /* Interfaz limpia */
+            object-fit: contain; /* Muestra todo el video sin recortar */
+        }
+        /* Botones laterales de navegación */
+        .nav-btn {
+            position: fixed;
+            right: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        #btn-up { bottom: 100px; }
+        #btn-down { bottom: 30px; }
+
+        /* Mensaje de interacción inicial para habilitar audio */
+        #unmute-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Capa para activar audio (Requerido por navegadores) -->
+    <div id="unmute-overlay" onclick="enableAudio()">
+        <div class="text-white text-center p-6 border border-white/20 rounded-2xl bg-white/5 backdrop-blur-md">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+            <p class="font-bold">Toca para empezar a ver</p>
+            <p class="text-sm opacity-60">El audio se activará automáticamente</p>
+        </div>
+    </div>
+
+    <!-- Botones de Navegación -->
+    <button id="btn-up" onclick="navigateFeed('up')" class="nav-btn" title="Anterior">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
+    <button id="btn-down" onclick="navigateFeed('down')" class="nav-btn" title="Siguiente">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+    </button>
+
+    <!-- Contenedor del Feed -->
+    <div id="video-feed" class="video-container">
+        <div class="flex items-center justify-center h-full text-white font-medium animate-pulse">
+            Cargando feed de videos...
+        </div>
+    </div>
+
+    <script>
+        const MUX_TOKEN_ID = '4aa292f3-6e0f-49da-ac2e-1f54aa24e00a';
+        const MUX_TOKEN_SECRET = 'ZpyyyHvjOqLN2ZLnGGMlG8OEaQickNT6PvTG7RviLToMSTzV1JYRQJxHd0N6Me3xX7wXA+4iLzd';
+        const PROXY = 'https://cors-anywhere.herokuapp.com/';
+        const MUX_API_BASE = 'https://api.mux.com/video/v1';
+
+        let audioEnabled = false;
+
+        function enableAudio() {
+            audioEnabled = true;
+            document.getElementById('unmute-overlay').style.display = 'none';
+            // Intentar reproducir el video actual ahora que hay interacción
+            const currentVideo = document.querySelector('.video-card mux-player');
+            if (currentVideo) {
+                currentVideo.muted = false;
+                currentVideo.play();
+            }
+        }
+
+        async function loadFeed() {
+            const container = document.getElementById('video-feed');
+            try {
+                const auth = btoa(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`);
+                const response = await fetch(PROXY + MUX_API_BASE + '/assets', {
+                    headers: {
+                        'Authorization': `Basic ${auth}`,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) throw new Error("Error al conectar con Mux.");
+                
+                const json = await response.json();
+                
+                // Quitamos el filtro de aspecto 9:16 para mostrar TODOS los videos listos
+                const allAssets = json.data.filter(asset => asset.status === 'ready');
+
+                if (!allAssets || allAssets.length === 0) {
+                    container.innerHTML = `<div class="text-white text-center h-full flex items-center justify-center">No hay videos listos.</div>`;
+                    return;
+                }
+
+                // Generar las tarjetas de video
+                container.innerHTML = allAssets.map((asset) => `
+                    <div class="video-card">
+                        <mux-player
+                            playback-id="${asset.playback_ids[0].id}"
+                            loop
+                            playsinline
+                            autoplay
+                            stream-type="on-demand"
+                        ></mux-player>
+                    </div>
+                `).join('');
+
+                // Configurar el observador para reproducción y audio
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const player = entry.target.querySelector('mux-player');
+                        if (entry.isIntersecting) {
+                            if (audioEnabled) player.muted = false;
+                            player.play().catch(e => console.log("Auto-play bloqueado hasta interacción"));
+                        } else {
+                            player.pause();
+                        }
+                    });
+                }, { threshold: 0.6 });
+
+                document.querySelectorAll('.video-card').forEach(card => observer.observe(card));
+
+            } catch (err) {
+                container.innerHTML = `<div class="text-red-500 text-center h-full flex items-center justify-center">Error al cargar videos.</div>`;
+            }
+        }
+
+        function navigateFeed(direction) {
+            const container = document.getElementById('video-feed');
+            const height = window.innerHeight;
+            container.scrollBy({ top: direction === 'down' ? height : -height, behavior: 'smooth' });
+        }
+
+        window.onload = loadFeed;
+    </script>
+</body>
+</html>
