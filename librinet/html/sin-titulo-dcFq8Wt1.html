@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRUPO Z</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        .bg-doodles {
+            background-color: #fefce8;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 15c-5 0-9 4-9 9s4 9 9 9 9-4 9-9-4-9-9-9zm0 14c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5zM10 40c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm40 0c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5z' fill='%23eab308' fill-opacity='0.15'/%3E%3Ccircle cx='15' cy='15' r='2' fill='%23eab308' fill-opacity='0.15'/%3E%3Ccircle cx='45' cy='45' r='2' fill='%23eab308' fill-opacity='0.15'/%3E%3C/svg%3E");
+        }
+
+        .message-bubble { 
+            max-width: 85%; 
+            border-radius: 1.2rem; 
+            padding: 0.7rem 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            position: relative;
+            transition: all 0.25s ease;
+        }
+        
+        .bubble-gines { background-color: #ffffff; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; }
+        .bubble-antonio { background-color: #22c55e; color: #ffffff; border-bottom-right-radius: 4px; }
+
+        .accent-yellow { background-color: #facc15; color: #713f12; }
+        
+        .date-separator {
+            background-color: #facc15;
+            color: #713f12;
+            font-size: 0.65rem;
+            font-weight: 900;
+            padding: 0.25rem 0.75rem;
+            border-radius: 99px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 1.5rem auto 1rem;
+            display: inline-block;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .recording-pulse {
+            animation: pulse-red 1.5s infinite;
+            background-color: #ef4444 !important;
+            color: white !important;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        audio {
+            height: 35px;
+            width: 210px;
+            margin-top: 5px;
+            filter: sepia(20%) saturate(70%) grayscale(1) contrast(90%) invert(12%);
+        }
+        .bubble-antonio audio { filter: invert(1) brightness(1.5); }
+
+        /* Estilo para imágenes */
+        .chat-img {
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            max-height: 250px;
+            object-fit: cover;
+            width: 100%;
+            margin-top: 5px;
+        }
+        .chat-img:hover { opacity: 0.9; }
+
+        /* Modal de imagen */
+        #img-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-doodles h-screen flex flex-col overflow-hidden">
+
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs text-center border-4 border-yellow-400">
+            <div class="text-6xl mb-4">🍋</div>
+            <h1 class="text-2xl font-black text-slate-800 mb-1">GRUPO Z</h1>
+            <p class="text-slate-500 mb-6 text-xs font-bold uppercase tracking-widest">Código de Acceso</p>
+            <input type="password" id="access-code" maxlength="4" placeholder="••••" 
+                   class="w-full text-center text-3xl font-bold tracking-[0.5em] px-4 py-4 rounded-2xl border-2 border-slate-100 focus:border-yellow-400 outline-none transition-all mb-4 bg-slate-50">
+            <button onclick="attemptLogin()" class="w-full accent-yellow hover:bg-yellow-500 font-black py-4 rounded-2xl shadow-lg text-lg">ENTRAR</button>
+            <p id="login-error" class="text-red-500 text-[10px] mt-4 font-bold opacity-0 uppercase">Código incorrecto</p>
+        </div>
+    </div>
+
+    <div id="img-modal" onclick="this.style.display='none'">
+        <img id="modal-content" class="max-w-full max-h-full rounded-lg shadow-2xl border-2 border-white">
+        <span class="absolute top-5 right-5 text-white font-black text-2xl">×</span>
+    </div>
+
+    <main id="chat-app" class="hidden flex-col h-full max-w-md mx-auto w-full bg-slate-50/60 backdrop-blur-md shadow-2xl border-x border-slate-200">
+        <header class="p-4 bg-white border-b-2 border-yellow-400 sticky top-0 z-10 shadow-sm">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="font-black text-slate-800 text-xl">GRUPO Z</h2>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        <span class="text-[9px] uppercase font-black text-slate-400">EN LÍNEA</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-[9px] block text-slate-400 font-black uppercase">Sincronizado con</span>
+                    <span class="text-[10px] font-black text-yellow-600">Nube de Limones ☁️🍋</span>
+                </div>
+            </div>
+        </header>
+
+        <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4 hide-scrollbar flex flex-col">
+            <!-- Mensajes aquí -->
+        </div>
+
+        <footer class="p-4 bg-white border-t border-slate-200">
+            <div class="flex gap-2 items-center">
+                <!-- Botón Imagen -->
+                <button onclick="document.getElementById('img-input').click()" class="p-3 rounded-2xl bg-slate-100 text-slate-500 hover:bg-yellow-100 hover:text-yellow-600 transition-all active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+                <input type="file" id="img-input" accept="image/*" class="hidden" onchange="uploadImage(this)">
+
+                <div class="flex-1 flex items-center bg-slate-100 p-1.5 rounded-2xl border-2 border-transparent focus-within:border-yellow-400 transition-all">
+                    <input type="text" id="message-input" placeholder="Escribe un mensaje..." 
+                           class="flex-1 bg-transparent border-none focus:ring-0 px-4 py-2 text-slate-700 font-medium outline-none">
+                    
+                    <button id="mic-btn" onclick="toggleRecording()" 
+                            class="p-2 rounded-xl bg-slate-200 text-slate-500 hover:bg-slate-300 transition-all active:scale-95">
+                        <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                        <svg id="stop-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="currentColor" viewBox="0 0 24 24">
+                            <rect x="6" y="6" width="12" height="12" rx="2" />
+                        </svg>
+                    </button>
+                </div>
+
+                <button id="send-btn" onclick="sendMessage()" class="accent-yellow p-4 rounded-2xl hover:bg-yellow-500 transition-all active:scale-90 shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+            </div>
+            <div id="status-info" class="hidden text-center text-[10px] font-black mt-2 uppercase tracking-widest">
+                <span id="status-text" class="text-red-500"></span>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxXtbU2gh_ulSw9e5WNl1JxbyWQ4nzn5DpeXix2N_c_ihL-7HYEOBhdqK5l6bk2mFsKDQ/exec';
+        const IMGBB_API_KEY = '81ba81dc488dcf05bbca3a6aad307ce7';
+        
+        let currentUser = null;
+        let lastDataHash = "";
+        let mediaRecorder = null;
+        let audioChunks = [];
+        const users = { "7777": "Gines", "7676": "Antonio" };
+
+        function attemptLogin() {
+            const code = document.getElementById('access-code').value;
+            if (users[code]) {
+                currentUser = users[code];
+                localStorage.setItem('grupoz_user', currentUser);
+                showApp();
+            } else {
+                const err = document.getElementById('login-error');
+                err.style.opacity = "1";
+                setTimeout(() => err.style.opacity = "0", 2000);
+            }
+        }
+
+        function showApp() {
+            document.getElementById('login-screen').classList.add('hidden');
+            const chatApp = document.getElementById('chat-app');
+            chatApp.classList.remove('hidden');
+            chatApp.classList.add('flex');
+            loadMessages();
+            setInterval(loadMessages, 3000);
+        }
+
+        async function loadMessages() {
+            try {
+                const response = await fetch(GOOGLE_SHEETS_URL);
+                const data = await response.json();
+                const currentDataHash = JSON.stringify(data);
+                
+                if (currentDataHash !== lastDataHash) {
+                    renderMessages(data);
+                    lastDataHash = currentDataHash;
+                }
+            } catch (err) { console.warn("Reconectando..."); }
+        }
+
+        function renderMessages(messages) {
+            const container = document.getElementById('messages-container');
+            const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+            container.innerHTML = '';
+            let lastDateLabel = "";
+
+            messages.forEach(msg => {
+                const msgDate = new Date(msg.fecha);
+                const dateLabel = msgDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+
+                if (dateLabel !== lastDateLabel) {
+                    const dateDiv = document.createElement('div');
+                    dateDiv.className = 'w-full text-center';
+                    dateDiv.innerHTML = `<span class="date-separator">${dateLabel}</span>`;
+                    container.appendChild(dateDiv);
+                    lastDateLabel = dateLabel;
+                }
+                appendMessageUI(msg);
+            });
+            if (isAtBottom) container.scrollTop = container.scrollHeight;
+        }
+
+        function appendMessageUI(msg) {
+            const container = document.getElementById('messages-container');
+            const isMe = msg.usuario === currentUser;
+            const isAntonio = msg.usuario === "Antonio";
+            
+            // Detectar tipo de contenido
+            const isAudio = msg.mensaje && msg.mensaje.startsWith('data:audio');
+            const isImage = msg.mensaje && (msg.mensaje.includes('i.ibb.co') || msg.mensaje.startsWith('http') && (msg.mensaje.endsWith('.jpg') || msg.mensaje.endsWith('.png') || msg.mensaje.endsWith('.gif') || msg.mensaje.endsWith('.jpeg')));
+            
+            const msgWrapper = document.createElement('div');
+            msgWrapper.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} w-full mb-2`;
+
+            let bubbleClass = isAntonio ? 'bubble-antonio' : 'bubble-gines';
+            
+            let contentHtml = "";
+            if (isAudio) {
+                contentHtml = `<audio controls preload="metadata" src="${msg.mensaje}"></audio>`;
+            } else if (isImage) {
+                contentHtml = `<img src="${msg.mensaje}" class="chat-img" onclick="openZoom('${msg.mensaje}')">`;
+            } else {
+                contentHtml = `<p class="text-[13px] font-black leading-tight">${msg.mensaje}</p>`;
+            }
+
+            msgWrapper.innerHTML = `
+                <span class="text-[9px] font-black text-slate-400 mb-0.5 px-2 uppercase">${msg.usuario}</span>
+                <div class="message-bubble ${bubbleClass}">
+                    ${contentHtml}
+                    <div class="flex items-center justify-end gap-2 mt-1 opacity-60">
+                        <span class="text-[8px] font-black">
+                            ${new Date(msg.fecha).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(msgWrapper);
+        }
+
+        async function uploadImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const status = document.getElementById('status-info');
+            const statusText = document.getElementById('status-text');
+            status.classList.remove('hidden');
+            statusText.innerText = "Subiendo imagen...";
+            statusText.className = "text-yellow-600";
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    await sendPayload(result.data.url);
+                    status.classList.add('hidden');
+                } else {
+                    throw new Error("Error en subida");
+                }
+            } catch (err) {
+                statusText.innerText = "Error al subir";
+                statusText.className = "text-red-500";
+                setTimeout(() => status.classList.add('hidden'), 3000);
+            }
+            input.value = ""; // Reset input
+        }
+
+        function openZoom(url) {
+            const modal = document.getElementById('img-modal');
+            const content = document.getElementById('modal-content');
+            content.src = url;
+            modal.style.display = 'flex';
+        }
+
+        async function toggleRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+                audioChunks = [];
+                
+                document.getElementById('mic-btn').classList.add('recording-pulse');
+                document.getElementById('mic-icon').classList.add('hidden');
+                document.getElementById('stop-icon').classList.remove('hidden');
+                document.getElementById('status-info').classList.remove('hidden');
+                document.getElementById('status-text').innerText = "Grabando...";
+
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = () => {
+                        if (reader.result.length > 100) sendPayload(reader.result);
+                    };
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                mediaRecorder.start();
+                setTimeout(() => { if (mediaRecorder.state === 'recording') stopRecording(); }, 15000);
+            } catch (err) { alert("Permite el micro"); }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                document.getElementById('mic-btn').classList.remove('recording-pulse');
+                document.getElementById('mic-icon').classList.remove('hidden');
+                document.getElementById('stop-icon').classList.add('hidden');
+                document.getElementById('status-info').classList.add('hidden');
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            await sendPayload(text);
+        }
+
+        async function sendPayload(content) {
+            const payload = {
+                usuario: currentUser,
+                mensaje: content,
+                uid: currentUser,
+                fecha: new Date().toISOString()
+            };
+
+            try {
+                await fetch(GOOGLE_SHEETS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
+                });
+                setTimeout(loadMessages, 500);
+            } catch (err) { console.error(err); }
+        }
+
+        document.getElementById('message-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        window.onload = () => {
+            const saved = localStorage.getItem('grupoz_user');
+            if (saved) { currentUser = saved; showApp(); }
+        };
+    </script>
+</body>
+</html>
