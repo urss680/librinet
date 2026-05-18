@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creador de Fichas Interactivas Pro</title>
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js para renderizar archivos PDF directamente -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Ocultar barra de scroll predeterminada de forma estética */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Estilos específicos para la zona de arrastre */
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col overflow-x-hidden">
+
+    <script>
+        // Configurar PDF.js Worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        let appState = {
+            mode: 'edit', // 'edit' o 'preview'
+            pages: [], // Lista de objetos { dataUrl, width, height }
+            currentPageIdx: 0,
+            gaps: [], // Lista de objetos { id, page, x, y, w, h, answer, studentAnswer: '' }
+            selectedGapId: null,
+            zoom: 100, // Porcentaje de zoom para visualización
+            undoStack: [],
+            redoStack: []
+        };
+
+        // Identificadores únicos para los gaps
+        let gapIdCounter = 1;
+    </script>
+
+    <header class="bg-slate-950 border-b border-slate-800 py-4 px-6 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                        Fichas Interactivas <span class="bg-blue-500/10 text-blue-400 text-xs px-2.5 py-0.5 rounded-full border border-blue-500/20">Studio</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Crea, edita, autocalifica y exporta fichas interactivas autónomas</p>
+                </div>
+            </div>
+
+            <!-- Controles del Modo actual -->
+            <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                <button id="btnModeEdit" onclick="switchMode('edit')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 bg-blue-600 text-white shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    Creador / Editor
+                </button>
+                <button id="btnModePreview" onclick="switchMode('preview')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 text-slate-400 hover:text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    Vista Previa (Estudiante)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+        <!-- Panel Lateral de Herramientas (Configuración, Carga y Acciones) -->
+        <section class="lg:col-span-1 flex flex-col gap-5">
+            
+            <!-- Bloque 1: Carga de Archivos -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">1. Cargar Documento</h3>
+                
+                <div class="relative group border-2 border-dashed border-slate-800 hover:border-blue-500/50 rounded-xl p-4 transition-all duration-300 text-center cursor-pointer bg-slate-900/40">
+                    <input type="file" id="fileInput" accept="image/*,application/pdf" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileUpload(event)">
+                    <div class="flex flex-col items-center gap-2 pointer-events-none">
+                        <svg class="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-slate-200">Subir PDF o Imagen</span>
+                        <span class="text-xs text-slate-500">Admite arrastrar y soltar</span>
+                    </div>
+                </div>
+                
+                <p class="text-xs text-slate-400 mt-3 italic text-center">Iniciamos con una ficha de ejemplo para facilitar tus pruebas.</p>
+            </div>
+
+            <!-- Bloque 2: Herramientas del Editor (Visible solo en Modo Edit) -->
+            <div id="editorTools" class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col gap-4">
+                <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">2. Caja de Herramientas</h3>
+                
+                <button onclick="addNewGap()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 shadow-md shadow-blue-500/10 hover:shadow-blue-500/20 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Añadir Hueco (Gap)
+                </button>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btnUndo" onclick="triggerUndo()" disabled class="bg-slate-900 hover:bg-slate-850 text-slate-300 disabled:opacity-40 disabled:hover:bg-slate-900 border border-slate-800 py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                        </svg>
+                        Deshacer
+                    </button>
+                    <button id="btnRedo" onclick="triggerRedo()" disabled class="bg-slate-900 hover:bg-slate-850 text-slate-300 disabled:opacity-40 disabled:hover:bg-slate-900 border border-slate-800 py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 10h-10a8 8 0 00-8 8v2m18-20l-6 6m6-6l-6-6"></path>
+                        </svg>
+                        Rehacer
+                    </button>
+                </div>
+
+                <div class="border-t border-slate-800/80 pt-4 mt-1">
+                    <h4 class="text-xs font-semibold text-slate-400 mb-2">Instrucciones de Edición:</h4>
+                    <ul class="text-xs text-slate-400 space-y-2 list-disc list-inside">
+                        <li>Escribe la <strong class="text-blue-400">respuesta correcta</strong> dentro del hueco azul.</li>
+                        <li>Arrastra el hueco para moverlo por la hoja.</li>
+                        <li>Usa el <strong class="text-blue-400">punto inferior derecho</strong> para redimensionarlo.</li>
+                        <li>Usa la papelera para eliminarlo.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Bloque 3: Acciones del Estudiante (Visible en Modo Preview) -->
+            <div id="studentTools" class="hidden bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col gap-4">
+                <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Modo Simulación</h3>
+                
+                <div class="bg-blue-950/20 border border-blue-500/20 rounded-xl p-3">
+                    <p class="text-xs text-blue-300 leading-relaxed">Completa los huecos de la ficha tal como lo haría un estudiante y pulsa el botón de abajo para corregir automáticamente.</p>
+                </div>
+
+                <button onclick="gradeSheet()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Corregir Ficha
+                </button>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="revealAnswers()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 py-2.5 px-3 rounded-lg text-xs font-semibold text-slate-300 transition-all flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        Ver Soluciones
+                    </button>
+                    <button onclick="resetSheetPractice()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 py-2.5 px-3 rounded-lg text-xs font-semibold text-slate-300 transition-all flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"></path></svg>
+                        Reiniciar
+                    </button>
+                </div>
+
+                <!-- Contenedor del Score del estudiante -->
+                <div id="gradingResultBox" class="hidden mt-2 bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                    <div class="text-xs text-slate-400 uppercase tracking-widest font-bold">Calificación</div>
+                    <div id="gradeScoreText" class="text-4xl font-extrabold text-blue-400 my-1">0 / 10</div>
+                    <div id="gradeFeedbackText" class="text-xs font-medium mt-1">Sigue intentándolo</div>
+                </div>
+            </div>
+
+            <!-- Bloque 4: Exportación Final (Siempre visible) -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg mt-auto">
+                <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">3. Guardar y Compartir</h3>
+                <button onclick="exportInteractiveHTML()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all duration-300 shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/20 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Exportar Ficha HTML
+                </button>
+                <p class="text-[11px] text-slate-500 mt-2 text-center">Descarga un archivo HTML autónomo para enviar directamente a los estudiantes.</p>
+            </div>
+
+        </section>
+
+        <!-- Main Workspace: Vista de la ficha y controles de navegación -->
+        <section class="lg:col-span-3 flex flex-col gap-4">
+            
+            <!-- Barra de control de página y zoom -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl px-5 py-3 flex flex-wrap items-center justify-between gap-4 shadow-md">
+                
+                <!-- Navegación de páginas -->
+                <div class="flex items-center gap-3">
+                    <button onclick="prevPage()" class="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-850 rounded-lg text-slate-300 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <span class="text-sm font-semibold text-slate-200">
+                        Pág. <span id="currentPageText">1</span> / <span id="totalPagesText">1</span>
+                    </span>
+                    <button onclick="nextPage()" class="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-850 rounded-lg text-slate-300 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Indicador de Gaps Activos -->
+                <div class="hidden sm:flex items-center gap-2 text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-slate-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+                    <span id="gapsCounterText">0</span> Huecos creados
+                </div>
+
+                <!-- Controles de Zoom -->
+                <div class="flex items-center gap-2">
+                    <button onclick="changeZoom(-10)" class="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-850 rounded-lg text-slate-300 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path></svg>
+                    </button>
+                    <span id="zoomText" class="text-xs font-semibold text-slate-200 min-w-[40px] text-center">100%</span>
+                    <button onclick="changeZoom(10)" class="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-850 rounded-lg text-slate-300 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+                    </button>
+                </div>
+
+            </div>
+
+            <div class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl p-4 md:p-6 overflow-auto flex items-start justify-center min-h-[500px] relative shadow-inner">
+                
+                <!-- Mensaje de Carga / Estado vacío -->
+                <div id="workspaceLoader" class="hidden absolute inset-0 bg-slate-950/90 z-40 flex flex-col items-center justify-center gap-3">
+                    <svg class="w-12 h-12 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-sm font-medium text-slate-300">Procesando y Renderizando páginas...</span>
+                </div>
+
+                <!-- El contenedor de la página y las capas de gaps de escritura -->
+                <div id="sheetWorkspace" class="relative bg-white shadow-2xl origin-top transition-transform duration-200" style="width: 800px; min-height: 400px;">
+                    <!-- Imagen de fondo de la ficha actual -->
+                    <img id="sheetImage" class="w-full h-auto select-none pointer-events-none block" alt="Ficha de trabajo" src="">
+                    
+                    <!-- Capa de los Gaps interactivos -->
+                    <div id="gapsOverlay" class="absolute inset-0 select-none overflow-hidden">
+                        <!-- Los elementos dinámicos interactivos se inyectan aquí mediante JS -->
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Notificación emergente flotante customizada (En lugar de alert) -->
+    <div id="toastNotification" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-950 border border-blue-500 text-white py-3 px-5 rounded-xl shadow-2xl flex items-center gap-3 z-50">
+        <span id="toastIcon" class="text-blue-500">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </span>
+        <span id="toastMessage" class="text-sm font-medium">¡Operación realizada con éxito!</span>
+    </div>
+
+    <script>
+        // Cargar un worksheet de ejemplo por defecto para que funcione de inmediato
+        window.addEventListener('load', () => {
+            loadDemoWorksheet();
+            // Iniciar escucha del teclado para combinaciones deshacer/rehacer y teclas rápidas
+            document.addEventListener('keydown', handleKeyPress);
+        });
+
+        // Muestra una notificación temporal atractiva en pantalla
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toastNotification');
+            const msgEl = document.getElementById('toastMessage');
+            const iconEl = document.getElementById('toastIcon');
+
+            msgEl.textContent = message;
+
+            if (type === 'success') {
+                toast.className = "fixed bottom-6 right-6 transform translate-y-0 opacity-100 transition-all duration-300 bg-slate-950 border border-emerald-500 text-white py-3 px-5 rounded-xl shadow-2xl flex items-center gap-3 z-50";
+                iconEl.innerHTML = `<svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            } else if (type === 'error') {
+                toast.className = "fixed bottom-6 right-6 transform translate-y-0 opacity-100 transition-all duration-300 bg-slate-950 border border-rose-500 text-white py-3 px-5 rounded-xl shadow-2xl flex items-center gap-3 z-50";
+                iconEl.innerHTML = `<svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            } else {
+                toast.className = "fixed bottom-6 right-6 transform translate-y-0 opacity-100 transition-all duration-300 bg-slate-950 border border-blue-500 text-white py-3 px-5 rounded-xl shadow-2xl flex items-center gap-3 z-50";
+                iconEl.innerHTML = `<svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            }
+
+            // Ocultar después de 3 segundos
+            setTimeout(() => {
+                toast.className = "fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-950 border border-blue-500 text-white py-3 px-5 rounded-xl shadow-2xl flex items-center gap-3 z-50";
+            }, 3500);
+        }
+
+        // Cargar un lienzo de ejemplo bonito para no abrir el Workspace vacío
+        function loadDemoWorksheet() {
+            showLoader(true);
+            const canvas = document.createElement('canvas');
+            canvas.width = 800;
+            canvas.height = 1000;
+            const ctx = canvas.getContext('2d');
+
+            // Diseñar un fondo limpio y elegante para la ficha demo
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 800, 1000);
+
+            // Cabecera decorada
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(0, 0, 800, 160);
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillRect(0, 154, 800, 6);
+
+            // Texto corporativo
+            ctx.fillStyle = '#1e293b';
+            ctx.font = 'bold 28px Inter, Arial, sans-serif';
+            ctx.fillText('FICHA INTERACTIVA DE DEMOSTRACIÓN', 50, 65);
+            ctx.fillStyle = '#64748b';
+            ctx.font = '600 14px Inter, Arial, sans-serif';
+            ctx.fillText('Nivel: Primaria - Secundaria | Materia: Conocimiento del Medio & Lengua', 50, 95);
+            
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(50, 115, 300, 30);
+            ctx.fillStyle = '#475569';
+            ctx.font = '500 13px Inter, Arial, sans-serif';
+            ctx.fillText('Nombre del Alumno: ', 60, 134);
+
+            ctx.strokeRect(400, 115, 200, 30);
+            ctx.fillText('Fecha: ___/___/2026', 410, 134);
+
+            // Ejercicios
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 18px Inter, Arial, sans-serif';
+            ctx.fillText('Actividad 1: Completa los huecos con el vocabulario correcto.', 50, 220);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = '15px Inter, Arial, sans-serif';
+            
+            // Frase 1
+            ctx.fillText('• El planeta Tierra gira alrededor del                          y tarda 365 días en dar una vuelta completa.', 50, 270);
+            // Frase 2
+            ctx.fillText('• El idioma que se habla mayoritariamente en España es el                          , una lengua romance.', 50, 340);
+            // Frase 3
+            ctx.fillText('• El órgano de nuestro cuerpo humano encargado de bombear la sangre es el                           .', 50, 410);
+
+            // Sección de matemáticas / lógica
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 18px Inter, Arial, sans-serif';
+            ctx.fillText('Actividad 2: Realiza las siguientes operaciones básicas matemáticas.', 50, 500);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = '15px Inter, Arial, sans-serif';
+            ctx.fillText('a)  25  x  4  = ', 80, 560);
+            ctx.fillText('b)  150  +  75  = ', 80, 630);
+            ctx.fillText('c)  La mitad de 100 es ', 80, 700);
+
+            // Actividad 3: Preguntas de Geografía
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 18px Inter, Arial, sans-serif';
+            ctx.fillText('Actividad 3: Geografía.', 50, 790);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = '15px Inter, Arial, sans-serif';
+            ctx.fillText('• La capital de Francia es la hermosa ciudad de                          .', 50, 840);
+            ctx.fillText('• El océano que separa Europa de América se llama Océano                           .', 50, 910);
+
+            // Convertir a DataURL e incorporar al estado
+            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            appState.pages = [{
+                dataUrl: imgData,
+                width: 800,
+                height: 1000
+            }];
+            appState.currentPageIdx = 0;
+            appState.gaps = [
+                { id: 1, page: 0, x: 42.0, y: 25.0, w: 12.5, h: 3.2, answer: 'Sol', studentAnswer: '' },
+                { id: 2, page: 0, x: 61.2, y: 32.0, w: 14.0, h: 3.2, answer: 'español', studentAnswer: '' },
+                { id: 3, page: 0, x: 67.5, y: 39.0, w: 14.0, h: 3.2, answer: 'corazón', studentAnswer: '' },
+                { id: 4, page: 0, x: 21.0, y: 54.0, w: 10.0, h: 3.2, answer: '100', studentAnswer: '' },
+                { id: 5, page: 0, x: 23.0, y: 61.0, w: 10.0, h: 3.2, answer: '225', studentAnswer: '' },
+                { id: 6, page: 0, x: 30.5, y: 68.0, w: 10.0, h: 3.2, answer: '50', studentAnswer: '' },
+                { id: 7, page: 0, x: 45.0, y: 82.0, w: 14.0, h: 3.2, answer: 'París', studentAnswer: '' },
+                { id: 8, page: 0, x: 55.0, y: 89.0, w: 15.0, h: 3.2, answer: 'Atlántico', studentAnswer: '' }
+            ];
+            gapIdCounter = 9;
+
+            saveHistoryState(); // Registrar el estado inicial del historial
+
+            renderCurrentPage();
+            showLoader(false);
+            showToast("Se ha cargado la plantilla de ficha de demostración.");
+        }
+
+        function showLoader(show) {
+            const loader = document.getElementById('workspaceLoader');
+            if (show) {
+                loader.classList.remove('hidden');
+            } else {
+                loader.classList.add('hidden');
+            }
+        }
+    </script>
+
+    <script>
+        // Gestor de eventos de carga
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showLoader(true);
+            appState.pages = [];
+            appState.gaps = [];
+            appState.currentPageIdx = 0;
+            gapIdCounter = 1;
+            appState.undoStack = [];
+            appState.redoStack = [];
+            updateUndoRedoButtons();
+
+            try {
+                if (file.type === 'application/pdf') {
+                    // Cargar el PDF de forma asíncrona
+                    const fileReader = new FileReader();
+                    fileReader.onload = async function () {
+                        try {
+                            const typedarray = new Uint8Array(this.result);
+                            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                            const totalPages = pdf.numPages;
+
+                            for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                                const page = await pdf.getPage(pageNum);
+                                const viewport = page.getViewport({ scale: 1.5 }); // Escala nítida
+                                const canvas = document.createElement('canvas');
+                                const context = canvas.getContext('2d');
+                                canvas.height = viewport.height;
+                                canvas.width = viewport.width;
+
+                                const renderContext = {
+                                    canvasContext: context,
+                                    viewport: viewport
+                                };
+                                await page.render(renderContext).promise;
+                                
+                                appState.pages.push({
+                                    dataUrl: canvas.toDataURL('image/jpeg', 0.85),
+                                    width: viewport.width,
+                                    height: viewport.height
+                                });
+                            }
+                            
+                            finishLoadingDocument(`Cargado PDF: ${totalPages} páginas.`);
+                        } catch (pdfErr) {
+                            console.error(pdfErr);
+                            showLoader(false);
+                            showToast("Error procesando las páginas del PDF.", "error");
+                        }
+                    };
+                    fileReader.readAsArrayBuffer(file);
+
+                } else if (file.type.startsWith('image/')) {
+                    // Cargar imagen convencional
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = new Image();
+                        img.onload = function () {
+                            appState.pages.push({
+                                dataUrl: e.target.result,
+                                width: img.naturalWidth || 800,
+                                height: img.naturalHeight || 1000
+                            });
+                            finishLoadingDocument("Imagen cargada exitosamente.");
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    showLoader(false);
+                    showToast("Formato de archivo no soportado. Sube un PDF o una Imagen.", "error");
+                }
+            } catch (err) {
+                console.error(err);
+                showLoader(false);
+                showToast("Sucedió un error al subir el archivo.", "error");
+            }
+        }
+
+        function finishLoadingDocument(successMsg) {
+            saveHistoryState();
+            renderCurrentPage();
+            showLoader(false);
+            showToast(successMsg, "success");
+        }
+    </script>
+
+    <script>
+        function renderCurrentPage() {
+            if (appState.pages.length === 0) return;
+
+            const pageData = appState.pages[appState.currentPageIdx];
+            
+            // Actualizar datos del header/controles
+            document.getElementById('currentPageText').textContent = appState.currentPageIdx + 1;
+            document.getElementById('totalPagesText').textContent = appState.pages.length;
+            
+            // Renderizar la imagen de fondo
+            const sheetImg = document.getElementById('sheetImage');
+            sheetImg.src = pageData.dataUrl;
+
+            // Ajustar el contenedor de acuerdo a la resolución de la página
+            const workspace = document.getElementById('sheetWorkspace');
+            workspace.style.width = `800px`; // Base estandarizada
+            // Proporción matemática de altura
+            const heightRatio = pageData.height / pageData.width;
+            workspace.style.minHeight = `${800 * heightRatio}px`;
+
+            renderGaps();
+        }
+
+        function renderGaps() {
+            const overlay = document.getElementById('gapsOverlay');
+            overlay.innerHTML = '';
+
+            // Filtrar gaps pertenecientes a la página activa
+            const activeGaps = appState.gaps.filter(g => g.page === appState.currentPageIdx);
+            document.getElementById('gapsCounterText').textContent = appState.gaps.length;
+
+            activeGaps.forEach(gap => {
+                const gapEl = document.createElement('div');
+                gapEl.className = "absolute group transition-shadow";
+                gapEl.style.left = `${gap.x}%`;
+                gapEl.style.top = `${gap.y}%`;
+                gapEl.style.width = `${gap.w}%`;
+                gapEl.style.height = `${gap.h}%`;
+                gapEl.setAttribute('data-gap-id', gap.id);
+
+                if (appState.mode === 'edit') {
+                    // --- MODO EDITOR: Con inputs editables, botones para borrar y tiradores de tamaño ---
+                    const isSelected = appState.selectedGapId === gap.id;
+                    const ringStyle = isSelected ? 'ring-2 ring-blue-500 shadow-xl z-30' : 'hover:ring-2 hover:ring-blue-400 z-20';
+                    
+                    gapEl.innerHTML = `
+                        <div class="w-full h-full border-2 border-dashed border-blue-500 bg-blue-500/10 rounded-lg flex items-center p-1 relative ${ringStyle}">
+                            
+                            <!-- Input para que el creador defina la respuesta correcta -->
+                            <input type="text" 
+                                   value="${gap.answer}" 
+                                   placeholder="Solución..." 
+                                   onfocus="selectGap(${gap.id})"
+                                   oninput="updateGapAnswer(${gap.id}, this.value)"
+                                   onblur="saveStateOnBlur()"
+                                   class="w-full h-full bg-transparent text-center text-slate-950 font-bold text-xs sm:text-sm focus:outline-none placeholder-blue-400 select-text">
+                            
+                            <!-- Botón superior de eliminar -->
+                            <button onclick="deleteGap(${gap.id})" class="absolute -top-3 -right-3 bg-red-600 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+
+                            <!-- Indicador de ID pequeño -->
+                            <div class="absolute -top-3 -left-2 bg-blue-600 text-white font-bold text-[9px] px-1.5 py-0.5 rounded-md pointer-events-none shadow">
+                                R${gap.id}
+                            </div>
+
+                            <!-- Tirador de Arrastre global -->
+                            <div class="absolute -bottom-2 left-2 cursor-move bg-slate-900 border border-slate-700 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto" 
+                                 onpointerdown="startGapDrag(event, ${gap.id})">
+                                <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>
+                                </svg>
+                            </div>
+
+                            <!-- Tirador / Punto inferior derecho de cambiar tamaño (Resize) -->
+                            <div class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize bg-blue-500 rounded-tl-lg rounded-br-md border-r-2 border-b-2 border-white flex items-center justify-center pointer-events-auto"
+                                 onpointerdown="startGapResize(event, ${gap.id})">
+                                <svg class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m15 0h-15v-15" />
+                                </svg>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // --- MODO ESTUDIANTE: Gaps sin tiradores ni bordes punteados ---
+                    // Determinamos las clases visuales de acuerdo a si ya ha sido corregido
+                    let borderClass = 'border-blue-500 focus:border-blue-600 focus:bg-blue-50/10 focus:ring-2 focus:ring-blue-500/20';
+                    let textClass = 'text-slate-900';
+                    let bgClass = 'bg-white/40';
+
+                    if (gap.isCorrect !== undefined) {
+                        if (gap.isCorrect) {
+                            borderClass = 'border-emerald-500 bg-emerald-50/20';
+                            textClass = 'text-emerald-700 font-bold';
+                        } else {
+                            borderClass = 'border-rose-500 bg-rose-50/20';
+                            textClass = 'text-rose-700 font-bold';
+                        }
+                    }
+
+                    gapEl.innerHTML = `
+                        <input type="text" 
+                               value="${gap.studentAnswer || ''}" 
+                               placeholder="..."
+                               oninput="updateStudentAnswer(${gap.id}, this.value)"
+                               class="w-full h-full border-2 text-center text-sm md:text-base font-semibold rounded-lg focus:outline-none transition-all select-text ${borderClass} ${textClass} ${bgClass}">
+                    `;
+                }
+
+                overlay.appendChild(gapEl);
+            });
+        }
+    </script>
+
+    <script>
+        let currentDrag = null; // { gapId, startX, startY, origX, origY, origW, origH, action }
+
+        function selectGap(id) {
+            appState.selectedGapId = id;
+        }
+
+        function startGapDrag(e, gapId) {
+            e.preventDefault();
+            e.stopPropagation();
+            selectGap(gapId);
+            
+            const gap = appState.gaps.find(g => g.id === gapId);
+            if (!gap) return;
+
+            const workspace = document.getElementById('sheetWorkspace');
+            const rect = workspace.getBoundingClientRect();
+
+            currentDrag = {
+                gapId: gapId,
+                action: 'drag',
+                startX: e.clientX,
+                startY: e.clientY,
+                origX: gap.x,
+                origY: gap.y,
+                origW: gap.w,
+                origH: gap.h,
+                workspaceWidth: rect.width,
+                workspaceHeight: rect.height
+            };
+
+            document.addEventListener('pointermove', handlePointerMove);
+            document.addEventListener('pointerup', handlePointerUp);
+        }
+
+        function startGapResize(e, gapId) {
+            e.preventDefault();
+            e.stopPropagation();
+            selectGap(gapId);
+
+            const gap = appState.gaps.find(g => g.id === gapId);
+            if (!gap) return;
+
+            const workspace = document.getElementById('sheetWorkspace');
+            const rect = workspace.getBoundingClientRect();
+
+            currentDrag = {
+                gapId: gapId,
+                action: 'resize',
+                startX: e.clientX,
+                startY: e.clientY,
+                origX: gap.x,
+                origY: gap.y,
+                origW: gap.w,
+                origH: gap.h,
+                workspaceWidth: rect.width,
+                workspaceHeight: rect.height
+            };
+
+            document.addEventListener('pointermove', handlePointerMove);
+            document.addEventListener('pointerup', handlePointerUp);
+        }
+
+        function handlePointerMove(e) {
+            if (!currentDrag) return;
+
+            const gap = appState.gaps.find(g => g.id === currentDrag.gapId);
+            if (!gap) return;
+
+            // Calcular diferencia de movimiento en píxeles
+            const deltaX = e.clientX - currentDrag.startX;
+            const deltaY = e.clientY - currentDrag.startY;
+
+            // Convertir la diferencia en porcentaje correspondiente al Workspace
+            const pctDeltaX = (deltaX / currentDrag.workspaceWidth) * 100;
+            const pctDeltaY = (deltaY / currentDrag.workspaceHeight) * 100;
+
+            if (currentDrag.action === 'drag') {
+                // Actualizar posiciones x e y garantizando que se queden en el rango 0-100%
+                let newX = Math.max(0, Math.min(100 - gap.w, currentDrag.origX + pctDeltaX));
+                let newY = Math.max(0, Math.min(100 - gap.h, currentDrag.origY + pctDeltaY));
+                
+                // Redondear a décimas para limpieza matemática
+                gap.x = Math.round(newX * 10) / 10;
+                gap.y = Math.round(newY * 10) / 10;
+            } else if (currentDrag.action === 'resize') {
+                // Actualizar ancho y alto mínimo
+                let newW = Math.max(3, Math.min(100 - gap.x, currentDrag.origW + pctDeltaX));
+                let newH = Math.max(2, Math.min(100 - gap.y, currentDrag.origH + pctDeltaY));
+
+                gap.w = Math.round(newW * 10) / 10;
+                gap.h = Math.round(newH * 10) / 10;
+            }
+
+            // Actualización visual interactiva fluida
+            const gapEl = document.querySelector(`[data-gap-id="${gap.id}"]`);
+            if (gapEl) {
+                gapEl.style.left = `${gap.x}%`;
+                gapEl.style.top = `${gap.y}%`;
+                gapEl.style.width = `${gap.w}%`;
+                gapEl.style.height = `${gap.h}%`;
+            }
+        }
+
+        function handlePointerUp() {
+            if (currentDrag) {
+                // Registrar el cambio finalizado en el sistema de historial
+                saveHistoryState();
+                currentDrag = null;
+            }
+            document.removeEventListener('pointermove', handlePointerMove);
+            document.removeEventListener('pointerup', handlePointerUp);
+            renderGaps(); // Refrescar los elementos completos
+        }
+
+        function updateGapAnswer(gapId, val) {
+            const gap = appState.gaps.find(g => g.id === gapId);
+            if (gap) {
+                gap.answer = val;
+            }
+        }
+
+        // Se llama al perder el foco en inputs de soluciones para guardar los textos en el historial
+        function saveStateOnBlur() {
+            saveHistoryState();
+        }
+    </script>
+
+    <script>
+        // Realiza una copia profunda del array de gaps para congelar el estado
+        function cloneGaps(gapsArray) {
+            return gapsArray.map(g => ({ ...g }));
+        }
+
+        // Guarda el estado actual en la pila de deshacer
+        function saveHistoryState() {
+            // Guardamos el estado actual
+            const currentState = cloneGaps(appState.gaps);
+            
+            // Si el estado a meter es idéntico al último, no añadir redundancia
+            if (appState.undoStack.length > 0) {
+                const lastSaved = JSON.stringify(appState.undoStack[appState.undoStack.length - 1]);
+                if (lastSaved === JSON.stringify(currentState)) {
+                    return;
+                }
+            }
+
+            appState.undoStack.push(currentState);
+            // Limitar profundidad del historial
+            if (appState.undoStack.length > 30) {
+                appState.undoStack.shift();
+            }
+            // Al hacer una nueva acción, se destruye la pila de rehacer
+            appState.redoStack = [];
+            updateUndoRedoButtons();
+        }
+
+        function triggerUndo() {
+            if (appState.undoStack.length <= 1) return; // Se requiere al menos un estado inicial de reserva
+
+            // El estado actual es el último elemento del stack, lo removemos y lo mandamos a redo
+            const currentState = appState.undoStack.pop();
+            appState.redoStack.push(currentState);
+
+            // Cargamos el estado anterior
+            const previousState = appState.undoStack[appState.undoStack.length - 1];
+            appState.gaps = cloneGaps(previousState);
+            
+            renderGaps();
+            updateUndoRedoButtons();
+            showToast("Acción Deshecha");
+        }
+
+        function triggerRedo() {
+            if (appState.redoStack.length === 0) return;
+
+            const nextState = appState.redoStack.pop();
+            appState.undoStack.push(nextState);
+
+            appState.gaps = cloneGaps(nextState);
+
+            renderGaps();
+            updateUndoRedoButtons();
+            showToast("Acción Rehecha");
+        }
+
+        function updateUndoRedoButtons() {
+            const btnUndo = document.getElementById('btnUndo');
+            const btnRedo = document.getElementById('btnRedo');
+
+            if (btnUndo) {
+                // Podemos deshacer solo si hay más de 1 estado guardado
+                btnUndo.disabled = appState.undoStack.length <= 1;
+            }
+            if (btnRedo) {
+                btnRedo.disabled = appState.redoStack.length === 0;
+            }
+        }
+
+        // Atajos de teclado comunes (Ctrl+Z y Ctrl+Y)
+        function handleKeyPress(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                triggerUndo();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                triggerRedo();
+            }
+        }
+    </script>
+
+    <script>
+        function addNewGap() {
+            // Posicionamos el nuevo gap en una zona central segura
+            const newGap = {
+                id: gapIdCounter++,
+                page: appState.currentPageIdx,
+                x: 40, // Centrado por defecto
+                y: 35,
+                w: 15, // Ancho porcentual
+                h: 4,  // Alto porcentual
+                answer: '',
+                studentAnswer: ''
+            };
+
+            appState.gaps.push(newGap);
+            appState.selectedGapId = newGap.id;
+            
+            saveHistoryState();
+            renderGaps();
+            showToast(`Añadido nuevo hueco para respuesta (R${newGap.id})`);
+        }
+
+        function deleteGap(id) {
+            appState.gaps = appState.gaps.filter(g => g.id !== id);
+            if (appState.selectedGapId === id) {
+                appState.selectedGapId = null;
+            }
+            saveHistoryState();
+            renderGaps();
+            showToast(`Hueco eliminado.`);
+        }
+
+        // Controles de navegación de páginas
+        function prevPage() {
+            if (appState.currentPageIdx > 0) {
+                appState.currentPageIdx--;
+                renderCurrentPage();
+            }
+        }
+
+        function nextPage() {
+            if (appState.currentPageIdx < appState.pages.length - 1) {
+                appState.currentPageIdx++;
+                renderCurrentPage();
+            }
+        }
+
+        // Gestión de zoom de visualización de la hoja
+        function changeZoom(amount) {
+            const newZoom = Math.max(50, Math.min(180, appState.zoom + amount));
+            appState.zoom = newZoom;
+            document.getElementById('zoomText').textContent = `${newZoom}%`;
+            
+            // Aplicamos escala CSS en el workspace
+            const workspace = document.getElementById('sheetWorkspace');
+            workspace.style.transform = `scale(${newZoom / 100})`;
+        }
+    </script>
+
+    <script>
+        function switchMode(newMode) {
+            if (appState.mode === newMode) return;
+            appState.mode = newMode;
+
+            const btnEdit = document.getElementById('btnModeEdit');
+            const btnPreview = document.getElementById('btnModePreview');
+            const editorTools = document.getElementById('editorTools');
+            const studentTools = document.getElementById('studentTools');
+
+            if (newMode === 'edit') {
+                // Cambiar clases de botones principales
+                btnEdit.className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 bg-blue-600 text-white shadow-sm";
+                btnPreview.className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 text-slate-400 hover:text-white";
+                
+                // Mostrar y ocultar paneles
+                editorTools.classList.remove('hidden');
+                studentTools.classList.add('hidden');
+
+                // Limpiar correcciones anteriores de gaps al volver al editor
+                appState.gaps.forEach(g => {
+                    delete g.isCorrect;
+                });
+                document.getElementById('gradingResultBox').classList.add('hidden');
+
+            } else {
+                btnEdit.className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 text-slate-400 hover:text-white";
+                btnPreview.className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 bg-blue-600 text-white shadow-sm";
+                
+                editorTools.classList.add('hidden');
+                studentTools.classList.remove('hidden');
+                
+                // Limpiar respuestas previas al iniciar simulación
+                appState.gaps.forEach(g => {
+                    g.studentAnswer = '';
+                    delete g.isCorrect;
+                });
+                document.getElementById('gradingResultBox').classList.add('hidden');
+            }
+
+            renderGaps();
+        }
+
+        function updateStudentAnswer(gapId, val) {
+            const gap = appState.gaps.find(g => g.id === gapId);
+            if (gap) {
+                gap.studentAnswer = val;
+            }
+        }
+    </script>
+
+    <script>
+        function gradeSheet() {
+            const activeGaps = appState.gaps;
+            if (activeGaps.length === 0) {
+                showToast("No hay huecos creados para calificar.", "error");
+                return;
+            }
+
+            let correctCount = 0;
+
+            activeGaps.forEach(gap => {
+                // Normalizar respuestas quitando espacios en blanco extra y usando minúsculas
+                const cleanCorrect = (gap.answer || '').trim().toLowerCase();
+                const cleanStudent = (gap.studentAnswer || '').trim().toLowerCase();
+
+                if (cleanCorrect === cleanStudent && cleanCorrect !== '') {
+                    gap.isCorrect = true;
+                    correctCount++;
+                } else {
+                    gap.isCorrect = false;
+                }
+            });
+
+            // Calificación sobre 10
+            const finalScore = ((correctCount / activeGaps.length) * 10).toFixed(1);
+
+            // Mostrar el bloque de resultados
+            const resultBox = document.getElementById('gradingResultBox');
+            const scoreText = document.getElementById('gradeScoreText');
+            const feedbackText = document.getElementById('gradeFeedbackText');
+
+            resultBox.classList.remove('hidden');
+            scoreText.textContent = `${finalScore} / 10`;
+
+            // Feedback dinámico inteligente
+            const scoreNum = parseFloat(finalScore);
+            if (scoreNum === 10) {
+                feedbackText.textContent = "¡Sobresaliente! Perfecto.";
+                feedbackText.className = "text-xs font-bold mt-1 text-emerald-400";
+            } else if (scoreNum >= 8) {
+                feedbackText.textContent = "¡Excelente trabajo!";
+                feedbackText.className = "text-xs font-bold mt-1 text-teal-400";
+            } else if (scoreNum >= 5) {
+                feedbackText.textContent = "Aprobado. ¡Puedes mejorar!";
+                feedbackText.className = "text-xs font-bold mt-1 text-amber-400";
+            } else {
+                feedbackText.textContent = "Necesitas repasar. ¡Vuelve a intentarlo!";
+                feedbackText.className = "text-xs font-bold mt-1 text-rose-400";
+            }
+
+            // Renderizar de nuevo los gaps coloreados en verde/rojo
+            renderGaps();
+            showToast(`Ficha corregida. Calificación obtenida: ${finalScore}/10`);
+        }
+
+        function revealAnswers() {
+            appState.gaps.forEach(gap => {
+                gap.studentAnswer = gap.answer;
+                gap.isCorrect = true; // Forzar color verde al revelar
+            });
+            renderGaps();
+            showToast("Soluciones completadas en el lienzo.");
+        }
+
+        function resetSheetPractice() {
+            appState.gaps.forEach(gap => {
+                gap.studentAnswer = '';
+                delete gap.isCorrect;
+            });
+            document.getElementById('gradingResultBox').classList.add('hidden');
+            renderGaps();
+            showToast("Ficha restablecida para nueva práctica.");
+        }
+    </script>
+
+    <script>
+        function exportInteractiveHTML() {
+            if (appState.pages.length === 0) {
+                showToast("Debes añadir al menos una página a la ficha para exportar.", "error");
+                return;
+            }
+
+            // Codificar el estado en un JSON seguro para empaquetarlo en el HTML autónomo
+            const statePayload = JSON.stringify({
+                pages: appState.pages,
+                gaps: appState.gaps
+            });
+
+            // Creamos la plantilla interactiva del estudiante que el profesor descargará
+            const htmlContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha Interactiva Resoluble</title>
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col overflow-x-hidden pb-12">
+
+    <header class="bg-slate-950 border-b border-slate-800 py-5 px-6 sticky top-0 z-50 shadow-md mb-6">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-600 p-2 rounded-xl shadow-lg shadow-emerald-500/30">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight text-white">Ficha Interactiva</h1>
+                    <p class="text-xs text-slate-400">Rellena todos los huecos y haz clic en "Corregir Mi Ficha" para calificarte.</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400">
+                Páginas: <span id="currentPageText" class="text-white font-bold">1</span> / <span id="totalPagesText" class="text-white font-bold">1</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl w-full mx-auto px-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <!-- Sidebar de herramientas del alumno -->
+        <section class="lg:col-span-1 flex flex-col gap-4">
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col gap-4">
+                <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Acciones</h3>
+                
+                <button onclick="gradeSheet()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Corregir Mi Ficha
+                </button>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="revealAnswers()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 py-2.5 px-3 rounded-lg text-xs font-semibold text-slate-300 transition-all flex items-center justify-center gap-1.5">
+                        Ver Soluciones
+                    </button>
+                    <button onclick="resetSheetPractice()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 py-2.5 px-3 rounded-lg text-xs font-semibold text-slate-300 transition-all flex items-center justify-center gap-1.5">
+                        Reiniciar
+                    </button>
+                </div>
+
+                <!-- Bloque Calificación -->
+                <div id="gradingResultBox" class="hidden mt-2 bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                    <div class="text-xs text-slate-400 uppercase tracking-widest font-bold">Tu Nota</div>
+                    <div id="gradeScoreText" class="text-4xl font-extrabold text-emerald-400 my-1">0 / 10</div>
+                    <div id="gradeFeedbackText" class="text-xs font-medium mt-1">Sigue intentándolo</div>
+                </div>
+            </div>
+
+            <!-- Controles de navegación de páginas en Sidebar -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-md">
+                <button onclick="prevPage()" class="p-2 bg-slate-900 hover:bg-slate-800 rounded-lg text-slate-300 transition-colors">Anterior</button>
+                <button onclick="nextPage()" class="p-2 bg-slate-900 hover:bg-slate-800 rounded-lg text-slate-300 transition-colors">Siguiente</button>
+            </div>
+        </section>
+
+        <!-- Contenedor del documento central -->
+        <section class="lg:col-span-3 flex flex-col gap-4 items-center">
+            <div class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 flex overflow-auto justify-center shadow-inner">
+                <div id="sheetWorkspace" class="relative bg-white shadow-2xl" style="width: 800px; min-height: 400px;">
+                    <img id="sheetImage" class="w-full h-auto select-none pointer-events-none block" alt="Ficha">
+                    <div id="gapsOverlay" class="absolute inset-0 select-none overflow-hidden"></div>
+                </div>
+            </div>
+        </section>
+        
+    </main>
+
+    <!-- Script de control autónomo integrado -->
+    <script>
+        const appState = ${statePayload};
+        appState.currentPageIdx = 0;
+
+        window.onload = function() {
+            renderCurrentPage();
+        };
+
+        function renderCurrentPage() {
+            if (!appState.pages || appState.pages.length === 0) return;
+            const pageData = appState.pages[appState.currentPageIdx];
+            
+            document.getElementById('currentPageText').textContent = appState.currentPageIdx + 1;
+            document.getElementById('totalPagesText').textContent = appState.pages.length;
+            
+            const sheetImg = document.getElementById('sheetImage');
+            sheetImg.src = pageData.dataUrl;
+
+            const workspace = document.getElementById('sheetWorkspace');
+            const heightRatio = pageData.height / pageData.width;
+            workspace.style.minHeight = (800 * heightRatio) + "px";
+
+            renderGaps();
+        }
+
+        function renderGaps() {
+            const overlay = document.getElementById('gapsOverlay');
+            overlay.innerHTML = '';
+
+            const activeGaps = appState.gaps.filter(g => g.page === appState.currentPageIdx);
+
+            activeGaps.forEach(gap => {
+                const gapEl = document.createElement('div');
+                gapEl.className = "absolute z-20";
+                gapEl.style.left = gap.x + "%";
+                gapEl.style.top = gap.y + "%";
+                gapEl.style.width = gap.w + "%";
+                gapEl.style.height = gap.h + "%";
+
+                let borderClass = 'border-blue-500 focus:border-blue-600 focus:bg-blue-50/10 focus:ring-2 focus:ring-blue-500/20';
+                let textClass = 'text-slate-900';
+                let bgClass = 'bg-white/40';
+
+                if (gap.isCorrect !== undefined) {
+                    if (gap.isCorrect) {
+                        borderClass = 'border-emerald-500 bg-emerald-50/20';
+                        textClass = 'text-emerald-700 font-bold';
+                    } else {
+                        borderClass = 'border-rose-500 bg-rose-50/20';
+                        textClass = 'text-rose-700 font-bold';
+                    }
+                }
+
+                gapEl.innerHTML = \`<input type="text" 
+                       value="\${gap.studentAnswer || ''}" 
+                       placeholder="..."
+                       oninput="updateStudentAnswer(\${gap.id}, this.value)"
+                       class="w-full h-full border-2 text-center text-sm md:text-base font-semibold rounded-lg focus:outline-none transition-all select-text \${borderClass} \${textClass} \${bgClass}">\`;
+
+                overlay.appendChild(gapEl);
+            });
+        }
+
+        function updateStudentAnswer(gapId, val) {
+            const gap = appState.gaps.find(g => g.id === gapId);
+            if (gap) {
+                gap.studentAnswer = val;
+            }
+        }
+
+        function prevPage() {
+            if (appState.currentPageIdx > 0) {
+                appState.currentPageIdx--;
+                renderCurrentPage();
+            }
+        }
+
+        function nextPage() {
+            if (appState.currentPageIdx < appState.pages.length - 1) {
+                appState.currentPageIdx++;
+                renderCurrentPage();
+            }
+        }
+
+        function gradeSheet() {
+            const activeGaps = appState.gaps;
+            if (activeGaps.length === 0) return;
+
+            let correctCount = 0;
+            activeGaps.forEach(gap => {
+                const cleanCorrect = (gap.answer || '').trim().toLowerCase();
+                const cleanStudent = (gap.studentAnswer || '').trim().toLowerCase();
+
+                if (cleanCorrect === cleanStudent && cleanCorrect !== '') {
+                    gap.isCorrect = true;
+                    correctCount++;
+                } else {
+                    gap.isCorrect = false;
+                }
+            });
+
+            const finalScore = ((correctCount / activeGaps.length) * 10).toFixed(1);
+            const resultBox = document.getElementById('gradingResultBox');
+            const scoreText = document.getElementById('gradeScoreText');
+            const feedbackText = document.getElementById('gradeFeedbackText');
+
+            resultBox.classList.remove('hidden');
+            scoreText.textContent = finalScore + " / 10";
+
+            const scoreNum = parseFloat(finalScore);
+            if (scoreNum === 10) {
+                feedbackText.textContent = "¡Excelente! Todo correcto.";
+                feedbackText.className = "text-xs font-bold mt-1 text-emerald-400";
+            } else if (scoreNum >= 5) {
+                feedbackText.textContent = "Aprobado. ¡Sigue así!";
+                feedbackText.className = "text-xs font-bold mt-1 text-amber-400";
+            } else {
+                feedbackText.textContent = "Prueba de nuevo para mejorar.";
+                feedbackText.className = "text-xs font-bold mt-1 text-rose-400";
+            }
+
+            renderGaps();
+        }
+
+        function revealAnswers() {
+            appState.gaps.forEach(gap => {
+                gap.studentAnswer = gap.answer;
+                gap.isCorrect = true;
+            });
+            renderGaps();
+        }
+
+        function resetSheetPractice() {
+            appState.gaps.forEach(gap => {
+                gap.studentAnswer = '';
+                delete gap.isCorrect;
+            });
+            document.getElementById('gradingResultBox').classList.add('hidden');
+            renderGaps();
+        }
+    <\/script>
+
+</body>
+</html>`;
+
+            // Descargar el archivo de forma local en el navegador
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const tempLink = document.createElement('a');
+            tempLink.href = URL.createObjectURL(blob);
+            tempLink.download = 'Ficha_Interactiva_Estudiante.html';
+            document.body.appendChild(tempLink);
+            tempLink.click();
+            document.body.removeChild(tempLink);
+
+            showToast("Ficha exportada correctamente en un único archivo HTML.", "success");
+        }
+    </script>
+</body>
+</html>
