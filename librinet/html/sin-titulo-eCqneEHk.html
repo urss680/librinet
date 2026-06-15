@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Círculo Verde - Chroma Pro Preciso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #050505; color: white; font-family: sans-serif; }
+        #canvas-container { position: relative; display: inline-block; cursor: crosshair; }
+        canvas { max-width: 100%; border-radius: 1rem; border: 4px solid #22c55e; background: #000; }
+        #backgroundCanvas { display: none; }
+        .color-swatch { width: 3rem; height: 3rem; border-radius: 50%; border: 3px solid white; cursor: pointer; transition: transform 0.2s; }
+        .color-swatch:hover { transform: scale(1.1); }
+        .active-brush { border-color: #22c55e !important; background-color: #064e3b !important; }
+        .active-eraser { border-color: #fca5a5 !important; background-color: #991b1b !important; }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center">
+
+    <header class="mb-4 text-center">
+        <h1 class="text-3xl font-bold text-green-500">Círculo Verde</h1>
+        <p id="statusMsg" class="text-slate-400">Pincel: Eliminar colores / Goma: Proteger colores similares</p>
+    </header>
+
+    <div id="canvas-container" class="bg-black p-2 shadow-2xl rounded-2xl">
+        <video id="video" class="hidden" autoplay playsinline></video>
+        <canvas id="outputCanvas"></canvas>
+    </div>
+
+    <div class="mt-6 bg-slate-900 p-6 rounded-2xl w-full max-w-lg border border-slate-700">
+        <div class="flex items-center gap-4 mb-4">
+            <button id="btnAction" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-full font-bold transition">Capturar Fondo</button>
+            <button id="btnFlip" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-full font-bold transition">Girar</button>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-2 mb-4">
+            <button id="btnBrush" class="bg-slate-700 py-2 rounded-lg active-brush">Pincel (Eliminar)</button>
+            <button id="btnEraser" class="bg-slate-700 py-2 rounded-lg">Goma (Proteger Color)</button>
+        </div>
+
+        <label class="block text-sm font-medium mb-2">Tolerancia: <span id="tolVal">40</span></label>
+        <input type="range" id="tolSlider" min="0" max="255" value="40" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500">
+    </div>
+
+    <canvas id="backgroundCanvas"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const outputCanvas = document.getElementById('outputCanvas');
+        const bgCanvas = document.getElementById('backgroundCanvas');
+        const btnAction = document.getElementById('btnAction');
+        const btnFlip = document.getElementById('btnFlip');
+        const btnBrush = document.getElementById('btnBrush');
+        const btnEraser = document.getElementById('btnEraser');
+        const tolSlider = document.getElementById('tolSlider');
+        const tolVal = document.getElementById('tolVal');
+        
+        const outCtx = outputCanvas.getContext('2d', { willReadFrequently: true });
+        const bgCtx = bgCanvas.getContext('2d');
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+
+        let mode = 'capture', tool = 'brush', isDrawing = false;
+        let bgImageData = null, targetColors = [], protectedColors = [], tolerance = 40;
+        let currentFacingMode = 'user';
+
+        tolSlider.oninput = (e) => { tolerance = parseInt(e.target.value); tolVal.textContent = tolerance; };
+
+        function setTool(t) {
+            tool = t;
+            btnBrush.classList.toggle('active-brush', tool === 'brush');
+            btnEraser.classList.toggle('active-eraser', tool === 'eraser');
+        }
+
+        btnBrush.onclick = () => setTool('brush');
+        btnEraser.onclick = () => setTool('eraser');
+
+        outputCanvas.onmousedown = (e) => { isDrawing = true; handleInteraction(e); };
+        outputCanvas.onmousemove = (e) => { if(isDrawing) handleInteraction(e); };
+        outputCanvas.onmouseup = () => { isDrawing = false; };
+
+        function handleInteraction(e) {
+            if (mode !== 'live') return;
+            const rect = outputCanvas.getBoundingClientRect();
+            const x = Math.floor(e.clientX - rect.left);
+            const y = Math.floor(e.clientY - rect.top);
+            const pixel = tempCtx.getImageData(x, y, 1, 1).data;
+            const color = { r: pixel[0], g: pixel[1], b: pixel[2] };
+            
+            if (tool === 'eraser') {
+                protectedColors.push(color);
+            } else {
+                targetColors.push(color);
+            }
+        }
+
+        async function initCamera(facingMode = 'user') {
+            if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                outputCanvas.width = bgCanvas.width = tempCanvas.width = video.videoWidth;
+                outputCanvas.height = bgCanvas.height = tempCanvas.height = video.videoHeight;
+                requestAnimationFrame(loop);
+            };
+        }
+
+        btnAction.onclick = () => {
+            if (mode === 'capture') {
+                bgCtx.drawImage(video, 0, 0);
+                bgImageData = bgCtx.getImageData(0, 0, bgCanvas.width, bgCanvas.height);
+                mode = 'live';
+                btnAction.textContent = "Reiniciar";
+            } else location.reload();
+        };
+
+        btnFlip.onclick = () => {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            initCamera(currentFacingMode);
+        };
+
+        function loop() {
+            tempCtx.drawImage(video, 0, 0);
+            const frame = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            const data = frame.data;
+
+            if (mode === 'live' && bgImageData) {
+                const bgData = bgImageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i+1], b = data[i+2];
+                    
+                    // 1. Check protection first
+                    let isProtected = false;
+                    for (const pc of protectedColors) {
+                        if (Math.sqrt(Math.pow(r-pc.r, 2) + Math.pow(g-pc.g, 2) + Math.pow(b-pc.b, 2)) < tolerance) {
+                            isProtected = true; break;
+                        }
+                    }
+                    if (isProtected) continue;
+
+                    // 2. Then apply Chroma if needed
+                    for (const tc of targetColors) {
+                        if (Math.sqrt(Math.pow(r - tc.r, 2) + Math.pow(g - tc.g, 2) + Math.pow(b - tc.b, 2)) < tolerance) {
+                            data[i] = bgData[i]; data[i+1] = bgData[i+1]; data[i+2] = bgData[i+2]; break;
+                        }
+                    }
+                }
+            }
+            outCtx.putImageData(frame, 0, 0);
+            requestAnimationFrame(loop);
+        }
+
+        initCamera();
+    </script>
+</body>
+</html>
