@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Círculo Verde - Chroma Pro Preciso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #050505; color: white; font-family: sans-serif; }
+        #canvas-container { position: relative; display: inline-block; cursor: crosshair; }
+        canvas { max-width: 100%; border-radius: 1rem; border: 4px solid #22c55e; background: #000; }
+        #backgroundCanvas { display: none; }
+        .color-swatch { width: 3rem; height: 3rem; border-radius: 50%; border: 3px solid white; cursor: pointer; transition: transform 0.2s; }
+        .color-swatch:hover { transform: scale(1.1); }
+        .active-tool { border-color: #fca5a5 !important; background-color: #991b1b !important; }
+        .active-brush { border-color: #22c55e !important; }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center">
+
+    <header class="mb-4 text-center">
+        <h1 class="text-3xl font-bold text-green-500">Círculo Verde</h1>
+        <p id="statusMsg" class="text-slate-400">Paso 1: Captura el fondo. Usa el Pincel para añadir colores exactos.</p>
+    </header>
+
+    <div id="canvas-container" class="bg-black p-2 shadow-2xl rounded-2xl">
+        <video id="video" class="hidden" autoplay playsinline></video>
+        <canvas id="outputCanvas"></canvas>
+    </div>
+
+    <div class="mt-6 bg-slate-900 p-6 rounded-2xl w-full max-w-lg border border-slate-700">
+        <div class="flex items-center gap-4 mb-4">
+            <button id="btnAction" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-full font-bold transition">Capturar Fondo</button>
+            <button id="btnFlip" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-full font-bold transition">Cambiar Cámara</button>
+            <button id="btnRecord" class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-full font-bold transition hidden">Grabar (30s)</button>
+        </div>
+        
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <button id="btnClick" class="bg-slate-700 py-2 rounded-lg active-brush">Clic</button>
+            <button id="btnBrush" class="bg-slate-700 py-2 rounded-lg">Pincel Mágico</button>
+            <button id="btnEraser" class="bg-slate-700 py-2 rounded-lg text-red-400 font-bold border-2 border-transparent">Goma</button>
+        </div>
+
+        <label class="block text-sm font-medium mb-2">Tolerancia (Precisión): <span id="tolVal">40</span></label>
+        <input type="range" id="tolSlider" min="0" max="255" value="40" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500">
+        
+        <div class="mt-6">
+            <p class="text-sm text-slate-400 mb-2">Colores exactos añadidos:</p>
+            <div id="palette" class="flex flex-wrap gap-3"></div>
+        </div>
+    </div>
+
+    <canvas id="backgroundCanvas"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const outputCanvas = document.getElementById('outputCanvas');
+        const bgCanvas = document.getElementById('backgroundCanvas');
+        const btnAction = document.getElementById('btnAction');
+        const btnFlip = document.getElementById('btnFlip');
+        const btnRecord = document.getElementById('btnRecord');
+        const btnClick = document.getElementById('btnClick');
+        const btnBrush = document.getElementById('btnBrush');
+        const btnEraser = document.getElementById('btnEraser');
+        const tolSlider = document.getElementById('tolSlider');
+        const tolVal = document.getElementById('tolVal');
+        const palette = document.getElementById('palette');
+        
+        const outCtx = outputCanvas.getContext('2d', { willReadFrequently: true });
+        const bgCtx = bgCanvas.getContext('2d');
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+
+        let mode = 'capture', tool = 'click', isDrawing = false;
+        let bgImageData = null, targetColors = [], tolerance = 40;
+        let currentFacingMode = 'user';
+
+        tolSlider.oninput = (e) => { tolerance = parseInt(e.target.value); tolVal.textContent = tolerance; };
+
+        function setTool(t) {
+            tool = t;
+            btnClick.classList.toggle('active-brush', tool === 'click');
+            btnBrush.classList.toggle('active-brush', tool === 'brush');
+            btnEraser.classList.toggle('active-tool', tool === 'eraser');
+        }
+
+        btnClick.onclick = () => setTool('click');
+        btnBrush.onclick = () => setTool('brush');
+        btnEraser.onclick = () => setTool('eraser');
+
+        outputCanvas.onmousedown = (e) => { isDrawing = true; handleInteraction(e); };
+        outputCanvas.onmousemove = (e) => { if(isDrawing && (tool === 'brush' || tool === 'eraser')) handleInteraction(e); };
+        outputCanvas.onmouseup = () => { isDrawing = false; };
+
+        function handleInteraction(e) {
+            if (mode !== 'live') return;
+            const rect = outputCanvas.getBoundingClientRect();
+            const x = Math.floor(e.clientX - rect.left);
+            const y = Math.floor(e.clientY - rect.top);
+            
+            const pixel = tempCtx.getImageData(x, y, 1, 1).data;
+            const r = pixel[0], g = pixel[1], b = pixel[2];
+
+            if (tool === 'eraser') {
+                targetColors = targetColors.filter(c => Math.sqrt(Math.pow(r-c.r, 2) + Math.pow(g-c.g, 2) + Math.pow(b-c.b, 2)) > tolerance);
+            } else {
+                targetColors.push({ r, g, b });
+            }
+            renderPalette();
+        }
+
+        function renderPalette() {
+            palette.innerHTML = '';
+            targetColors.forEach((c, i) => {
+                const div = document.createElement('div');
+                div.className = 'color-swatch';
+                div.style.backgroundColor = `rgb(${c.r}, ${c.g}, ${c.b})`;
+                div.onclick = () => { targetColors.splice(i, 1); renderPalette(); };
+                palette.appendChild(div);
+            });
+        }
+
+        async function initCamera(facingMode = 'user') {
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: { exact: facingMode } } 
+            }).catch(() => navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode } }));
+            
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                outputCanvas.width = bgCanvas.width = tempCanvas.width = video.videoWidth;
+                outputCanvas.height = bgCanvas.height = tempCanvas.height = video.videoHeight;
+                requestAnimationFrame(loop);
+            };
+        }
+
+        btnAction.onclick = () => {
+            if (mode === 'capture') {
+                bgCtx.drawImage(video, 0, 0);
+                bgImageData = bgCtx.getImageData(0, 0, bgCanvas.width, bgCanvas.height);
+                mode = 'live';
+                btnAction.textContent = "Reiniciar";
+                btnRecord.classList.remove('hidden');
+            } else location.reload();
+        };
+
+        btnFlip.onclick = () => {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            initCamera(currentFacingMode);
+        };
+
+        function loop() {
+            tempCtx.drawImage(video, 0, 0);
+            const frame = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            const data = frame.data;
+            if (mode === 'live' && bgImageData) {
+                const bgData = bgImageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i+1], b = data[i+2];
+                    for (const color of targetColors) {
+                        const dist = Math.sqrt(Math.pow(r - color.r, 2) + Math.pow(g - color.g, 2) + Math.pow(b - color.b, 2));
+                        if (dist < tolerance) {
+                            data[i] = bgData[i]; data[i+1] = bgData[i+1]; data[i+2] = bgData[i+2]; break;
+                        }
+                    }
+                }
+            }
+            outCtx.putImageData(frame, 0, 0);
+            requestAnimationFrame(loop);
+        }
+
+        initCamera();
+    </script>
+</body>
+</html>
